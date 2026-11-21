@@ -15,6 +15,11 @@ shared:
       - any-glob-to-any-file:
           - 'src/shared/**'
 
+site:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'site/**'
+
 tests:
   - changed-files:
       - any-glob-to-any-file:
