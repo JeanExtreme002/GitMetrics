@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
 import type { AuthStatus, ReposResponse } from '../shared/types.js';
@@ -289,9 +289,10 @@ export function createApp(options: AppOptions = {}) {
     const root = path.resolve(webDir);
     app.get('*', (c) => {
       const file = resolveInside(root, c.req.path);
-      if (file && existsSync(file) && statSync(file).isFile()) {
+      const body = file ? readRegularFile(file) : null;
+      if (file && body) {
         const immutable = c.req.path.startsWith('/assets/');
-        return c.body(readFileSync(file), 200, {
+        return c.body(body, 200, {
           'Content-Type': contentType(file),
           'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
         });
@@ -304,6 +305,26 @@ export function createApp(options: AppOptions = {}) {
   }
 
   return app;
+}
+
+/**
+ * Reads a regular file, or returns null for anything else. The file is opened once and checked
+ * through that same descriptor, so it cannot be swapped between the check and the read.
+ */
+export function readRegularFile(file: string): Buffer<ArrayBuffer> | null {
+  let fd: number;
+  try {
+    fd = openSync(file, 'r');
+  } catch {
+    return null;
+  }
+  try {
+    return fstatSync(fd).isFile() ? readFileSync(fd) : null;
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
 }
 
 /**
