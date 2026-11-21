@@ -99,7 +99,7 @@ img {
   color: var(--text);
 }
 
-.nav-links .nav-star {
+.nav-links .nav-github {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -110,7 +110,7 @@ img {
   font-weight: 600;
 }
 
-.nav-links .nav-star:hover {
+.nav-links .nav-github:hover {
   border-color: var(--border-strong);
 }
 
@@ -366,6 +366,11 @@ section h2 {
   text-align: center;
 }
 
+.cta-text strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* Footer */
 .footer {
   border-top: 1px solid var(--border);
@@ -407,7 +412,7 @@ section h2 {
     padding-top: 52px;
   }
 
-  .nav-links a:not(.nav-star) {
+  .nav-links a:not(.nav-github) {
     display: none;
   }
 
