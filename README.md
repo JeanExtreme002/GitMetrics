@@ -35,7 +35,7 @@ npx mygitdash
 
 Your browser opens on [http://localhost:4280](http://localhost:4280). Sign in and you are done.
 
-Prefer a permanent command? Install it globally:
+**Install it globally:**
 
 ```bash
 npm install -g mygitdash
