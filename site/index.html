@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GitMetrics · Every number behind your GitHub repositories</title>
+    <meta
+      name="description"
+      content="Stars, traffic, commits, pull requests and CI health of every GitHub repository you own, in one fast dashboard that runs on your machine. Free and open source."
+    />
+    <link rel="canonical" href="https://gitmetrics.pro/" />
+    <link rel="icon" type="image/svg+xml" href="/logo-light.svg" />
+    <meta name="theme-color" content="#0b0e13" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gitmetrics.pro/" />
+    <meta property="og:title" content="GitMetrics · Every number behind your GitHub repositories" />
+    <meta
+      property="og:description"
+      content="Stars, traffic, commits, pull requests and CI health in one dashboard that runs on your machine. One command: npx @gitmetrics/app"
+    />
+    <meta property="og:image" content="https://gitmetrics.pro/social-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://gitmetrics.pro/social-preview.png" />
+
+    <script type="module" src="./main.ts"></script>
+  </head>
+  <body>
+    <!-- include:header -->
+
+    <main>
+      <section class="hero">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="container hero-inner">
+          <p class="eyebrow">Free, open source and local</p>
+          <h1>Every number behind your <span class="accent">GitHub repositories.</span></h1>
+          <p class="lead">
+            Stars, traffic, commits, pull requests and CI health in one fast dashboard that runs on your own
+            machine. No account, no backend, nothing to configure.
+          </p>
+
+          <div class="install">
+            <div class="command" data-command="npx @gitmetrics/app">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code>npx @gitmetrics/app</code>
+              <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+            </div>
+
+            <p class="hint">Needs Node.js 20.19 or newer. Runs on Windows, Linux and macOS.</p>
+          </div>
+
+          <div class="actions">
+            <a
+              class="button primary"
+              href="https://github.com/JeanExtreme002/GitMetrics"
+              target="_blank"
+              rel="noopener"
+            >
+              <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
+                />
+              </svg>
+              View on GitHub
+            </a>
+            <a class="button ghost" href="/get-started/">Get started</a>
+          </div>
+        </div>
+
+        <div class="container shot">
+          <picture>
+            <source
+              type="image/webp"
+              srcset="
+                /img/overview-640.webp   640w,
+                /img/overview-1040.webp 1040w,
+                /img/overview-1600.webp 1600w,
+                /img/overview-2080.webp 2080w
+              "
+              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
+            />
+            <img
+              src="/overview.png"
+              alt="GitMetrics showing the overview of a repository: star growth, latest commits, languages and community health"
+              width="1584"
+              height="1128"
+            />
+          </picture>
+        </div>
+      </section>
+
+      <section class="features" id="features">
+        <div class="container">
+          <h2>What GitHub leaves out, in one place.</h2>
+          <p class="section-lead">
+            GitHub shows bits of your projects in scattered places and forgets older traffic. GitMetrics fills
+            those gaps.
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <span class="card-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 3-6.7" />
+                  <path d="M3 4v5h5" />
+                  <path d="M12 7v5l3 2" /></svg
+              ></span>
+              <h3>Traffic that never expires</h3>
+              <p>
+                GitHub keeps two weeks of views and clones. GitMetrics saves every window on your machine, so
+                the history keeps growing for as long as you use it.
+              </p>
+            </article>
+            <article class="card">
+              <span class="card-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z" />
+                  <path d="m3 12 9 4.5 9-4.5" />
+                  <path d="m3 16.5 9 4.5 9-4.5" /></svg
+              ></span>
+              <h3>The full story of each repository</h3>
+              <p>
+                Star history, pull requests, issues, contributors, hotspots, Actions, releases and
+                deployments, each on its own focused page.
+              </p>
+            </article>
+            <article class="card">
+              <span class="card-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 20h16" />
+                  <path d="M7 16v-5" />
+                  <path d="M12 16V6" />
+                  <path d="M17 16v-8" /></svg
+              ></span>
+              <h3>Exact numbers, even on busy repos</h3>
+              <p>
+                Monthly pull requests and issues, daily workflow runs and deployment totals come from GitHub's
+                own counts, not from a small sample.
+              </p>
+            </article>
+            <article class="card">
+              <span class="card-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
+                  <rect x="13.5" y="4" width="6.5" height="6.5" rx="1" />
+                  <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
+                  <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" /></svg
+              ></span>
+              <h3>Everything you own, side by side</h3>
+              <p>
+                A home page across all your repositories and organizations, rankings by stars, activity or
+                traffic, and Ctrl + K to jump anywhere.
+              </p>
+            </article>
+            <article class="card">
+              <span class="card-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="5" y="10.5" width="14" height="10" rx="1.5" />
+                  <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+                  <path d="M12 14.5v2" /></svg
+              ></span>
+              <h3>Private by design</h3>
+              <p>
+                It runs on 127.0.0.1 and talks only to api.github.com. Your token and data never leave your
+                computer.
+              </p>
+            </article>
+            <article class="card">
+              <span class="card-icon" aria-hidden="true"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="4.5" width="18" height="15" rx="1.5" />
+                  <path d="m7 9.5 3 2.5-3 2.5" />
+                  <path d="M12.5 15h4.5" /></svg
+              ></span>
+              <h3>One command away</h3>
+              <p>
+                No signup and no setup. Run it with npx, sign in with the GitHub CLI or a token, and start
+                exploring.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="pages">
+        <div class="container">
+          <h2>A page for every question.</h2>
+          <p class="section-lead">
+            How fast is it growing? Who is building it? Is the CI healthy? Each answer is one click away.
+          </p>
+          <picture>
+            <source
+              type="image/webp"
+              srcset="
+                /img/pages-grid-640.webp   640w,
+                /img/pages-grid-1040.webp 1040w,
+                /img/pages-grid-1600.webp 1600w,
+                /img/pages-grid-2080.webp 2080w
+              "
+              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
+            />
+            <img
+              src="/pages-grid.png"
+              alt="The Stars, Commits, Pull requests and Actions pages of GitMetrics"
+              width="1600"
+              height="1297"
+              loading="lazy"
+            />
+          </picture>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="container cta-inner">
+          <h2>Install once, run it anytime.</h2>
+          <div class="command multi" data-command="npm install -g @gitmetrics/app&#10;gitmetrics">
+            <div class="lines">
+              <div>
+                <span class="prompt" aria-hidden="true">$</span> <code>npm install -g @gitmetrics/app</code>
+              </div>
+              <div><span class="prompt" aria-hidden="true">$</span> <code>gitmetrics</code></div>
+            </div>
+            <button type="button" class="copy" data-copy aria-label="Copy the commands">Copy</button>
+          </div>
+          <p class="cta-text">
+            <strong>Built in the open.</strong> Follow the project, share ideas or contribute on GitHub.
+          </p>
+          <a
+            class="button dark large"
+            href="https://github.com/JeanExtreme002/GitMetrics"
+            target="_blank"
+            rel="noopener"
+          >
+            <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
+              />
+            </svg>
+            Explore GitMetrics on GitHub
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- include:footer -->
+  </body>
+</html>
