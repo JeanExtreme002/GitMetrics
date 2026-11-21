@@ -60,9 +60,11 @@ GitHub keeps only the last 14 days of traffic. MyGitDash saves each window on yo
 
 ## Signing in
 
-**GitHub CLI:** if you use the [GitHub CLI](https://cli.github.com), one click reuses your session.
+**GitHub CLI:**<br>
+If you use the [GitHub CLI](https://cli.github.com), one click reuses your session.
 
-**Personal access token:** paste a [token](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=MyGitDash) with the `repo`, `read:user` and `read:org` scopes.
+**Personal access token:**<br>
+Paste a [token](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=MyGitDash) with the `repo`, `read:user` and `read:org` scopes.
 
 Have your own GitHub OAuth App? Set `MYGITDASH_CLIENT_ID` to also get a **Sign in with GitHub** button that confirms a short code in your browser.
 
