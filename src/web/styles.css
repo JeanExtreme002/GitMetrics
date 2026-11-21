@@ -1,0 +1,782 @@
+:root {
+  --app-surface: var(--mantine-color-body);
+}
+
+[data-mantine-color-scheme='light'] body {
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='light'] .mantine-AppShell-main {
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .mantine-AppShell-navbar,
+[data-mantine-color-scheme='dark'] .app-header {
+  background: var(--mantine-color-dark-8);
+}
+
+.app-header {
+  backdrop-filter: saturate(180%) blur(8px);
+}
+
+.tabular {
+  /* Mona Sans draws a slashed zero in tabular mode, which reads oddly in counts. */
+  font-variant-numeric: lining-nums proportional-nums;
+}
+
+.nav-link {
+  border-radius: var(--mantine-radius-md);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.repo-identity {
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+}
+
+.search-button {
+  width: min(380px, 40vw);
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-default);
+  color: var(--mantine-color-dimmed);
+  transition: border-color 120ms ease;
+}
+
+.search-button:hover {
+  border-color: var(--mantine-color-dark-3);
+}
+
+.hover-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.hover-card:hover {
+  border-color: var(--mantine-color-brand-5);
+  transform: translateY(-1px);
+}
+
+.link-row {
+  display: block;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  border-radius: var(--mantine-radius-md);
+  transition: background 120ms ease;
+}
+
+.link-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.login-page {
+  min-height: 100vh;
+  background-image: radial-gradient(var(--mantine-color-default-border) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.user-code {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: 6px;
+}
+
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: var(--mantine-spacing-md);
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-lg);
+  background: var(--mantine-color-default-border);
+}
+
+.stat {
+  padding: 18px 22px 20px;
+  background: var(--mantine-color-body);
+}
+
+.stat-label {
+  letter-spacing: 0.06em;
+}
+
+.stat-value {
+  margin-top: 10px;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 62em) {
+  .stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stat-strip > .stat:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 36em) {
+  .stat-strip {
+    grid-template-columns: 1fr;
+  }
+  .stat-strip > .stat:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+}
+
+.repo-card {
+  position: relative;
+  display: block;
+  height: 100%;
+  padding: 18px 20px 16px;
+  color: inherit;
+  text-decoration: none;
+  /* A faint glow of the language color in the corner, instead of a loud stripe. */
+  background-image: radial-gradient(
+    120% 90% at 0% 0%,
+    color-mix(in srgb, var(--lang) 5%, transparent),
+    transparent 50%
+  );
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.repo-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 16px;
+  right: 55%;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--lang) 50%, transparent), transparent);
+}
+
+[data-mantine-color-scheme='dark'] .repo-card {
+  background-image: radial-gradient(
+    120% 90% at 0% 0%,
+    color-mix(in srgb, var(--lang) 8%, transparent),
+    transparent 50%
+  );
+}
+
+.repo-card:hover {
+  border-color: color-mix(in srgb, var(--lang) 15%, var(--mantine-color-default-border));
+  background-color: var(--mantine-color-default-hover);
+}
+
+.repo-card-meta {
+  color: var(--mantine-color-dimmed);
+}
+
+.lang-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin: 0 4px;
+  border-radius: 99px;
+}
+
+.navbar-footer {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+/* A thin scrollbar on a clear track, so it reads as part of the sidebar edge. */
+.navbar-scroll .mantine-ScrollArea-scrollbar {
+  background: transparent;
+  padding: 2px;
+}
+
+.account-footer {
+  display: block;
+  width: 100%;
+  padding: 14px 16px 16px;
+  transition: background 120ms ease;
+}
+
+.account-footer:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* Recent activity sits next to the repository cards and must end exactly where they end. */
+.activity-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.activity-body {
+  position: relative;
+  flex: 1;
+}
+
+.activity-card {
+  overflow: hidden;
+}
+
+.activity .mantine-Timeline-item:not(:first-of-type) {
+  margin-top: 18px;
+}
+
+@media (min-width: 75em) {
+  .activity-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Spread the entries over the whole card instead of leaving a gap at the bottom. */
+  .activity-card .activity {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .activity-card .activity .mantine-Timeline-item {
+    margin-top: 0;
+  }
+}
+
+.mini-stat {
+  padding: 2px 22px;
+  border-left: 1px solid var(--mantine-color-default-border);
+  cursor: default;
+}
+
+.mini-stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.mini-stat:last-child {
+  padding-right: 0;
+}
+
+.mini-stat-icon {
+  flex: none;
+  color: var(--mantine-color-dimmed);
+}
+
+/* On phones the four home stats become a 2 x 2 grid instead of running off the screen. */
+@media (max-width: 36em) {
+  .mini-stats {
+    display: grid !important;
+    grid-template-columns: repeat(2, auto);
+    justify-content: start;
+    gap: 14px 32px !important;
+  }
+
+  .mini-stat,
+  .mini-stat:first-child,
+  .mini-stat:last-child {
+    padding: 0;
+    border-left: 0;
+  }
+}
+
+/* Leaderboard rows used on the home page instead of cards. */
+.rank-list {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 28px minmax(120px, 180px) 1fr 52px 76px;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  transition: background 120ms ease;
+}
+
+.rank-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.rank-track {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--mantine-color-default-border);
+}
+
+.rank-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--mantine-color-yellow-6);
+}
+
+.legend-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+@media (min-width: 62em) {
+  .split-col {
+    border-left: 1px solid var(--mantine-color-default-border);
+  }
+}
+
+.donut {
+  position: relative;
+  flex: none;
+}
+
+.donut-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.legend-row {
+  cursor: default;
+  transition: background 120ms ease;
+}
+
+.legend-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.page-icon {
+  display: flex;
+  color: var(--mantine-color-text);
+}
+
+/* Settings: one setting per row, description on the left and the control on the right. */
+.settings-list {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: 48px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+@media (max-width: 48em) {
+  .setting-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* Repository overview */
+.repo-meta {
+  row-gap: 8px;
+}
+
+.repo-meta-item {
+  /* A step brighter than the dimmed description above it. */
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.side-section {
+  padding: 4px 0 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.side-section:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.commit-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 120px 96px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  transition: background 120ms ease;
+}
+
+.commit-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.repo-counter {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  cursor: default;
+}
+
+.repo-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px 2px 8px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 99px;
+  color: var(--mantine-color-dimmed);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.repo-pill-yellow {
+  border-color: color-mix(in srgb, var(--mantine-color-yellow-6) 45%, transparent);
+  color: var(--mantine-color-yellow-7);
+}
+
+.milestone-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.milestone-next {
+  color: var(--mantine-color-dimmed);
+}
+
+.stargazer-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  transition: background 120ms ease;
+}
+
+.stargazer-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* Traffic rankings: wider name column, room for "123 visitors" on the right. */
+.traffic-row {
+  grid-template-columns: 28px minmax(120px, 1.6fr) minmax(48px, 0.8fr) 48px 86px;
+}
+
+.commit-row-sha {
+  grid-template-columns: 22px minmax(0, 1fr) 140px 70px 96px;
+}
+
+/* Punch card: 7 days × 24 hours of dots that stretch to the column width. */
+.punch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.punch-row {
+  display: grid;
+  grid-template-columns: 34px repeat(24, minmax(0, 1fr));
+  align-items: center;
+}
+
+.punch-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 29px;
+  cursor: default;
+}
+
+.punch-dot {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 99px;
+  background: var(--mantine-color-teal-6);
+  transition: transform 120ms ease;
+}
+
+.punch-cell:hover .punch-dot {
+  transform: scale(1.25);
+}
+
+.punch-empty {
+  width: 4px;
+  background: var(--mantine-color-default-border);
+  opacity: 1;
+}
+
+.punch-hour {
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.pull-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  transition: background 120ms ease;
+}
+
+.pull-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.size-legend-row {
+  grid-template-columns: 10px 26px minmax(0, 1fr) 32px 40px;
+  /* Same rhythm as the Top authors rows beside it, so both blocks end together. */
+  padding: 11px 4px;
+}
+
+.label-legend-row {
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  padding: 11px 4px;
+}
+
+.share-legend-row {
+  grid-template-columns: 10px minmax(0, 1fr) 44px;
+  padding: 11px 4px;
+}
+
+/* Contributor ranking: position, person, bar, lines, active period, commits, share. */
+.contributor-row {
+  grid-template-columns: 28px minmax(120px, 180px) 1fr 110px 170px 72px 56px;
+}
+
+.contributor-row-nolines {
+  grid-template-columns: 28px minmax(120px, 180px) 1fr 170px 72px 56px;
+}
+
+@media (max-width: 48em) {
+  .contributor-row {
+    grid-template-columns: 28px minmax(120px, 180px) 1fr 72px 56px;
+  }
+  .contributor-extra {
+    display: none !important;
+  }
+}
+
+/*
+ * Column labels above a ranking: same grid as its rows, small caps, quieter and not interactive.
+ * The list drops its own top border so only one hairline separates the labels from the rows.
+ */
+.rank-list:has(> .rank-head) {
+  border-top: none;
+}
+
+.rank-head {
+  padding-top: 4px;
+  padding-bottom: 10px;
+}
+
+.rank-head:hover {
+  background: none;
+}
+
+.rank-head-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--mantine-color-dimmed);
+}
+
+.rank-head-right {
+  text-align: right;
+}
+
+/* Hotspot rankings: position, path, heat bar, commits, lines changed. */
+.hot-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(60px, 120px) 64px 96px;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  transition: background 120ms ease;
+}
+
+.hot-row:hover:not(.rank-head) {
+  background: var(--mantine-color-default-hover);
+}
+
+.hot-row.rank-head {
+  padding-top: 4px;
+  padding-bottom: 10px;
+}
+
+.hot-path {
+  display: flex;
+  min-width: 0;
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hot-folder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--mantine-color-dimmed);
+}
+
+.hot-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+/* Drill-down hotspot map: blocks react to the pointer, except the "N more" leftover. */
+.map-block {
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.map-block:hover {
+  opacity: 0.85;
+}
+
+.map-block-static {
+  cursor: default;
+}
+
+.map-block-static:hover {
+  opacity: 1;
+}
+
+/* Workflow rows: name and file, latest results, runs, success bar, average duration. */
+.workflow-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 56px minmax(120px, 200px) 72px 72px;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  transition: background 120ms ease;
+}
+
+.workflow-row:hover:not(.rank-head) {
+  background: var(--mantine-color-default-hover);
+}
+
+.workflow-row.rank-head {
+  padding-top: 4px;
+  padding-bottom: 10px;
+}
+
+.run-dots {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.run-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  transition: transform 120ms ease;
+}
+
+.run-dot:hover {
+  transform: scale(1.3);
+}
+
+.run-fail-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  color: var(--mantine-color-red-6);
+  background: color-mix(in srgb, var(--mantine-color-red-6) 14%, transparent);
+}
+
+@media (max-width: 48em) {
+  .workflow-row {
+    grid-template-columns: minmax(0, 1fr) 48px minmax(90px, 1fr);
+  }
+  .workflow-row > :nth-child(2),
+  .workflow-row > :nth-child(5),
+  .workflow-row > :nth-child(6) {
+    display: none;
+  }
+}
+
+/* Release history: a tag icon, the newest one tinted. */
+.release-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  color: var(--mantine-color-dimmed);
+  background: var(--mantine-color-default-hover);
+}
+
+.release-icon-latest {
+  color: var(--mantine-color-green-6);
+  background: color-mix(in srgb, var(--mantine-color-green-6) 14%, transparent);
+}
+
+/* Most downloaded: position, tag, bar, downloads, share. */
+.release-rank-row {
+  grid-template-columns: 28px minmax(80px, 140px) 1fr 52px 44px;
+}
+
+/* Environments: name with live link, share bar, deployments, latest outcome. */
+.env-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 220px) 1fr 60px 120px;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.env-row.rank-head {
+  padding-top: 4px;
+  padding-bottom: 10px;
+}
+
+.state-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+}

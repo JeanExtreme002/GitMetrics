@@ -1,0 +1,21 @@
+name: Feature request
+description: A metric, chart or page you would like to see.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to know about your repositories?
+      description: Describe the question you are trying to answer, not just the chart.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: How do you picture it?
+      description: Where it would live in the app and what it would show.
+  - type: textarea
+    id: data
+    attributes:
+      label: Where does the data come from?
+      description: If you know the GitHub API endpoint that provides it, link it here.

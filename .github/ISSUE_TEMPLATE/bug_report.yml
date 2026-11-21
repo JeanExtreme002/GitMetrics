@@ -1,0 +1,48 @@
+name: Bug report
+description: Something is broken or shows the wrong numbers.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this. Please never paste your GitHub token here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Tell us what you saw and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we reproduce it?
+      placeholder: |
+        1. Open the Stars page of a repository with more than 3,000 stars
+        2. Switch the range to "1Y"
+        3. The chart is empty
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Which page?
+      placeholder: Stars, Traffic, Actions...
+  - type: input
+    id: version
+    attributes:
+      label: MyGitDash version
+      description: Run `npx mygitdash --version`.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system, Node.js and browser
+      placeholder: macOS 15, Node 22.12, Chrome 131
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output or screenshots
+      description: Anything printed in the terminal where MyGitDash is running helps a lot.

@@ -1,0 +1,38 @@
+# Path-based labels applied to pull requests by .github/workflows/labeler.yml.
+
+server:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/server/**'
+
+web:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/web/**'
+
+shared:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/shared/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tests/**'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'assets/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'package-lock.json'

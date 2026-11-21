@@ -1,0 +1,49 @@
+# npm: one grouped PR a week for dev tooling and UI libraries, kept apart from
+# the production-facing ones so a risky upgrade never blocks routine bumps.
+# github-actions: workflows pin every action to a commit SHA, so these PRs are
+# the only way the pins move. Grouped into one monthly PR.
+
+version: 2
+
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      ui:
+        patterns:
+          - '@mantine/*'
+          - '@tabler/*'
+          - 'react'
+          - 'react-dom'
+          - '@types/react*'
+          - 'react-router'
+          - '@tanstack/*'
+          - 'recharts'
+      tooling:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - 'typescript*'
+          - 'prettier'
+          - 'vite*'
+          - '@vitejs/*'
+          - 'vitest'
+          - '@vitest/*'
+          - 'esbuild'
+          - 'tsx'
+          - 'concurrently'
+          - 'globals'
+          - '@types/node'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - '*'

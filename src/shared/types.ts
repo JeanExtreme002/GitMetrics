@@ -1,0 +1,406 @@
+// Response shapes shared by the local server and the web app.
+
+export type AuthSource = 'device' | 'token' | 'gh';
+
+export interface Viewer {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+  htmlUrl: string;
+  followers: number;
+  following: number;
+  publicRepos: number;
+  createdAt: string;
+}
+
+export interface AuthStatus {
+  authenticated: boolean;
+  viewer?: Viewer;
+  source?: AuthSource;
+  scopes?: string[];
+  methods: { device: boolean; gh: boolean };
+}
+
+export interface DeviceStart {
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+  interval: number;
+}
+
+export interface DevicePoll {
+  status: 'pending' | 'complete' | 'expired' | 'denied';
+  interval?: number;
+}
+
+export interface RateLimitInfo {
+  limit: number;
+  remaining: number;
+  resetAt: string;
+}
+
+export interface RepoSummary {
+  id: number;
+  owner: string;
+  name: string;
+  fullName: string;
+  description: string | null;
+  private: boolean;
+  fork: boolean;
+  archived: boolean;
+  stars: number;
+  forks: number;
+  watchers: number;
+  openIssues: number;
+  language: string | null;
+  topics: string[];
+  pushedAt: string | null;
+  createdAt: string;
+  htmlUrl: string;
+  ownerAvatarUrl: string;
+}
+
+export interface ReposResponse {
+  repos: RepoSummary[];
+  favorites: string[];
+}
+
+export interface RepoDetails extends RepoSummary {
+  defaultBranch: string;
+  license: string | null;
+  homepage: string | null;
+  sizeKb: number;
+  subscribers: number;
+  visibility: string;
+}
+
+export interface OverviewResponse {
+  repo: RepoDetails;
+  totals: {
+    commits: number | null;
+    contributors: number | null;
+    openPullRequests: number | null;
+    openIssues: number | null;
+    releases: number | null;
+  };
+  languages: { name: string; bytes: number; share: number }[];
+  health: { percentage: number; files: { name: string; present: boolean }[] } | null;
+  latestRelease: { tag: string; name: string; publishedAt: string; url: string } | null;
+}
+
+export interface StarPoint {
+  date: string;
+  stars: number;
+}
+
+export interface Stargazer {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+  url: string;
+  starredAt: string;
+}
+
+export interface StarsResponse {
+  total: number;
+  sampled: boolean;
+  firstStarAt: string | null;
+  points: StarPoint[];
+  monthly: { month: string; stars: number }[];
+  stats: {
+    last7Days: number;
+    last30Days: number;
+    avgPerMonth: number;
+    bestMonth: { month: string; stars: number } | null;
+  };
+  /** The latest people to star the repository, newest first. */
+  recent: Stargazer[];
+}
+
+export interface TrafficDay {
+  date: string;
+  count: number;
+  uniques: number;
+}
+
+export interface TrafficSeries {
+  count: number;
+  uniques: number;
+  daily: TrafficDay[];
+}
+
+export interface TrafficResponse {
+  available: boolean;
+  reason?: string;
+  views: TrafficSeries;
+  clones: TrafficSeries;
+  referrers: { referrer: string; count: number; uniques: number }[];
+  paths: { path: string; title: string; count: number; uniques: number }[];
+  trackedSince: string | null;
+}
+
+export interface CommitItem {
+  sha: string;
+  message: string;
+  author: string;
+  avatarUrl: string | null;
+  date: string;
+  url: string;
+}
+
+export interface CommitsResponse {
+  pending: boolean;
+  weekly: { week: string; commits: number }[];
+  daily: Record<string, number>;
+  codeFrequency: { week: string; additions: number; deletions: number }[] | null;
+  punchCard: { day: number; hour: number; commits: number }[];
+  totals: {
+    lastYear: number;
+    avgPerWeek: number;
+    activeWeeks: number;
+    busiestDay: string | null;
+    busiestHour: number | null;
+  };
+  recent: CommitItem[];
+}
+
+export interface PersonCount {
+  login: string;
+  avatarUrl: string;
+  count: number;
+}
+
+export interface PullItem {
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  mergedAt: string | null;
+  additions: number;
+  deletions: number;
+  draft: boolean;
+}
+
+export interface PullsResponse {
+  counts: { open: number; merged: number; closed: number };
+  sampleSize: number;
+  monthly: { month: string; opened: number; merged: number; closed: number }[];
+  medianTimeToMergeHours: number | null;
+  mergeRate: number | null;
+  sizes: { size: string; count: number }[];
+  topAuthors: PersonCount[];
+  openOldest: PullItem[];
+  recentMerged: PullItem[];
+}
+
+export interface IssueItem {
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  comments: number;
+  labels: { name: string; color: string }[];
+}
+
+export interface IssuesResponse {
+  counts: { open: number; closed: number };
+  sampleSize: number;
+  monthly: { month: string; opened: number; closed: number }[];
+  medianTimeToCloseHours: number | null;
+  labels: { name: string; color: string; count: number }[];
+  topAuthors: PersonCount[];
+  openOldest: IssueItem[];
+  /** Open issues with the most comments. */
+  mostDiscussed: IssueItem[];
+}
+
+export interface Contributor {
+  login: string;
+  avatarUrl: string;
+  url: string;
+  commits: number;
+  additions: number;
+  deletions: number;
+  firstWeek: string | null;
+  lastWeek: string | null;
+  /** Commits in the last 90 days. */
+  recentCommits: number;
+}
+
+export interface ContributorsResponse {
+  pending: boolean;
+  /** GitHub is still computing the weekly history; the plain list is shown meanwhile. */
+  historyPending: boolean;
+  total: number | null;
+  contributors: Contributor[];
+  activeLast90Days: number;
+  newPerMonth: { month: string; count: number }[];
+  /** Every month since the first commit: people who committed that month, and first-timers. */
+  history: { month: string; active: number; new: number }[];
+}
+
+export interface FileStat {
+  path: string;
+  changes: number;
+  additions: number;
+  deletions: number;
+}
+
+/** A folder or file in the hotspot map; a folder's value is the sum of its files' changes. */
+export interface TreeNode {
+  name: string;
+  /** Full path from the repository root ("" for the root itself). */
+  path: string;
+  value: number;
+  /** Present on folders only, largest first. */
+  children?: TreeNode[];
+}
+
+export interface FilesResponse {
+  commitsAnalyzed: number;
+  filesTouched: number;
+  /** Lines added and removed across every analyzed commit. */
+  lines: { additions: number; deletions: number };
+  files: FileStat[];
+  folders: FileStat[];
+  /** Every changed file nested under its folders, for the drill-down map. */
+  tree: TreeNode;
+  extensions: { name: string; count: number }[];
+}
+
+export interface WorkflowStat {
+  id: number;
+  name: string;
+  path: string;
+  state: string;
+  runs: number;
+  successRate: number | null;
+  avgDurationMs: number | null;
+  medianDurationMs: number | null;
+  lastRun: { status: string; conclusion: string | null; createdAt: string; url: string } | null;
+  /** Results of the latest finished runs, newest first (up to 10). */
+  recent: { conclusion: string | null; url: string; createdAt: string }[];
+}
+
+export interface ActionsResponse {
+  available: boolean;
+  windowDays: number;
+  /** Every run in the window, as GitHub counts them. */
+  totalRuns: number;
+  /** Runs fetched in full; lower than totalRuns on busy repositories. */
+  sampleSize: number;
+  /** True when the daily chart and totals come from exact per-day counts instead of the sample. */
+  exactDaily: boolean;
+  success: number;
+  failure: number;
+  cancelled: number;
+  successRate: number | null;
+  avgDurationMs: number | null;
+  medianDurationMs: number | null;
+  totalDurationMs: number;
+  daily: { date: string; success: number; failure: number; other: number }[];
+  workflows: WorkflowStat[];
+  events: { name: string; count: number }[];
+  recentFailures: {
+    id: number;
+    name: string;
+    branch: string | null;
+    event: string;
+    createdAt: string;
+    url: string;
+    actor: string | null;
+  }[];
+}
+
+export interface ReleaseItem {
+  id: number;
+  tag: string;
+  name: string;
+  publishedAt: string | null;
+  prerelease: boolean;
+  url: string;
+  downloads: number;
+  assets: number;
+  author: string | null;
+  avatarUrl: string | null;
+}
+
+export interface ReleasesResponse {
+  /** Every published release, as GitHub counts them. */
+  total: number;
+  /** Releases fetched in full (the latest 300 at most). */
+  sampleSize: number;
+  totalDownloads: number;
+  medianDaysBetween: number | null;
+  releases: ReleaseItem[];
+  /** Every month from the first release (or the last 12 months, if longer), stable and pre-releases apart. */
+  monthly: { month: string; releases: number; prereleases: number }[];
+}
+
+export interface DeploymentItem {
+  id: number;
+  environment: string;
+  ref: string;
+  sha: string;
+  createdAt: string;
+  /** Latest status; only the most recent deployments have one. */
+  state: string | null;
+  creator: string | null;
+  avatarUrl: string | null;
+  /** The deployment's log or details page, when its status links one. */
+  logUrl: string | null;
+}
+
+export interface DeploymentsResponse {
+  /** Every deployment, as GitHub counts them. */
+  total: number;
+  /** Deployments fetched in full (the latest 300 at most). */
+  sampleSize: number;
+  environments: {
+    name: string;
+    deployments: number;
+    lastDeployedAt: string | null;
+    lastState: string | null;
+    /** Where the environment is live, from its latest status. */
+    url: string | null;
+    /** Every deployment to this environment, as GitHub counts them; null if unknown. */
+    total: number | null;
+  }[];
+  /** Every month the sample covers (at least the last 12), per environment. */
+  monthly: { month: string; deployments: number; byEnvironment: Record<string, number> }[];
+  /**
+   * When the sample covers only a short stretch (busy repositories), deployments per hour (up to
+   * 3 days) or per day (up to about 2 months) over the time it fully covers, so the chart shows the
+   * recent rhythm instead of one lonely month. Hours are "YYYY-MM-DDTHH" in UTC.
+   */
+  timeline: {
+    unit: 'hour' | 'day';
+    points: { date: string; deployments: number; byEnvironment: Record<string, number> }[];
+  } | null;
+  stateCounts: { state: string; count: number }[];
+  recent: DeploymentItem[];
+}
+
+export interface ApiError {
+  error: string;
+  status: number;
+}
+
+export type RankingMode = 'activity' | 'traffic';
+
+export interface RankingEntry {
+  fullName: string;
+  name: string;
+  value: number;
+  secondary: number | null;
+}
+
+export interface RankingResponse {
+  mode: RankingMode;
+  windowDays: number;
+  entries: RankingEntry[];
+}
