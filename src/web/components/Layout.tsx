@@ -279,6 +279,10 @@ function AccountFooter({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 
+/** The search shortcut is "mod + K": Command on macOS, Control everywhere else. */
+const IS_MAC =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
 function SearchButton() {
   return (
     <UnstyledButton onClick={() => spotlight.open()} className="search-button" visibleFrom="sm">
@@ -287,7 +291,7 @@ function SearchButton() {
         <Text size="sm" c="dimmed" style={{ flex: 1 }}>
           Search repositories
         </Text>
-        <Kbd size="xs">⌘ K</Kbd>
+        <Kbd size="xs">{IS_MAC ? '⌘ K' : 'Ctrl K'}</Kbd>
       </Group>
     </UnstyledButton>
   );
