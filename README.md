@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/JeanExtreme002/GitMetrics/actions/workflows/ci.yml"><img src="https://github.com/JeanExtreme002/GitMetrics/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://codecov.io/gh/JeanExtreme002/GitMetrics"><img src="https://codecov.io/gh/JeanExtreme002/GitMetrics/graph/badge.svg" alt="Coverage" /></a>
-  <a href="https://www.npmjs.com/package/gitmetrics"><img src="https://img.shields.io/npm/v/gitmetrics?logo=npm&color=red" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/@gitmetrics/app"><img src="https://img.shields.io/npm/v/@gitmetrics/app?logo=npm&color=red" alt="npm" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-20.19+-339933?logo=nodedotjs&logoColor=white" alt="Node Version" /></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue" alt="Platforms" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-green.svg" alt="License: AGPL-3.0" /></a>
@@ -30,7 +30,7 @@ GitHub shows bits of your projects in scattered places, forgets older traffic an
 You only need [Node.js](https://nodejs.org) 20.19 or newer.
 
 ```bash
-npx gitmetrics
+npx @gitmetrics/app
 ```
 
 Your browser opens on [http://localhost:4280](http://localhost:4280). Sign in and you are done.
@@ -38,7 +38,7 @@ Your browser opens on [http://localhost:4280](http://localhost:4280). Sign in an
 **Install it globally:**
 
 ```bash
-npm install -g gitmetrics
+npm install -g @gitmetrics/app
 gitmetrics
 ```
 

@@ -1,5 +1,5 @@
 {
-  "name": "gitmetrics",
+  "name": "@gitmetrics/app",
   "version": "1.0.0",
   "description": "A beautiful, zero-config dashboard for your GitHub repositories. Stars, traffic, commits, pull requests, Actions and more, running locally on your machine.",
   "type": "module",
@@ -42,6 +42,9 @@
     "cli"
   ],
   "author": "Jean Loui Bernard Silva de Jesus",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "AGPL-3.0-only",
   "homepage": "https://github.com/JeanExtreme002/GitMetrics#readme",
   "repository": {

@@ -31,7 +31,7 @@ body:
     id: version
     attributes:
       label: GitMetrics version
-      description: Run `npx gitmetrics --version`.
+      description: Run `gitmetrics --version`, or `npx @gitmetrics/app --version`.
     validations:
       required: true
   - type: input

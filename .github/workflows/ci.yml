@@ -79,7 +79,7 @@ jobs:
         run: |
           mkdir smoke && cd smoke
           npm init -y > /dev/null
-          npm install ../gitmetrics-*.tgz
+          npm install ../gitmetrics-app-*.tgz
           npx gitmetrics --version
           GITMETRICS_HOME="$RUNNER_TEMP/gitmetrics" npx gitmetrics --port 4399 --no-open &
           for i in $(seq 1 20); do

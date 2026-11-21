@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are released for the latest version of GitMetrics published on npm. Please update with `npm install -g gitmetrics@latest`, or run `npx gitmetrics@latest`, before reporting an issue.
+Security fixes are released for the latest version of GitMetrics published on npm. Please update with `npm install -g @gitmetrics/app@latest`, or run `npx @gitmetrics/app@latest`, before reporting an issue.
 
 ## Reporting a vulnerability
 
