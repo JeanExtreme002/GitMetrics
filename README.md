@@ -66,7 +66,7 @@ If you use the [GitHub CLI](https://cli.github.com), one click reuses your sessi
 **With a personal access token:**<br>
 Paste a [token](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=MyGitDash) with the `repo`, `read:user` and `read:org` scopes.
 
-Have your own GitHub OAuth App? Set `MYGITDASH_CLIENT_ID` to also get a **Sign in with GitHub** button that confirms a short code in your browser.
+Have your own GitHub OAuth App? Set its client ID in the `MYGITDASH_CLIENT_ID` environment variable to also get a **Sign in with GitHub** button that confirms a short code in your browser.
 
 ## Privacy
 
