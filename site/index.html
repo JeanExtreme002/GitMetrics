@@ -64,12 +64,15 @@
             machine. No account, no backend, nothing to configure.
           </p>
 
-          <div class="command" data-command="npx @gitmetrics/app">
-            <span class="prompt" aria-hidden="true">$</span>
-            <code>npx @gitmetrics/app</code>
-            <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+          <div class="install">
+            <div class="command" data-command="npx @gitmetrics/app">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code>npx @gitmetrics/app</code>
+              <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+            </div>
+
+            <p class="hint">Needs Node.js 20.19 or newer. Runs on Windows, Linux and macOS.</p>
           </div>
-          <p class="hint">Needs Node.js 20.19 or newer. Runs on Windows, Linux and macOS.</p>
 
           <div class="actions">
             <a
@@ -267,10 +270,14 @@
         <div class="glow" aria-hidden="true"></div>
         <div class="container cta-inner">
           <h2>Try it in seconds.</h2>
-          <div class="command" data-command="npx @gitmetrics/app">
-            <span class="prompt" aria-hidden="true">$</span>
-            <code>npx @gitmetrics/app</code>
-            <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+          <div class="command multi" data-command="npm install -g @gitmetrics/app&#10;gitmetrics">
+            <div class="lines">
+              <div>
+                <span class="prompt" aria-hidden="true">$</span> <code>npm install -g @gitmetrics/app</code>
+              </div>
+              <div><span class="prompt" aria-hidden="true">$</span> <code>gitmetrics</code></div>
+            </div>
+            <button type="button" class="copy" data-copy aria-label="Copy the commands">Copy</button>
           </div>
           <p class="cta-text">
             <strong>Built in the open.</strong> Follow the project, share ideas or contribute on GitHub.

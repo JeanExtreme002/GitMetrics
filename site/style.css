@@ -189,6 +189,31 @@ h1 {
   text-align: left;
 }
 
+/* Several commands, one per line, copied together. */
+.command.multi {
+  align-items: flex-start;
+}
+
+.command.multi .lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  /* Each command stays on one line; narrow screens scroll instead of breaking it. */
+  white-space: nowrap;
+  text-align: left;
+}
+
+.command.multi .lines .prompt {
+  margin-right: 6px;
+}
+
+.command.multi .copy {
+  margin-top: 3px;
+}
+
 /* A quiet text action, not a button. */
 .copy {
   padding: 2px 0;
@@ -211,6 +236,21 @@ h1 {
 
 .copy.copied {
   color: #3fb950;
+}
+
+/* The hero command takes the width of the requirements line below it. */
+.install {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 100%;
+  margin-top: 30px;
+}
+
+.install .command {
+  display: flex;
+  min-width: 0;
+  margin-top: 0;
 }
 
 .hint {
@@ -438,6 +478,11 @@ section h2 {
     min-width: 0;
     padding: 11px 14px 11px 16px;
     font-size: 15px;
+  }
+
+  .command.multi {
+    max-width: 100%;
+    font-size: 13.5px;
   }
 
   .shot {
