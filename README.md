@@ -83,7 +83,7 @@ mygitdash [options]
   -h, --help           Show this message
 ```
 
-Environment variables:
+**Environment variables:**
 
 - `MYGITDASH_HOME` keeps the data somewhere other than `~/.mygitdash`.
 - `MYGITDASH_CLIENT_ID` enables **Sign in with GitHub** through your own OAuth App.
