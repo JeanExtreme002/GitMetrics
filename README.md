@@ -45,7 +45,7 @@ mygitdash
 ## What's inside
 
 <p align="center">
-  <img src="assets/pages.png" alt="Stars, Commits, Pull requests and Actions pages" width="880" />
+  <img src="assets/pages-grid.png" alt="Stars, Commits, Pull requests and Actions pages" width="880" />
 </p>
 
 Each repository also gets **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments**, plus a home page across everything you own and <kbd>⌘</kbd> <kbd>K</kbd> to jump anywhere. Light and dark themes included.
