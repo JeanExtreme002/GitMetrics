@@ -43,14 +43,7 @@ Please keep an eye on the API budget. GitHub allows 5,000 requests per hour, so 
 
 ## Releasing
 
-Releases are published from GitHub. Bump the version with `npm version <patch|minor|major> --no-git-tag-version`, merge that change, then create a GitHub Release with a tag like `v1.2.3`. The release notes on GitHub are the changelog. The `Publish to npm` workflow checks that the tag matches `package.json`, runs the tests and stages the package on npm with provenance.
-
-A staged version is not public yet. A maintainer approves it with two-factor authentication, either on the package page at npmjs.com or from a terminal:
-
-```bash
-npm stage list @gitmetrics/app
-npm stage approve <stage-id>
-```
+Releases are published from GitHub. Bump the version with `npm version <patch|minor|major> --no-git-tag-version`, merge that change, then create a GitHub Release with a tag like `v1.2.3`. The release notes on GitHub are the changelog. The `Publish to npm` workflow checks that the tag matches `package.json`, runs the tests and publishes the package with provenance.
 
 ## License of contributions
 
