@@ -168,14 +168,15 @@ h1 {
 .command {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 28px;
-  padding: 6px 6px 6px 16px;
+  gap: 14px;
+  min-width: 340px;
+  margin-top: 30px;
+  padding: 13px 18px 13px 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-raised);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .prompt {
@@ -183,32 +184,32 @@ h1 {
 }
 
 .command code {
+  flex: 1;
   font: inherit;
+  text-align: left;
 }
 
+/* A quiet text action, not a button. */
 .copy {
-  padding: 5px 11px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--muted);
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--faint);
   font:
-    600 13px 'Mona Sans Variable',
+    600 12px 'Mona Sans Variable',
     system-ui,
     sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition:
-    color 150ms ease,
-    border-color 150ms ease;
+  transition: color 150ms ease;
 }
 
 .copy:hover {
-  border-color: var(--border-strong);
   color: var(--text);
 }
 
 .copy.copied {
-  border-color: rgba(63, 185, 80, 0.5);
   color: #3fb950;
 }
 
@@ -434,7 +435,9 @@ section h2 {
   }
 
   .command {
-    font-size: 14px;
+    min-width: 0;
+    padding: 11px 14px 11px 16px;
+    font-size: 15px;
   }
 
   .shot {
