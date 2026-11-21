@@ -318,6 +318,19 @@ section h2 {
   border-color: rgba(229, 56, 59, 0.4);
 }
 
+.card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(229, 56, 59, 0.28);
+  border-radius: var(--radius);
+  background: rgba(229, 56, 59, 0.1);
+  color: #ff6a5c;
+}
+
 .card h3 {
   font-size: 15px;
   font-weight: 650;
