@@ -106,6 +106,12 @@ img {
   gap: 6px;
 }
 
+/* "npm" has no tall letters, so its visual middle sits a bit lower than the line box. */
+.nav-links .nav-icon svg {
+  position: relative;
+  top: 1px;
+}
+
 .nav-links .nav-github {
   display: inline-flex;
   align-items: center;
