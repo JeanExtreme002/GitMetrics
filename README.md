@@ -2,24 +2,32 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
-  <img src="assets/logo-light.svg" width="88" alt="MyGitDash logo" />
+  <img src="assets/logo-light.svg" width="96" alt="MyGitDash logo" />
 </picture>
 
 # MyGitDash
 
-**A beautiful dashboard for your GitHub repositories. One command, zero configuration.**
+<b>Every number behind your GitHub repositories, on one screen.</b><br>
+<i>Stars, traffic, commits, pull requests and CI health. Running on your machine, one command away.</i>
 
-[![npm](https://img.shields.io/npm/v/mygitdash?color=1f6feb)](https://www.npmjs.com/package/mygitdash)
+<br>
+
 [![CI](https://github.com/JeanExtreme002/MyGitDash/actions/workflows/ci.yml/badge.svg)](https://github.com/JeanExtreme002/MyGitDash/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/JeanExtreme002/MyGitDash/graph/badge.svg)](https://codecov.io/gh/JeanExtreme002/MyGitDash)
+[![npm](https://img.shields.io/npm/v/mygitdash?logo=npm&color=red)](https://www.npmjs.com/package/mygitdash)
+[![Node Version](https://img.shields.io/badge/node-20.19+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](#quick-start)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/JeanExtreme002/MyGitDash?style=social)](https://github.com/JeanExtreme002/MyGitDash/stargazers)
 
-<img src="assets/overview.png" alt="Overview of a repository in MyGitDash" width="900" />
+<br>
+
+<img src="assets/overview.png" alt="MyGitDash showing the overview of a repository" width="880" />
 
 </div>
 
-GitHub knows a lot about your projects, but it is scattered across a dozen tabs, and some of it, like traffic, disappears after two weeks. MyGitDash gathers all of it into a calm, fast dashboard that runs on your own computer. Sign in with your GitHub account and every repository you own is ready to explore, with nothing to configure.
+<br>
+
+GitHub spreads your project's numbers across a dozen tabs and deletes traffic after 14 days. **MyGitDash brings them together in one fast dashboard**, and keeps the history GitHub throws away.
 
 ## Quick start
 
@@ -29,46 +37,56 @@ You only need [Node.js](https://nodejs.org) 20.19 or newer.
 npx mygitdash
 ```
 
-Your browser opens on `http://localhost:4280`. Sign in and you are done. If you prefer a permanent command, install it globally with `npm install -g mygitdash` and run `mygitdash` whenever you like.
+Your browser opens on [http://localhost:4280](http://localhost:4280). Sign in and you are done.
 
-## What you get
+Prefer a permanent command? Install it globally:
 
-Each repository has its own space, split into short, focused pages so you can find an answer without wading through charts you don't need.
+```bash
+npm install -g mygitdash
+mygitdash
+```
 
-| Page              | What it answers                                                                                       |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| **Overview**      | The essentials at a glance: stars, forks, languages, community health and the latest release.         |
-| **Stars**         | Your full star history, new stars per month, your best month and how the last 30 days went.           |
-| **Traffic**       | Views, unique visitors, clones, top referrers and most visited pages.                                 |
-| **Commits**       | A contribution calendar, weekly activity, code frequency and the hours your team actually works.      |
-| **Pull requests** | Merge rate, median time to merge, PR sizes, top authors and the pull requests waiting the longest.    |
-| **Issues**        | Opened versus closed over time, time to close, most used labels and the oldest open issues.           |
-| **Contributors**  | Who builds the project, how many people were active recently, newcomers per month and the bus factor. |
-| **Hotspots**      | The files and folders that change the most, shown as a treemap of your codebase.                      |
-| **Actions**       | Success rate, failures, typical duration and run time for every workflow in the last 30 days.         |
-| **Releases**      | Release cadence, asset downloads and a timeline of what you shipped.                                  |
-| **Deployments**   | Deployments per environment, their status and how often you go live.                                  |
+## What's inside
 
-The home page gives you the big picture across everything you own: totals, pinned projects, a ranking of your repositories by stars, recent activity or traffic, and the languages you use. The Repositories page lists every repository you can reach, with filters by account, language and visibility, and you can jump to any of them from anywhere with <kbd>⌘</kbd> <kbd>K</kbd>. Light and dark themes are both included.
+<table>
+  <tr>
+    <td width="50%"><img src="assets/stars.png" alt="Stars page" /></td>
+    <td width="50%"><img src="assets/commits.png" alt="Commits page" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Stars</b><br>Full history, monthly growth and milestones</td>
+    <td align="center"><b>Commits</b><br>Contribution calendar, code frequency and work hours</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/pulls.png" alt="Pull requests page" /></td>
+    <td width="50%"><img src="assets/actions.png" alt="Actions page" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Pull requests</b><br>Merge rate, sizes, authors and what is waiting</td>
+    <td align="center"><b>Actions</b><br>Success rate, failures and run time of every workflow</td>
+  </tr>
+</table>
 
-<div align="center">
-<img src="assets/stars.png" alt="Stars page" width="440" />
-<img src="assets/commits.png" alt="Commits page" width="440" />
-<img src="assets/pulls.png" alt="Pull requests page" width="440" />
-<img src="assets/actions.png" alt="Actions page" width="440" />
-</div>
+Also **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments** for each repository, a home page across everything you own, and <kbd>⌘</kbd> <kbd>K</kbd> to jump to any repository. Light and dark themes included.
+
+## Follow how your projects grow
+
+See where every repository is heading: stars gained, release cadence, how fast pull requests land and how healthy your CI is. Pin the projects you care about, and the home page ranks all of them by stars, activity or traffic.
 
 ## Traffic history that never expires
 
-GitHub only keeps the last 14 days of traffic. Every time you open the Traffic page, MyGitDash saves that window on your machine and merges it with what it saw before. Open it every week or two and you build a complete, permanent history of your views and clones, something GitHub itself does not offer.
+GitHub keeps only the last 14 days of traffic. MyGitDash saves each window on your machine and merges it with what it saw before, so your views and clones history keeps growing for as long as you use it.
 
 ## Signing in
 
-MyGitDash supports three ways to sign in, and the login screen only shows the ones available on your machine. **Sign in with GitHub** opens GitHub in your browser and asks you to confirm a short code, the same flow used by the GitHub CLI. If you already use the [GitHub CLI](https://cli.github.com), **Continue with GitHub CLI** reuses that session in one click. You can also paste a [personal access token](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=MyGitDash) with the `repo` and `read:user` scopes.
+- **GitHub CLI:** if you use the [GitHub CLI](https://cli.github.com), one click reuses your session.
+- **Personal access token:** paste a [token](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=MyGitDash) with the `repo`, `read:user` and `read:org` scopes.
+
+Have your own GitHub OAuth App? Set `MYGITDASH_CLIENT_ID` to also get a **Sign in with GitHub** button that confirms a short code in your browser.
 
 ## Privacy
 
-MyGitDash has no backend, no account and no analytics. It is a small server that listens only on `127.0.0.1` and talks to nothing but `api.github.com`. Your token, pinned repositories, cache and traffic history live in `~/.mygitdash`, readable only by your user. Signing out deletes the token.
+No backend, no account, no analytics. MyGitDash listens only on `127.0.0.1` and talks only to `api.github.com`. Your token, pins, cache and traffic history stay in `~/.mygitdash`, readable only by you. Signing out deletes the token.
 
 ## Options
 
@@ -81,12 +99,15 @@ mygitdash [options]
   -h, --help           Show this message
 ```
 
-Set `MYGITDASH_HOME` to keep the data somewhere other than `~/.mygitdash`, or `MYGITDASH_CLIENT_ID` to sign in through your own GitHub OAuth App.
+| Variable              | What it does                                               |
+| --------------------- | ---------------------------------------------------------- |
+| `MYGITDASH_HOME`      | Keeps the data somewhere other than `~/.mygitdash`         |
+| `MYGITDASH_CLIENT_ID` | Enables **Sign in with GitHub** through your own OAuth App |
 
 ## Contributing
 
-Ideas, bug reports and pull requests are very welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to run the project locally in a couple of minutes. If MyGitDash is useful to you, a star on the repository helps other people find it.
+Ideas, bug reports and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) shows how to run the project locally in a couple of minutes.
 
 ## License
 
-MyGitDash is released under the [MIT License](LICENSE).
+[MIT](LICENSE)
