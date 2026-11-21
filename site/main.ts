@@ -1,25 +1,5 @@
 import '@fontsource-variable/mona-sans';
 import './style.css';
-import { compactStars } from './stars';
-
-const REPO_API = 'https://api.github.com/repos/JeanExtreme002/GitMetrics';
-
-/** Fills every star badge with the live count; the badges simply stay hidden if GitHub is unreachable. */
-async function showStars() {
-  try {
-    const response = await fetch(REPO_API, { headers: { Accept: 'application/vnd.github+json' } });
-    if (!response.ok) return;
-    const { stargazers_count: stars } = (await response.json()) as { stargazers_count?: number };
-    if (typeof stars !== 'number') return;
-    document.querySelectorAll<HTMLElement>('[data-stars]').forEach((badge) => {
-      badge.textContent = compactStars(stars);
-      badge.title = `${stars.toLocaleString('en-US')} stars`;
-      badge.hidden = false;
-    });
-  } catch {
-    // Offline or rate limited: the buttons work without the number.
-  }
-}
 
 /** Copy buttons next to the install command. */
 function setUpCopy() {
@@ -42,4 +22,3 @@ function setUpCopy() {
 }
 
 setUpCopy();
-void showStars();
