@@ -69,12 +69,24 @@
         </div>
 
         <div class="container shot">
-          <img
-            src="/overview.png"
-            alt="GitMetrics showing the overview of a repository: star growth, latest commits, languages and community health"
-            width="1584"
-            height="1128"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcset="
+                /img/overview-640.webp   640w,
+                /img/overview-1040.webp 1040w,
+                /img/overview-1600.webp 1600w,
+                /img/overview-2080.webp 2080w
+              "
+              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
+            />
+            <img
+              src="/overview.png"
+              alt="GitMetrics showing the overview of a repository: star growth, latest commits, languages and community health"
+              width="1584"
+              height="1128"
+            />
+          </picture>
         </div>
       </section>
 
@@ -231,13 +243,25 @@
           <p class="section-lead">
             How fast is it growing? Who is building it? Is the CI healthy? Each answer is one click away.
           </p>
-          <img
-            src="/pages-grid.png"
-            alt="The Stars, Commits, Pull requests and Actions pages of GitMetrics"
-            width="1600"
-            height="1297"
-            loading="lazy"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcset="
+                /img/pages-grid-640.webp   640w,
+                /img/pages-grid-1040.webp 1040w,
+                /img/pages-grid-1600.webp 1600w,
+                /img/pages-grid-2080.webp 2080w
+              "
+              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
+            />
+            <img
+              src="/pages-grid.png"
+              alt="The Stars, Commits, Pull requests and Actions pages of GitMetrics"
+              width="1600"
+              height="1297"
+              loading="lazy"
+            />
+          </picture>
         </div>
       </section>
 

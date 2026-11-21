@@ -777,3 +777,15 @@ kbd {
     gap: 2px;
   }
 }
+
+/* 404 page */
+.not-found {
+  position: relative;
+  overflow: hidden;
+  padding: 120px 0 140px;
+}
+
+.not-found-inner {
+  position: relative;
+  text-align: center;
+}
