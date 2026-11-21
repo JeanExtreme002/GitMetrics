@@ -37,6 +37,13 @@ updates:
           - 'concurrently'
           - 'globals'
           - '@types/node'
+    ignore:
+      # TypeScript 7 (the Go rewrite) needs typescript-eslint support first; plan that move by hand.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      # Node types follow the oldest supported Node (engines.node), not the newest release.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
