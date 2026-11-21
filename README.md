@@ -48,7 +48,7 @@ mygitdash
   <img src="assets/pages-grid.png" alt="Stars, Commits, Pull requests and Actions pages" width="880" />
 </p>
 
-Each repository also gets **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments**, plus a home page across everything you own and <kbd>Ctrl</kbd> <kbd>K</kbd> (<kbd>⌘</kbd> <kbd>K</kbd> on macOS) to jump anywhere. Light and dark themes included.
+Each repository also gets **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments**, plus a home page across everything you own and <kbd>Ctrl</kbd> + <kbd>K</kbd> to jump anywhere. Light and dark themes included.
 
 ## Follow how your projects grow
 
