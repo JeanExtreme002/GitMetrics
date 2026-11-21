@@ -45,6 +45,10 @@ Please keep an eye on the API budget. GitHub allows 5,000 requests per hour, so 
 
 Releases are published from GitHub. Bump the version with `npm version <patch|minor|major> --no-git-tag-version`, merge that change, then create a GitHub Release with a tag like `v1.2.3`. The release notes on GitHub are the changelog. The `Publish to npm` workflow checks that the tag matches `package.json`, runs the tests and publishes the package with provenance.
 
+## License of contributions
+
+MyGitDash is licensed under the [GNU AGPL-3.0](LICENSE) with the additional terms in [NOTICE](NOTICE). By opening a pull request, you agree that your contribution is released under the same terms.
+
 ## Code of conduct
 
 Everyone taking part in this project is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

@@ -28,7 +28,15 @@ const SOURCES = { device: 'GitHub sign-in', token: 'a personal access token', gh
 const REPO_URL = 'https://github.com/JeanExtreme002/MyGitDash';
 
 /** One setting: what it is on the left, the control on the right, separated by hairlines. */
-function Row({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function Row({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className="setting-row">
       <Box>
@@ -165,7 +173,23 @@ export function Settings() {
           </Group>
         </Row>
 
-        <Row title="About" description="MyGitDash is open source and runs only on your computer.">
+        <Row
+          title="About"
+          description={
+            // Attribution required by the additional terms in NOTICE (AGPL-3.0, section 7(b)).
+            <>
+              Based on{' '}
+              <Anchor href={REPO_URL} target="_blank" inherit underline="always">
+                MyGitDash
+              </Anchor>{' '}
+              by Jean Loui Bernard Silva de Jesus. Free software under the{' '}
+              <Anchor href={`${REPO_URL}/blob/main/LICENSE`} target="_blank" inherit underline="always">
+                GNU AGPL-3.0
+              </Anchor>
+              , with no warranty.
+            </>
+          }
+        >
           <Group justify="space-between" wrap="nowrap">
             <Text size="sm">Version {__APP_VERSION__}</Text>
             <Group gap="lg">
