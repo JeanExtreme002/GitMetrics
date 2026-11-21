@@ -41,7 +41,8 @@ updates:
       # TypeScript 7 (the Go rewrite) needs typescript-eslint support first; plan that move by hand.
       - dependency-name: 'typescript'
         update-types: ['version-update:semver-major']
-      # Node types follow the oldest supported Node (engines.node), not the newest release.
+      # Node types move with a planned Node support change, not with every Node release.
+      # They stay on 22: Vitest needs @types/node 22+, so 20 cannot be used even though Node 20.19 is supported.
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
 
