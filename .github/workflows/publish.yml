@@ -3,6 +3,7 @@ name: Publish to npm
 # Runs when a GitHub Release is published. Uses npm trusted publishing (OIDC),
 # so no npm token is stored in the repository: configure this workflow as a
 # trusted publisher for the "@gitmetrics/app" package on npmjs.com.
+# The version is only staged; a maintainer approves it on npm to make it public.
 on:
   release:
     types: [published]
@@ -56,13 +57,28 @@ jobs:
       - run: npm run build
         if: steps.npm.outputs.published != 'true'
 
-      - name: Publish
+      # Staged publishing: the trusted publisher may only stage a version. It stays private on
+      # npm until a maintainer approves it with 2FA, so a compromised workflow cannot ship alone.
+      - name: Stage on npm
         if: steps.npm.outputs.published != 'true'
         env:
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           if [ "$PRERELEASE" = "true" ]; then
-            npm publish --provenance --access public --tag next
+            npm stage publish --provenance --access public --tag next
           else
-            npm publish --provenance --access public
+            npm stage publish --provenance --access public
           fi
+          package=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "::notice::$package@$version is staged. Approve it on npmjs.com, or run npm stage list $package and npm stage approve <stage-id>."
+          {
+            echo "### $package@$version is staged on npm"
+            echo
+            echo "It is not public yet. Approve it with your 2FA on npmjs.com, or from a terminal:"
+            echo
+            echo '```bash'
+            echo "npm stage list $package"
+            echo "npm stage approve <stage-id>"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
