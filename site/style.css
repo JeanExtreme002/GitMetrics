@@ -99,6 +99,13 @@ img {
   color: var(--text);
 }
 
+/* npm mark from Simple Icons (CC0). */
+.nav-links .nav-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .nav-links .nav-github {
   display: inline-flex;
   align-items: center;
