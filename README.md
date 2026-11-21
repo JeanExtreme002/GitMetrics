@@ -10,16 +10,14 @@
 <b>Every number behind your GitHub repositories, on one screen.</b><br>
 <i>Stars, traffic, commits, pull requests and CI health. Running on your machine, one command away.</i>
 
-<br>
-
-[![CI](https://github.com/JeanExtreme002/MyGitDash/actions/workflows/ci.yml/badge.svg)](https://github.com/JeanExtreme002/MyGitDash/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/JeanExtreme002/MyGitDash/graph/badge.svg)](https://codecov.io/gh/JeanExtreme002/MyGitDash)
-[![npm](https://img.shields.io/npm/v/mygitdash?logo=npm&color=red)](https://www.npmjs.com/package/mygitdash)
-[![Node Version](https://img.shields.io/badge/node-20.19+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
-[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](#quick-start)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-
-<br>
+<p align="center">
+  <a href="https://github.com/JeanExtreme002/MyGitDash/actions/workflows/ci.yml"><img src="https://github.com/JeanExtreme002/MyGitDash/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://codecov.io/gh/JeanExtreme002/MyGitDash"><img src="https://codecov.io/gh/JeanExtreme002/MyGitDash/graph/badge.svg" alt="Coverage" /></a>
+  <a href="https://www.npmjs.com/package/mygitdash"><img src="https://img.shields.io/npm/v/mygitdash?logo=npm&color=red" alt="npm" /></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-20.19+-339933?logo=nodedotjs&logoColor=white" alt="Node Version" /></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue" alt="Platforms" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" /></a>
+</p>
 
 <img src="assets/overview.png" alt="MyGitDash showing the overview of a repository" width="880" />
 
