@@ -1,0 +1,36 @@
+MyGitDash
+Copyright (C) 2026 Jean Loui Bernard Silva de Jesus (https://github.com/JeanExtreme002)
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3 of the License, with the additional terms below.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License in the
+LICENSE file for more details.
+
+
+ADDITIONAL TERMS UNDER SECTION 7 OF THE GNU AFFERO GENERAL PUBLIC LICENSE
+
+These terms apply to every file of this program and to every work based on it.
+
+1. Attribution (section 7(b)). Every copy or modified version of this program,
+   and every network service that runs it, must keep a visible attribution to
+   the original author in its user interface, in its About section or an
+   equally easy to find place, reading:
+
+       Based on MyGitDash by Jean Loui Bernard Silva de Jesus
+
+   together with a link to https://github.com/JeanExtreme002/MyGitDash.
+   The copyright and attribution notices in the source code and in this file
+   must also be kept.
+
+2. Modified versions (section 7(c)). Modified versions must be marked in
+   reasonable ways as different from the original version, and must not be
+   presented as the original MyGitDash.
+
+3. Name and logo (section 7(e)). This license does not grant permission to use
+   the name "MyGitDash" or its logo, except to describe the origin of the work
+   as required by term 1. Modified versions distributed or offered to others
+   must use a different name and logo.

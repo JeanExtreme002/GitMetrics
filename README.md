@@ -16,7 +16,7 @@
   <a href="https://www.npmjs.com/package/mygitdash"><img src="https://img.shields.io/npm/v/mygitdash?logo=npm&color=red" alt="npm" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-20.19+-339933?logo=nodedotjs&logoColor=white" alt="Node Version" /></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue" alt="Platforms" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0" /></a>
 </p>
 
 <img src="assets/overview.png" alt="MyGitDash showing the overview of a repository" width="880" />
@@ -94,4 +94,4 @@ Ideas, bug reports and pull requests are very welcome. [CONTRIBUTING.md](CONTRIB
 
 ## License
 
-MyGitDash is released under the [MIT License](LICENSE).
+MyGitDash is free software under the [GNU AGPL-3.0](LICENSE). Use it, change it and sell it, as long as the code stays open and the credit to the original author stays visible. The [NOTICE](NOTICE) file has the full terms.
