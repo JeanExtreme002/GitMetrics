@@ -8,8 +8,7 @@
 # GitMetrics
 
 <b>Every number behind your GitHub repositories, in one dashboard.</b><br>
-<i>Stars, traffic, commits, pull requests and CI health. Running on your machine, one command away.</i><br>
-<a href="https://gitmetrics.pro"><b>gitmetrics.pro</b></a>
+<i>Stars, traffic, commits, pull requests and CI health. Running on your machine, one command away.</i>
 
 <p align="center">
   <a href="https://github.com/JeanExtreme002/GitMetrics/actions/workflows/ci.yml"><img src="https://github.com/JeanExtreme002/GitMetrics/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
