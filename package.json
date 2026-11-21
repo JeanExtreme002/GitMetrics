@@ -26,6 +26,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "site:dev": "vite --config site/vite.config.ts",
+    "site:build": "vite build --config site/vite.config.ts",
+    "site:preview": "vite preview --config site/vite.config.ts",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build"
   },
@@ -46,7 +49,7 @@
     "access": "public"
   },
   "license": "AGPL-3.0-only",
-  "homepage": "https://github.com/JeanExtreme002/GitMetrics#readme",
+  "homepage": "https://gitmetrics.pro",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JeanExtreme002/GitMetrics.git"
