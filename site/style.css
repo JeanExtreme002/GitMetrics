@@ -176,7 +176,9 @@ h1 {
   border-radius: var(--radius);
   background: var(--bg-raised);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 17px;
+  font-size: 15.5px;
+  /* Line height pinned to the box's original height, so a smaller font keeps the same box. */
+  line-height: 27.2px;
 }
 
 .prompt {
@@ -192,6 +194,7 @@ h1 {
 /* Several commands, one per line, copied together. */
 .command.multi {
   align-items: flex-start;
+  min-width: 425px;
 }
 
 .command.multi .lines {
@@ -221,7 +224,7 @@ h1 {
   background: none;
   color: var(--faint);
   font:
-    600 12px 'Mona Sans Variable',
+    600 11px 'Mona Sans Variable',
     system-ui,
     sans-serif;
   letter-spacing: 0.04em;
@@ -477,12 +480,16 @@ section h2 {
   .command {
     min-width: 0;
     padding: 11px 14px 11px 16px;
-    font-size: 15px;
+    font-size: 14px;
+    line-height: 24px;
   }
 
   .command.multi {
+    width: 100%;
+    min-width: 0;
     max-width: 100%;
-    font-size: 13.5px;
+    font-size: 12.5px;
+    line-height: 21.6px;
   }
 
   .shot {
