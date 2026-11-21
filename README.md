@@ -70,7 +70,7 @@ Have your own GitHub OAuth App? Set its client ID in the `MYGITDASH_CLIENT_ID` e
 
 ## Privacy
 
-No backend, no account, no analytics. MyGitDash listens only on `127.0.0.1` and talks only to `api.github.com`. Your token, pins, cache and traffic history stay in `~/.mygitdash`, readable only by you. Signing out deletes the token.
+No backend, no account, no analytics. MyGitDash runs only on `127.0.0.1` and talks only to `api.github.com`. Your token, pins, cache and traffic history stay in `~/.mygitdash`, private to you. Signing out deletes the token.
 
 ## Options
 
