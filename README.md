@@ -23,8 +23,6 @@
 
 </div>
 
-<br>
-
 GitHub spreads your project's numbers across a dozen tabs and deletes traffic after 14 days. **MyGitDash brings them together in one fast dashboard**, and keeps the history GitHub throws away.
 
 ## Quick start
