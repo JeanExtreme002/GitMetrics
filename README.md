@@ -90,8 +90,8 @@ Environment variables:
 
 ## Contributing
 
-Ideas, bug reports and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) shows how to run the project locally in a couple of minutes.
+Ideas, bug reports and pull requests are very welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to run the project locally in a couple of minutes. If MyGitDash is useful to you, a star on the repository helps other people find it.
 
 ## License
 
-[MIT](LICENSE)
+MyGitDash is released under the [MIT License](LICENSE).
