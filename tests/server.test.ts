@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -95,6 +95,19 @@ describe('GitHubClient', () => {
 });
 
 describe('MemoryCache', () => {
+  it('does not keep failures, so the next request tries again', async () => {
+    const cache = new MemoryCache();
+    let calls = 0;
+    const load = async () => {
+      calls++;
+      if (calls === 1) throw new Error('GitHub is down');
+      return 'ok';
+    };
+    await expect(cache.wrap('k', 60_000, load)).rejects.toThrow('GitHub is down');
+    await expect(cache.wrap('k', 60_000, load)).resolves.toBe('ok');
+    expect(calls).toBe(2);
+  });
+
   it('reuses values until forced', async () => {
     const cache = new MemoryCache();
     let n = 0;
@@ -282,5 +295,80 @@ describe('local server', () => {
 
     await request(app, '/api/auth/logout', { method: 'POST', headers });
     expect(new ConfigStore(dir).auth).toBeUndefined();
+  });
+
+  it('signs out when GitHub rejects the stored token', async () => {
+    const headers = { 'x-gitmetrics': '1' };
+    let revoked = false;
+    const app = createApp({
+      dataDir: dir,
+      ghToken: async () => 'gho_cli',
+      fetchImpl: fakeFetch((url, init) =>
+        revoked && url.pathname !== '/user'
+          ? json({ message: 'Bad credentials' }, { status: 401 })
+          : github(url, init),
+      ),
+    });
+    await request(app, '/api/auth/gh', { method: 'POST', headers });
+    revoked = true;
+    expect((await request(app, '/api/repos?refresh=1')).status).toBe(401);
+    expect(new ConfigStore(dir).auth).toBeUndefined();
+  });
+
+  it('reports a GitHub rate limit as 429', async () => {
+    const app = createApp({
+      dataDir: dir,
+      ghToken: async () => 'gho_cli',
+      fetchImpl: fakeFetch((url, init) =>
+        url.pathname === '/user/repos'
+          ? json({ message: 'API rate limit exceeded for user.' }, { status: 403 })
+          : github(url, init),
+      ),
+    });
+    await request(app, '/api/auth/gh', { method: 'POST', headers: { 'x-gitmetrics': '1' } });
+    const res = await request(app, '/api/repos');
+    expect(res.status).toBe(429);
+    expect(new ConfigStore(dir).auth).toBeDefined();
+  });
+
+  describe('web app files', () => {
+    const serve = () => {
+      const web = path.join(dir, 'web');
+      mkdirSync(path.join(web, 'assets'), { recursive: true });
+      writeFileSync(path.join(web, 'index.html'), '<!doctype html>app');
+      writeFileSync(path.join(web, 'assets', 'app.js'), 'console.log(1)');
+      // Next to the web folder, with a name that starts the same way.
+      mkdirSync(path.join(dir, 'web-private'));
+      writeFileSync(path.join(dir, 'web-private', 'secret.txt'), 'secret');
+      writeFileSync(path.join(dir, 'config.json'), '{"token":"secret"}');
+      return createApp({ dataDir: path.join(dir, 'data'), webDir: web, ghToken: async () => null });
+    };
+
+    it('serves built files, caching only the hashed assets for long', async () => {
+      const res = await request(serve(), '/assets/app.js');
+      expect(res.headers.get('content-type')).toBe('text/javascript; charset=utf-8');
+      expect(res.headers.get('cache-control')).toContain('immutable');
+      expect(await res.text()).toBe('console.log(1)');
+    });
+
+    it('answers client-side routes with the app', async () => {
+      const res = await request(serve(), '/r/octocat/hello/stars');
+      expect(res.headers.get('cache-control')).toBe('no-cache');
+      expect(await res.text()).toBe('<!doctype html>app');
+    });
+
+    it('never serves files outside the web folder', async () => {
+      const app = serve();
+      for (const attempt of [
+        '/..%2Fconfig.json',
+        '/..%2Fweb-private%2Fsecret.txt',
+        '/%2E%2E/config.json',
+        '/%E0%A4%A',
+      ]) {
+        const res = await request(app, attempt);
+        expect(res.status, attempt).toBe(200);
+        expect(await res.text(), attempt).toBe('<!doctype html>app');
+      }
+    });
   });
 });

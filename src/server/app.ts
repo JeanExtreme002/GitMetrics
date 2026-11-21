@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
 import type { AuthStatus, ReposResponse } from '../shared/types.js';
@@ -286,11 +286,13 @@ export function createApp(options: AppOptions = {}) {
   if (webDir && existsSync(webDir)) {
     // Read on every request so a rebuild shows up on refresh, without restarting.
     const index = () => readFileSync(path.join(webDir, 'index.html'));
+    const root = path.resolve(webDir);
     app.get('*', (c) => {
-      const file = path.normalize(path.join(webDir, decodeURIComponent(c.req.path)));
-      if (file.startsWith(webDir) && existsSync(file) && statSync(file).isFile()) {
+      const file = resolveInside(root, c.req.path);
+      const body = file ? readRegularFile(file) : null;
+      if (file && body) {
         const immutable = c.req.path.startsWith('/assets/');
-        return c.body(readFileSync(file), 200, {
+        return c.body(body, 200, {
           'Content-Type': contentType(file),
           'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
         });
@@ -303,6 +305,41 @@ export function createApp(options: AppOptions = {}) {
   }
 
   return app;
+}
+
+/**
+ * Reads a regular file, or returns null for anything else. The file is opened once and checked
+ * through that same descriptor, so it cannot be swapped between the check and the read.
+ */
+export function readRegularFile(file: string): Buffer<ArrayBuffer> | null {
+  let fd: number;
+  try {
+    fd = openSync(file, 'r');
+  } catch {
+    return null;
+  }
+  try {
+    return fstatSync(fd).isFile() ? readFileSync(fd) : null;
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
+ * Maps a URL path to a file inside root, or null when it would point anywhere else. Comparing
+ * against root plus a separator keeps out sibling folders whose names start the same way.
+ */
+export function resolveInside(root: string, urlPath: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(urlPath);
+  } catch {
+    return null;
+  }
+  const file = path.resolve(root, `.${path.sep}${decoded}`);
+  return file.startsWith(root + path.sep) ? file : null;
 }
 
 const TYPES: Record<string, string> = {
