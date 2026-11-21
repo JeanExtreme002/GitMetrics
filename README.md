@@ -44,26 +44,11 @@ mygitdash
 
 ## What's inside
 
-<table>
-  <tr>
-    <td width="50%"><img src="assets/stars.png" alt="Stars page" /></td>
-    <td width="50%"><img src="assets/commits.png" alt="Commits page" /></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Stars</b><br>Full history, monthly growth and milestones</td>
-    <td align="center"><b>Commits</b><br>Contribution calendar, code frequency and work hours</td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="assets/pulls.png" alt="Pull requests page" /></td>
-    <td width="50%"><img src="assets/actions.png" alt="Actions page" /></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Pull requests</b><br>Merge rate, sizes, authors and what is waiting</td>
-    <td align="center"><b>Actions</b><br>Success rate, failures and run time of every workflow</td>
-  </tr>
-</table>
+<p align="center">
+  <img src="assets/pages.png" alt="Stars, Commits, Pull requests and Actions pages" width="880" />
+</p>
 
-Also **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments** for each repository, a home page across everything you own, and <kbd>⌘</kbd> <kbd>K</kbd> to jump to any repository. Light and dark themes included.
+Above: **Stars**, **Commits**, **Pull requests** and **Actions**. Each repository also gets **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments**, plus a home page across everything you own and <kbd>⌘</kbd> <kbd>K</kbd> to jump anywhere. Light and dark themes included.
 
 ## Follow how your projects grow
 
