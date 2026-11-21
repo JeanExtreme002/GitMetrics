@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Get started · GitMetrics</title>
+    <meta
+      name="description"
+      content="Install GitMetrics, sign in with GitHub and explore every number behind your repositories. Requirements, options, updates and uninstalling."
+    />
+    <link rel="canonical" href="https://gitmetrics.pro/get-started/" />
+    <link rel="icon" type="image/svg+xml" href="/logo-light.svg" />
+    <meta name="theme-color" content="#0b0e13" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gitmetrics.pro/get-started/" />
+    <meta property="og:title" content="Get started · GitMetrics" />
+    <meta property="og:description" content="Run GitMetrics with one command: npx @gitmetrics/app" />
+    <meta property="og:image" content="https://gitmetrics.pro/social-preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://gitmetrics.pro/social-preview.png" />
+
+    <script type="module" src="../main.ts"></script>
+  </head>
+  <body>
+    <!-- include:header -->
+
+    <main class="doc">
+      <div class="container doc-inner">
+        <header class="doc-header">
+          <p class="eyebrow">Get started</p>
+          <h1>From zero to your dashboard in a minute.</h1>
+          <p class="lead">
+            GitMetrics runs on your own computer and opens in your browser. Pick how you want to run it, sign
+            in with GitHub, and every repository you can reach is ready to explore.
+          </p>
+        </header>
+
+        <section class="step">
+          <span class="step-number" aria-hidden="true">1</span>
+          <div class="step-body">
+            <h2>Check the requirements</h2>
+            <p>
+              You need <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 20.19 or newer,
+              on Windows, Linux or macOS. To check your version:
+            </p>
+            <div class="command" data-command="node --version">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code>node --version</code>
+              <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="step">
+          <span class="step-number" aria-hidden="true">2</span>
+          <div class="step-body">
+            <h2>Run GitMetrics</h2>
+            <p><strong>Try it right away</strong> with npx, which downloads and runs the latest version:</p>
+            <div class="command" data-command="npx @gitmetrics/app">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code>npx @gitmetrics/app</code>
+              <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+            </div>
+            <p>
+              <strong>Or install it once</strong> and open it anytime with the
+              <code>gitmetrics</code> command:
+            </p>
+            <div class="command multi" data-command="npm install -g @gitmetrics/app&#10;gitmetrics">
+              <div class="lines">
+                <div>
+                  <span class="prompt" aria-hidden="true">$</span> <code>npm install -g @gitmetrics/app</code>
+                </div>
+                <div><span class="prompt" aria-hidden="true">$</span> <code>gitmetrics</code></div>
+              </div>
+              <button type="button" class="copy" data-copy aria-label="Copy the commands">Copy</button>
+            </div>
+            <p class="note">
+              Your browser opens on
+              <a href="http://localhost:4280" target="_blank" rel="noopener">http://localhost:4280</a>. The
+              server only listens on your own computer.
+            </p>
+          </div>
+        </section>
+
+        <section class="step">
+          <span class="step-number" aria-hidden="true">3</span>
+          <div class="step-body">
+            <h2>Sign in with GitHub</h2>
+            <p>
+              GitMetrics uses your own GitHub access, so it sees exactly what you can see. Two ways to sign
+              in:
+            </p>
+            <dl class="options">
+              <dt>With the GitHub CLI</dt>
+              <dd>
+                If you use the <a href="https://cli.github.com" target="_blank" rel="noopener">GitHub CLI</a>,
+                one click reuses your session.
+              </dd>
+              <dt>With a personal access token</dt>
+              <dd>
+                <a
+                  href="https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&amp;description=GitMetrics"
+                  target="_blank"
+                  rel="noopener"
+                  >Create a token</a
+                >
+                with the <code>repo</code>, <code>read:user</code> and <code>read:org</code> scopes, then
+                paste it on the sign-in screen.
+              </dd>
+            </dl>
+            <p class="note">
+              Your token is stored only in <code>~/.gitmetrics</code>, readable by your user alone. Signing
+              out deletes it.
+            </p>
+          </div>
+        </section>
+
+        <section class="step">
+          <span class="step-number" aria-hidden="true">4</span>
+          <div class="step-body">
+            <h2>Explore your repositories</h2>
+            <p>
+              The home page shows everything you own at a glance. Open any repository for its stars, traffic,
+              commits, pull requests, issues, contributors, hotspots, Actions, releases and deployments, or
+              press
+              <kbd>Ctrl</kbd> + <kbd>K</kbd> to jump straight to one.
+            </p>
+            <p class="note">
+              Visit the Traffic page of a repository every week or two. GitHub keeps only the last 14 days,
+              and GitMetrics saves each window so the history keeps growing.
+            </p>
+          </div>
+        </section>
+
+        <section class="reference">
+          <h2>Options</h2>
+          <div class="table">
+            <div class="row">
+              <code>-p, --port &lt;number&gt;</code><span>Port to listen on. The default is 4280.</span>
+            </div>
+            <div class="row"><code>--no-open</code><span>Do not open the browser automatically.</span></div>
+            <div class="row"><code>-v, --version</code><span>Print the version.</span></div>
+            <div class="row"><code>-h, --help</code><span>Show all options.</span></div>
+            <div class="row">
+              <code>GITMETRICS_HOME</code><span>Environment variable: where GitMetrics keeps its data.</span>
+            </div>
+            <div class="row">
+              <code>GITMETRICS_CLIENT_ID</code
+              ><span
+                >Environment variable: adds a "Sign in with GitHub" button through your own OAuth App.</span
+              >
+            </div>
+          </div>
+        </section>
+
+        <section class="reference">
+          <h2>Update</h2>
+          <p>npx always runs the latest version. For a global install:</p>
+          <div class="command" data-command="npm install -g @gitmetrics/app@latest">
+            <span class="prompt" aria-hidden="true">$</span>
+            <code>npm install -g @gitmetrics/app@latest</code>
+            <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+          </div>
+        </section>
+
+        <section class="reference">
+          <h2>Uninstall</h2>
+          <p>
+            Remove the command, then delete <code>~/.gitmetrics</code> if you also want to erase your token,
+            cache and saved traffic history.
+          </p>
+          <div class="command" data-command="npm uninstall -g @gitmetrics/app">
+            <span class="prompt" aria-hidden="true">$</span>
+            <code>npm uninstall -g @gitmetrics/app</code>
+            <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
+          </div>
+        </section>
+
+        <section class="doc-cta">
+          <p><strong>Something missing or not working?</strong> Open an issue or share an idea on GitHub.</p>
+          <a
+            class="button primary"
+            href="https://github.com/JeanExtreme002/GitMetrics/issues"
+            target="_blank"
+            rel="noopener"
+          >
+            Open an issue
+          </a>
+        </section>
+      </div>
+    </main>
+
+    <!-- include:footer -->
+  </body>
+</html>
