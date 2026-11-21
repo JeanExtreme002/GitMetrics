@@ -10,6 +10,9 @@ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License in the
 LICENSE file for more details.
 
+GitMetrics bundles open source packages that keep their own licenses. Their
+notices are in THIRD_PARTY_LICENSES.md, inside the published package.
+
 
 ADDITIONAL TERMS UNDER SECTION 7 OF THE GNU AFFERO GENERAL PUBLIC LICENSE
 

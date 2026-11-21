@@ -227,12 +227,11 @@ function PersonList({
 }
 
 /**
- * GitHub's statistics list at most 100 people, and only commit authors linked to a GitHub account;
- * the total also counts authors without one.
+ * The list holds commit authors linked to a GitHub account. The total, counted with anonymous
+ * contributors included, also has authors whose commit email belongs to no account.
  */
 function rankingCaption(listed: number, total: number | null) {
   if (total == null || total <= listed) return 'Ranked by commits on the default branch';
-  if (listed >= 100) return `Ranked by commits; GitHub lists the top ${num(listed)} of ${num(total)} people`;
   const missing = total - listed;
   return `Ranked by commits; ${num(missing)} more ${missing === 1 ? 'author has' : 'authors have'} no GitHub account linked`;
 }
