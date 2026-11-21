@@ -30,8 +30,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: MyGitDash version
-      description: Run `npx mygitdash --version`.
+      label: GitMetrics version
+      description: Run `npx gitmetrics --version`.
     validations:
       required: true
   - type: input
@@ -45,4 +45,4 @@ body:
     id: logs
     attributes:
       label: Terminal output or screenshots
-      description: Anything printed in the terminal where MyGitDash is running helps a lot.
+      description: Anything printed in the terminal where GitMetrics is running helps a lot.

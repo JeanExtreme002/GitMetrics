@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions and ideas
-    url: https://github.com/JeanExtreme002/MyGitDash/discussions
+    url: https://github.com/JeanExtreme002/GitMetrics/discussions
     about: Ask a question or share an idea with the community.
   - name: Security issue
-    url: https://github.com/JeanExtreme002/MyGitDash/security/advisories/new
+    url: https://github.com/JeanExtreme002/GitMetrics/security/advisories/new
     about: Report a vulnerability privately. Please do not open a public issue.

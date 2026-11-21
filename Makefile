@@ -13,7 +13,7 @@ dev: ## Run the API and the web app with hot reload
 build: ## Build the web app and the CLI into dist/
 	npm run build
 
-start: build ## Build and run MyGitDash like a user would
+start: build ## Build and run GitMetrics like a user would
 	npm start
 
 test: ## Run the test suite

@@ -155,7 +155,7 @@ export function Traffic() {
                   title={kind === 'views' ? 'Page views' : 'Git clones'}
                   caption={
                     data.trackedSince
-                      ? `GitHub keeps 14 days of traffic. MyGitDash saves every snapshot on this computer, so history builds up from ${date(data.trackedSince)}.`
+                      ? `GitHub keeps 14 days of traffic. GitMetrics saves every snapshot on this computer, so history builds up from ${date(data.trackedSince)}.`
                       : 'The last 14 days, as reported by GitHub'
                   }
                   right={

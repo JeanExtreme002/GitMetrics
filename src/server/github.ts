@@ -2,7 +2,7 @@ import type { RateLimitInfo } from '../shared/types.js';
 import { sleep } from './util.js';
 
 export const GITHUB_API = 'https://api.github.com';
-export const USER_AGENT = 'MyGitDash';
+export const USER_AGENT = 'GitMetrics';
 
 export class GitHubError extends Error {
   constructor(

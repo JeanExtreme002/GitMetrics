@@ -27,13 +27,13 @@ import { post } from '../lib/api';
 import { useAuth } from '../lib/queries';
 
 const TOKEN_URL =
-  'https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=MyGitDash';
+  'https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=GitMetrics';
 
 function DeviceCode({ flow, onCancel }: { flow: DeviceStart; onCancel: () => void }) {
   return (
     <Stack gap="md" align="center" ta="center">
       <Text size="sm" c="dimmed">
-        Enter this code on GitHub to authorize MyGitDash
+        Enter this code on GitHub to authorize GitMetrics
       </Text>
       <Group gap="xs">
         <Text className="user-code">{flow.userCode}</Text>
@@ -152,7 +152,7 @@ export function Login() {
         <Stack align="center" gap={6} mb="xl" ta="center">
           <Logo size={52} />
           <Title order={1} fz={28} mt="sm">
-            Welcome to MyGitDash
+            Welcome to GitMetrics
           </Title>
           <Text c="dimmed">Everything about your repositories, in one calm place.</Text>
         </Stack>
@@ -246,7 +246,7 @@ export function Login() {
         </Paper>
 
         <Text size="xs" c="dimmed" ta="center" mt="lg">
-          MyGitDash runs only on this computer. Your token is stored in ~/.mygitdash and is sent to nothing
+          GitMetrics runs only on this computer. Your token is stored in ~/.gitmetrics and is sent to nothing
           but the GitHub API.
         </Text>
       </Box>

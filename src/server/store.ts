@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import type { AuthSource } from '../shared/types.js';
 
-export const defaultDataDir = () => process.env.MYGITDASH_HOME ?? path.join(homedir(), '.mygitdash');
+export const defaultDataDir = () => process.env.GITMETRICS_HOME ?? path.join(homedir(), '.gitmetrics');
 
 export interface StoredAuth {
   token: string;
@@ -32,7 +32,7 @@ function writePrivate(file: string, value: unknown) {
   writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 });
 }
 
-/** Persists the token and preferences in ~/.mygitdash/config.json (owner-only permissions). */
+/** Persists the token and preferences in ~/.gitmetrics/config.json (owner-only permissions). */
 export class ConfigStore {
   private readonly file: string;
 

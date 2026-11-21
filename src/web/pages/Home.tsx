@@ -86,7 +86,7 @@ const rankingQuery = (mode: 'activity' | 'traffic') => ({
  * Stars come with the repository list; the other two are fetched when first needed.
  */
 function TopRepositories({ repos }: { repos: RepoSummary[] }) {
-  const [mode, setMode] = useLocalStorage<TopMode>({ key: 'mygitdash:top-mode', defaultValue: 'stars' });
+  const [mode, setMode] = useLocalStorage<TopMode>({ key: 'gitmetrics:top-mode', defaultValue: 'stars' });
   const ranking = useQuery({
     ...rankingQuery(mode === 'stars' ? 'activity' : mode),
     enabled: mode !== 'stars',

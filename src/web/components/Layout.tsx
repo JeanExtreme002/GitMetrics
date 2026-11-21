@@ -442,7 +442,7 @@ export function Layout() {
               <Group gap={10} wrap="nowrap">
                 <Logo />
                 <Text fw={700} fz={17} style={{ letterSpacing: -0.3 }}>
-                  MyGitDash
+                  GitMetrics
                 </Text>
               </Group>
             </UnstyledButton>

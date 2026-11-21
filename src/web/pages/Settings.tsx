@@ -25,7 +25,7 @@ import { useAuth, useRateLimit } from '../lib/queries';
 
 const SOURCES = { device: 'GitHub sign-in', token: 'a personal access token', gh: 'the GitHub CLI session' };
 
-const REPO_URL = 'https://github.com/JeanExtreme002/MyGitDash';
+const REPO_URL = 'https://github.com/JeanExtreme002/GitMetrics';
 
 /** One setting: what it is on the left, the control on the right, separated by hairlines. */
 function Row({
@@ -82,7 +82,7 @@ export function Settings() {
       <PageHeader
         title="Settings"
         icon={<IconSettings size={26} stroke={1.6} />}
-        description="Your account, API usage and the data MyGitDash keeps on this computer."
+        description="Your account, API usage and the data GitMetrics keeps on this computer."
       />
 
       {viewer && (
@@ -140,7 +140,7 @@ export function Settings() {
 
         <Row
           title="API usage"
-          description="GitHub allows a fixed number of requests per hour. MyGitDash caches answers, so browsing costs little."
+          description="GitHub allows a fixed number of requests per hour. GitMetrics caches answers, so browsing costs little."
         >
           {rate.data ? (
             <Box>
@@ -166,7 +166,7 @@ export function Settings() {
           description="Your token, pinned repositories, saved traffic history and caches. Clearing the cache keeps the traffic history."
         >
           <Group justify="space-between" wrap="nowrap">
-            <Code>~/.mygitdash</Code>
+            <Code>~/.gitmetrics</Code>
             <Button variant="default" size="sm" leftSection={<IconTrash size={16} />} onClick={clearCache}>
               Clear cache
             </Button>
@@ -180,7 +180,7 @@ export function Settings() {
             <>
               Based on{' '}
               <Anchor href={REPO_URL} target="_blank" inherit underline="always">
-                MyGitDash
+                GitMetrics
               </Anchor>{' '}
               by Jean Loui Bernard Silva de Jesus. Free software under the{' '}
               <Anchor href={`${REPO_URL}/blob/main/LICENSE`} target="_blank" inherit underline="always">
