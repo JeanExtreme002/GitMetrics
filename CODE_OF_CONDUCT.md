@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported privately to the maintainer, [@JeanExtreme002](https://github.com/JeanExtreme002),
-through a [private report](https://github.com/JeanExtreme002/MyGitDash/security/advisories/new).
+through a [private report](https://github.com/JeanExtreme002/GitMetrics/security/advisories/new).
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

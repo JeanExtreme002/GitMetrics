@@ -1,21 +1,21 @@
-# Contributing to MyGitDash
+# Contributing to GitMetrics
 
-Thanks for your interest in making MyGitDash better. This guide gets you from a fresh clone to a running development build, and explains how changes find their way into a release.
+Thanks for your interest in making GitMetrics better. This guide gets you from a fresh clone to a running development build, and explains how changes find their way into a release.
 
 ## Getting started
 
 You need Node.js 22 (the version in `.nvmrc`) and npm.
 
 ```bash
-git clone https://github.com/JeanExtreme002/MyGitDash.git
-cd MyGitDash
+git clone https://github.com/JeanExtreme002/GitMetrics.git
+cd GitMetrics
 npm install
 npm run dev
 ```
 
 `npm run dev` starts two processes side by side. The local API runs on port 4281 and restarts when you edit the server, while Vite serves the web app on [http://localhost:5173](http://localhost:5173) with hot reload and forwards `/api` calls to the API. To try the app exactly as users get it, run `make start`, which builds everything and launches the CLI.
 
-If you want to keep your development data apart from your real one, point `MYGITDASH_HOME` to another folder before starting.
+If you want to keep your development data apart from your real one, point `GITMETRICS_HOME` to another folder before starting.
 
 ## How the project is organized
 
@@ -47,7 +47,7 @@ Releases are published from GitHub. Bump the version with `npm version <patch|mi
 
 ## License of contributions
 
-MyGitDash is licensed under the [GNU AGPL-3.0](LICENSE) with the additional terms in [NOTICE](NOTICE). By opening a pull request, you agree that your contribution is released under the same terms.
+GitMetrics is licensed under the [GNU AGPL-3.0](LICENSE) with the additional terms in [NOTICE](NOTICE). By opening a pull request, you agree that your contribution is released under the same terms.
 
 ## Code of conduct
 

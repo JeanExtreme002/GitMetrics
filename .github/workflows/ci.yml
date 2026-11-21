@@ -79,9 +79,9 @@ jobs:
         run: |
           mkdir smoke && cd smoke
           npm init -y > /dev/null
-          npm install ../mygitdash-*.tgz
-          npx mygitdash --version
-          MYGITDASH_HOME="$RUNNER_TEMP/mygitdash" npx mygitdash --port 4399 --no-open &
+          npm install ../gitmetrics-*.tgz
+          npx gitmetrics --version
+          GITMETRICS_HOME="$RUNNER_TEMP/gitmetrics" npx gitmetrics --port 4399 --no-open &
           for i in $(seq 1 20); do
             curl -sf http://localhost:4399/api/auth/status && break
             sleep 0.5

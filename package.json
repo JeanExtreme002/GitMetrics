@@ -1,10 +1,10 @@
 {
-  "name": "mygitdash",
+  "name": "gitmetrics",
   "version": "1.0.0",
   "description": "A beautiful, zero-config dashboard for your GitHub repositories. Stars, traffic, commits, pull requests, Actions and more, running locally on your machine.",
   "type": "module",
   "bin": {
-    "mygitdash": "dist/cli.js"
+    "gitmetrics": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -43,13 +43,13 @@
   ],
   "author": "Jean Loui Bernard Silva de Jesus",
   "license": "AGPL-3.0-only",
-  "homepage": "https://github.com/JeanExtreme002/MyGitDash#readme",
+  "homepage": "https://github.com/JeanExtreme002/GitMetrics#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JeanExtreme002/MyGitDash.git"
+    "url": "git+https://github.com/JeanExtreme002/GitMetrics.git"
   },
   "bugs": {
-    "url": "https://github.com/JeanExtreme002/MyGitDash/issues"
+    "url": "https://github.com/JeanExtreme002/GitMetrics/issues"
   },
   "funding": "https://github.com/sponsors/JeanExtreme002",
   "devDependencies": {

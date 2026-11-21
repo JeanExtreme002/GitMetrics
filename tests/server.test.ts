@@ -189,7 +189,7 @@ describe('local server', () => {
     app.request(url, { ...init, headers: { host: 'localhost:4280', ...init.headers } });
 
   beforeEach(() => {
-    dir = mkdtempSync(path.join(tmpdir(), 'mygitdash-'));
+    dir = mkdtempSync(path.join(tmpdir(), 'gitmetrics-'));
   });
 
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -218,7 +218,7 @@ describe('local server', () => {
 
     const signIn = await request(app, '/api/auth/token', {
       method: 'POST',
-      headers: { 'x-mygitdash': '1', 'content-type': 'application/json' },
+      headers: { 'x-gitmetrics': '1', 'content-type': 'application/json' },
       body: JSON.stringify({ token: 'ghp_test' }),
     });
     expect(signIn.status).toBe(200);
@@ -240,7 +240,7 @@ describe('local server', () => {
     const app = make();
     await request(app, '/api/auth/token', {
       method: 'POST',
-      headers: { 'x-mygitdash': '1', 'content-type': 'application/json' },
+      headers: { 'x-gitmetrics': '1', 'content-type': 'application/json' },
       body: JSON.stringify({ token: 'ghp_test' }),
     });
     const overview = await (await request(app, '/api/repos/octocat/hello/overview')).json();
@@ -259,7 +259,7 @@ describe('local server', () => {
     const app = make();
     await request(app, '/api/auth/token', {
       method: 'POST',
-      headers: { 'x-mygitdash': '1', 'content-type': 'application/json' },
+      headers: { 'x-gitmetrics': '1', 'content-type': 'application/json' },
       body: JSON.stringify({ token: 'ghp_test' }),
     });
     expect(await (await request(app, '/api/rate-limit')).json()).toMatchObject({
@@ -271,7 +271,7 @@ describe('local server', () => {
 
   it('saves favorites and signs out', async () => {
     const app = make('gho_cli');
-    const headers = { 'x-mygitdash': '1', 'content-type': 'application/json' };
+    const headers = { 'x-gitmetrics': '1', 'content-type': 'application/json' };
     await request(app, '/api/auth/gh', { method: 'POST', headers });
     const saved = await request(app, '/api/favorites', {
       method: 'PUT',

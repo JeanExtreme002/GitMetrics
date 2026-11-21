@@ -21,11 +21,11 @@ function version(): string {
 }
 
 const HELP = `
-MyGitDash ${version()}
+GitMetrics ${version()}
 A local dashboard for your GitHub repositories.
 
 Usage
-  mygitdash [options]
+  gitmetrics [options]
 
 Options
   -p, --port <number>  Port to listen on (default: ${DEFAULT_PORT})
@@ -34,8 +34,8 @@ Options
   -h, --help           Show this message
 
 Environment
-  MYGITDASH_HOME       Where MyGitDash keeps its data (default: ~/.mygitdash)
-  MYGITDASH_CLIENT_ID  Use your own GitHub OAuth App for "Sign in with GitHub"
+  GITMETRICS_HOME       Where GitMetrics keeps its data (default: ~/.gitmetrics)
+  GITMETRICS_CLIENT_ID  Use your own GitHub OAuth App for "Sign in with GitHub"
 `;
 
 interface Args {
@@ -66,7 +66,7 @@ function parseArgs(argv: string[]): Args {
     } else if (arg === '--dev') {
       args.dev = true;
     } else {
-      console.error(`Unknown option: ${arg}\nRun "mygitdash --help" to see the available options.`);
+      console.error(`Unknown option: ${arg}\nRun "gitmetrics --help" to see the available options.`);
       process.exit(1);
     }
   }
@@ -113,7 +113,7 @@ async function main() {
       console.log(`API ready on ${url} (open the Vite URL to use the app)`);
       return;
     }
-    console.log(`\n  MyGitDash ${version()} is running at ${url}`);
+    console.log(`\n  GitMetrics ${version()} is running at ${url}`);
     console.log(`  Data folder: ${defaultDataDir()}`);
     console.log('  Press Ctrl+C to stop.\n');
     if (args.open) openBrowser(url);

@@ -140,7 +140,10 @@ function Counters({
 
 /** Star growth and commit activity behind one switch, drawn straight on the page. */
 function GrowthChart() {
-  const [view, setView] = useLocalStorage<Growth>({ key: 'mygitdash:overview-chart', defaultValue: 'stars' });
+  const [view, setView] = useLocalStorage<Growth>({
+    key: 'gitmetrics:overview-chart',
+    defaultValue: 'stars',
+  });
   const stars = useSection<StarsResponse>('stars');
   const commits = useSection<CommitsResponse>('commits');
 

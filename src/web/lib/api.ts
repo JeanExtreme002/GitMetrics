@@ -12,7 +12,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'X-MyGitDash': '1',
+      'X-GitMetrics': '1',
       ...init.headers,
     },
   });

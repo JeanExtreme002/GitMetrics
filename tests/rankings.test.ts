@@ -25,7 +25,7 @@ describe('activity ranking', () => {
 
 describe('traffic ranking', () => {
   it('ranks by unique visitors, skips repositories without access and stores history', async () => {
-    const dir = mkdtempSync(path.join(tmpdir(), 'mygitdash-'));
+    const dir = mkdtempSync(path.join(tmpdir(), 'gitmetrics-'));
     try {
       const fetchImpl = (async (input: string | URL | Request) => {
         const url = String(input);

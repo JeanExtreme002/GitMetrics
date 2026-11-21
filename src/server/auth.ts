@@ -3,15 +3,15 @@ import type { DevicePoll, DeviceStart, Viewer } from '../shared/types.js';
 import { GITHUB_API, GitHubError, USER_AGENT } from './github.js';
 
 /**
- * Client ID of the MyGitDash OAuth App (Device Flow enabled). Client IDs are public,
+ * Client ID of the GitMetrics OAuth App (Device Flow enabled). Client IDs are public,
  * so shipping it is safe; there is no client secret involved in the Device Flow.
- * Set MYGITDASH_CLIENT_ID to use your own OAuth App instead.
+ * Set GITMETRICS_CLIENT_ID to use your own OAuth App instead.
  */
 export const DEFAULT_CLIENT_ID = '';
 
 export const OAUTH_SCOPES = 'repo read:user read:org';
 
-export const clientId = () => process.env.MYGITDASH_CLIENT_ID || DEFAULT_CLIENT_ID;
+export const clientId = () => process.env.GITMETRICS_CLIENT_ID || DEFAULT_CLIENT_ID;
 
 interface GitHubUser {
   login: string;

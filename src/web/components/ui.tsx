@@ -21,7 +21,7 @@ import { useId, type CSSProperties, type ReactNode } from 'react';
 export const LOGO_RED = '#E5383B';
 
 /**
- * The MyGitDash mark: a rounded red diamond with a chart cut out of it, rising bars with a
+ * The GitMetrics mark: a rounded red diamond with a chart cut out of it, rising bars with a
  * trend line above them.
  */
 export function Logo({ size = 32 }: { size?: number }) {

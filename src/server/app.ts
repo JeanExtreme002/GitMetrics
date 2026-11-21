@@ -61,7 +61,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('*', async (c, next) => {
     const host = (c.req.header('host') ?? '').replace(/:\d+$/, '');
     if (!LOCAL_HOSTS.has(host)) return c.text('Forbidden', 403);
-    if (c.req.method !== 'GET' && c.req.path.startsWith('/api') && c.req.header('x-mygitdash') !== '1') {
+    if (c.req.method !== 'GET' && c.req.path.startsWith('/api') && c.req.header('x-gitmetrics') !== '1') {
       return c.json({ error: 'Missing request header.', status: 403 }, 403);
     }
     await next();
