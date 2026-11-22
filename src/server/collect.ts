@@ -25,10 +25,17 @@ export const RETRY_AFTER_FAILURE_MS = 15 * 60_000;
 const AT_ONCE = 4;
 
 const DAY_MS = 86_400_000;
+const daysBefore = (now: Date, days: number) => toDay(now.getTime() - days * DAY_MS);
+/** Requests left this hour below which the collection stops, so the pages always have enough. */
+export const KEEP_FOR_PAGES = 1000;
 
 /** Per account: the day of each repository's last visit, and how the collection went. */
 interface Saved {
-  visits: Record<string, string>;
+  /**
+   * Keyed in lowercase; each keeps the name as the page was opened with, which is the name the
+   * Traffic page saves its history under, so both always write the same file.
+   */
+  visits: Record<string, { name: string; on: string }>;
   /** The UTC day the last collection finished. */
   collectedOn?: string;
   /** Repositories GitHub refused the traffic of, and on which day. */
@@ -64,9 +71,10 @@ export class CollectionStore {
   visit(login: string, fullName: string, now = new Date()) {
     const key = fullName.toLowerCase();
     const today = toDay(now);
-    if (this.read(login).visits[key] === today) return;
+    const known = this.read(login).visits[key];
+    if (known?.on === today && known.name === fullName) return;
     this.write(login, (saved) => {
-      saved.visits[key] = today;
+      saved.visits[key] = { name: fullName, on: today };
     });
   }
 
@@ -78,6 +86,12 @@ export class CollectionStore {
     this.write(login, (saved) => {
       saved.collectedOn = day;
       for (const name of refused) saved.refused[name.toLowerCase()] = toDay(now);
+      // What no longer counts is let go, so the file stays small.
+      const visitedSince = daysBefore(now, VISITED_WITHIN_DAYS);
+      const refusedSince = daysBefore(now, RETRY_AFTER_DAYS);
+      for (const [key, v] of Object.entries(saved.visits)) if (v.on < visitedSince) delete saved.visits[key];
+      for (const [key, on] of Object.entries(saved.refused))
+        if (on <= refusedSince) delete saved.refused[key];
     });
   }
 }
@@ -92,13 +106,13 @@ export function collectionTargets(
   saved: Saved,
   now = new Date(),
 ): string[] {
-  const since = (days: number) => toDay(now.getTime() - days * DAY_MS);
+  const since = (days: number) => daysBefore(now, days);
   const names = new Map<string, string>();
   for (const r of owned) {
     if (r.owner.toLowerCase() === login.toLowerCase()) names.set(r.fullName.toLowerCase(), r.fullName);
   }
-  for (const [name, day] of Object.entries(saved.visits)) {
-    if (day >= since(VISITED_WITHIN_DAYS) && !names.has(name)) names.set(name, name);
+  for (const [key, visit] of Object.entries(saved.visits)) {
+    if (visit.on >= since(VISITED_WITHIN_DAYS) && !names.has(key)) names.set(key, visit.name);
   }
   for (const [name, day] of Object.entries(saved.refused)) {
     if (day > since(RETRY_AFTER_DAYS)) names.delete(name);
@@ -139,6 +153,11 @@ export async function collectTraffic(
 
   await mapLimit(targets, AT_ONCE, async (fullName) => {
     if (incomplete) return;
+    // Running low on this hour's requests: leave them to the pages, and finish later.
+    if (gh.rateLimit && gh.rateLimit.remaining < KEEP_FOR_PAGES) {
+      incomplete = true;
+      return;
+    }
     try {
       const base = `/repos/${fullName}/traffic`;
       const [views, clones] = await Promise.all([

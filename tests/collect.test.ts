@@ -8,6 +8,7 @@ import {
   collectTraffic,
   collectionTargets,
   RETRY_AFTER_FAILURE_MS,
+  KEEP_FOR_PAGES,
 } from '../src/server/collect';
 import { type GitHubClient, GitHubError } from '../src/server/github';
 import { TrafficStore } from '../src/server/store';
@@ -27,10 +28,10 @@ describe('which repositories are collected', () => {
   it('every one you own, and any other opened in the last 12 months, unless refused lately', () => {
     const saved = {
       visits: {
-        'acme/api': day(10), // an organization's, opened lately
-        'acme/old': day(400), // opened more than a year ago
-        'friend/tool': day(200), // someone else's, within the year
-        'me/app': day(1), // yours anyway: listed once
+        'acme/api': { name: 'Acme/API', on: day(10) }, // an organization's, opened lately
+        'acme/old': { name: 'acme/old', on: day(400) }, // opened more than a year ago
+        'friend/tool': { name: 'friend/tool', on: day(200) }, // someone else's, within the year
+        'me/app': { name: 'me/app', on: day(1) }, // yours anyway: listed once
       },
       refused: {
         'friend/tool': day(5), // refused lately: left alone
@@ -39,7 +40,8 @@ describe('which repositories are collected', () => {
     };
     expect(
       collectionTargets('Me', [repo('me/app'), repo('me/legacy'), repo('acme/web')], saved, now),
-    ).toEqual(['acme/api', 'me/app', 'me/legacy']);
+      // Each under the name its page was opened with, the one the Traffic page saves under.
+    ).toEqual(['Acme/API', 'me/app', 'me/legacy']);
   });
 });
 
@@ -49,8 +51,8 @@ describe('the visits and progress on disk', () => {
     store.visit('Me', 'Acme/API', now);
     store.visit('me', 'acme/api', now);
     store.visit('other', 'x/y', now);
-    expect(store.get('ME').visits).toEqual({ 'acme/api': day(0) });
-    expect(store.get('other').visits).toEqual({ 'x/y': day(0) });
+    expect(store.get('ME').visits).toEqual({ 'acme/api': { name: 'acme/api', on: day(0) } });
+    expect(store.get('other').visits).toEqual({ 'x/y': { name: 'x/y', on: day(0) } });
     store.finish('me', day(0), ['Acme/Secret'], now);
     expect(store.get('me')).toMatchObject({ collectedOn: day(0), refused: { 'acme/secret': day(0) } });
     // Only its owner can read it (Windows has no such modes).
@@ -64,6 +66,7 @@ describe('the visits and progress on disk', () => {
 function github(answers: Record<string, 'ok' | 403 | 404 | 'rate' | 'offline'>) {
   const asked: string[] = [];
   const gh = {
+    rateLimit: null,
     get: async (url: string) => {
       asked.push(url);
       const name = url.split('/').slice(2, 4).join('/');
@@ -80,6 +83,16 @@ function github(answers: Record<string, 'ok' | 403 | 404 | 'rate' | 'offline'>) 
 }
 
 describe('collecting', () => {
+  it('lets go of visits over a year old and refusals over a month old', () => {
+    const store = new CollectionStore(dir);
+    store.visit('me', 'old/one', new Date(now.getTime() - 400 * 86_400_000));
+    store.visit('me', 'new/one', now);
+    store.finish('me', day(40), ['was/refused'], new Date(now.getTime() - 40 * 86_400_000));
+    store.finish('me', day(0), ['now/refused'], now);
+    expect(Object.keys(store.get('me').visits)).toEqual(['new/one']);
+    expect(store.get('me').refused).toEqual({ 'now/refused': day(0) });
+  });
+
   it('adds views and clones to the history, and notes who refused', async () => {
     const store = new CollectionStore(dir);
     store.visit('me', 'acme/secret', now);
@@ -97,6 +110,23 @@ describe('collecting', () => {
     traffic.merge('me/app', 'views', { [day(30)]: [9, 9], [day(1)]: [1, 1] });
     await collectTraffic(github({}).gh, traffic, new CollectionStore(dir), 'me', [repo('me/app')], now);
     expect(traffic.merge('me/app', 'views', {})).toEqual({ [day(30)]: [9, 9], [day(1)]: [3, 2] });
+  });
+
+  it('leaves the requests to the pages when few are left this hour', async () => {
+    const store = new CollectionStore(dir);
+    const { gh, asked } = github({});
+    gh.rateLimit = { limit: 5000, remaining: KEEP_FOR_PAGES - 1, resetAt: now.toISOString() };
+    const result = await collectTraffic(
+      gh,
+      new TrafficStore(path.join(dir, 'traffic')),
+      store,
+      'me',
+      [repo('me/app')],
+      now,
+    );
+    expect(result.incomplete).toBe(true);
+    expect(asked).toEqual([]);
+    expect(store.get('me').collectedOn).toBeUndefined();
   });
 
   it('stops without finishing the day when offline or rate limited, so it runs again', async () => {

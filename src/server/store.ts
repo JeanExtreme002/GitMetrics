@@ -33,9 +33,17 @@ export function readJson<T>(file: string, fallback: T): T {
  */
 export function writePrivate(file: string, value: unknown) {
   mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const content = JSON.stringify(value, null, 2);
   const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
-  writeFileSync(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
-  renameSync(temporary, file);
+  writeFileSync(temporary, content, { mode: 0o600 });
+  try {
+    renameSync(temporary, file);
+  } catch {
+    // Windows can refuse to replace a file another program has open (an antivirus scanning it):
+    // write it in place then, as before.
+    rmSync(temporary, { force: true });
+    writeFileSync(file, content, { mode: 0o600 });
+  }
 }
 
 /** Persists the token and preferences in ~/.gitmetrics/config.json (owner-only permissions). */
