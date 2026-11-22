@@ -50,6 +50,14 @@ gitmetrics
 
 Each repository also gets **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments**, plus a home page across everything you own and <kbd>Ctrl</kbd> + <kbd>K</kbd> to jump anywhere. Light and dark themes included.
 
+## Every pull request, and what it needs
+
+<p align="center">
+  <img src="assets/pull-request.png" alt="A pull request in GitMetrics: its activity over time and one reviewer's activity" width="880" />
+</p>
+
+One list of every pull request that involves you, across all your repositories, with what each one waits on. Open one to see where its time went, every commit, review request, review and comment on the way, and how fast each reviewer answered.
+
 ## Follow how your projects grow
 
 See where every repository is heading: stars gained, release cadence, how fast pull requests land and how healthy your CI is. Pin the projects you care about, and the home page ranks all of them by stars, activity or traffic.
