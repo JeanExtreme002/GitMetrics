@@ -145,7 +145,7 @@ export function MyPulls() {
   return (
     <>
       <PageHeader
-        title="Your pull requests"
+        title="Pull requests"
         icon={<IconGitPullRequest size={26} stroke={1.6} />}
         description="What waits on you across every repository, and how each pull request compares with that repository's usual pace."
         stats={<Summary />}
