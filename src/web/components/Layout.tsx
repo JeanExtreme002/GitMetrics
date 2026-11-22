@@ -249,7 +249,7 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
 
       <NavItemLink
         to="/pulls"
-        label="Your pull requests"
+        label="Pull requests"
         icon={icon(IconGitPullRequest)}
         right={reviews ? <Count>{reviews}</Count> : undefined}
         onClick={onNavigate}
