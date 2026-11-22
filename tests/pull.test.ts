@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GitHubClient } from '../src/server/github';
 import {
+  finalApproval,
   buildActivity,
   buildFolders,
   buildPhases,
@@ -63,8 +64,11 @@ function raw(overrides: Partial<RawPull> = {}): RawPull {
 const now = new Date(at(100));
 
 describe('where the time went', () => {
-  it('splits the life of a pull request into consecutive stretches that add up', () => {
-    const phases = buildPhases(at(0), at(2), at(8), at(12), at(20), false);
+  const ready = (h: number) => ({ kind: 'ready' as const, at: at(h) });
+  const toDraft = (h: number) => ({ kind: 'draft' as const, at: at(h) });
+
+  it('splits the life of a pull request into stretches in order, that add up', () => {
+    const phases = buildPhases(at(0), [ready(2)], false, at(8), at(12), at(20), false);
     expect(phases).toEqual([
       { kind: 'draft', hours: 2, ongoing: false },
       { kind: 'waiting', hours: 6, ongoing: false },
@@ -74,15 +78,45 @@ describe('where the time went', () => {
     expect(phases.reduce((sum, p) => sum + p.hours, 0)).toBe(20);
   });
 
-  it('marks the stretch an open pull request is in now, and skips empty ones', () => {
-    expect(buildPhases(at(0), null, null, null, at(30), true)).toEqual([
+  it('shows every time it went back to draft, in order', () => {
+    expect(
+      buildPhases(at(0), [toDraft(10), ready(14)], false, at(4), null, at(20), false).map((p) => [
+        p.kind,
+        p.hours,
+      ]),
+    ).toEqual([
+      ['waiting', 4],
+      ['review', 6],
+      ['draft', 4],
+      ['review', 6],
+    ]);
+    // Still a draft now: the last stretch is draft, and ongoing.
+    expect(buildPhases(at(0), [], true, null, null, at(5), true)).toEqual([
+      { kind: 'draft', hours: 5, ongoing: true },
+    ]);
+  });
+
+  it('marks the stretch an open pull request is in now', () => {
+    expect(buildPhases(at(0), [], false, null, null, at(30), true)).toEqual([
       { kind: 'waiting', hours: 30, ongoing: true },
     ]);
-    // Approved with its first review: no time "in review".
-    expect(buildPhases(at(0), null, at(5), at(5), at(9), true)).toEqual([
+    // Approved with its first review: no time in review.
+    expect(buildPhases(at(0), [], false, at(5), at(5), at(9), true)).toEqual([
       { kind: 'waiting', hours: 5, ongoing: false },
       { kind: 'approved', hours: 4, ongoing: true },
     ]);
+  });
+
+  it('takes the first approval after the last request for changes, and ignores later extra ones', () => {
+    const r = (h: number, state: string) => ({ submittedAt: at(h), state });
+    expect(
+      finalApproval([r(1, 'APPROVED'), r(2, 'CHANGES_REQUESTED'), r(5, 'APPROVED'), r(6, 'COMMENTED')]),
+    ).toBe(at(5));
+    expect(finalApproval([r(1, 'APPROVED'), r(3, 'CHANGES_REQUESTED')])).toBeNull();
+    // More approvals after it don't move it: it stayed approved since the first one.
+    expect(finalApproval([r(1, 'CHANGES_REQUESTED'), r(4, 'APPROVED'), r(9, 'APPROVED')])).toBe(at(4));
+    // A dismissed approval doesn't count.
+    expect(finalApproval([r(1, 'DISMISSED')])).toBeNull();
   });
 });
 
@@ -182,6 +216,11 @@ describe('a pull request in detail', () => {
       ['waiting', 6],
       ['review', 4],
       ['approved', 8],
+    ]);
+    // Each review by a person where it happened; the bot and the author's own are left out.
+    expect(pull.reviewMarks.map((m) => [m.login, m.state, m.hours])).toEqual([
+      ['bo', 'COMMENTED', 8],
+      ['bo', 'APPROVED', 12],
     ]);
     expect(pull.waitingOn).toBeNull();
   });

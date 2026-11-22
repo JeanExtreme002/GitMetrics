@@ -1,6 +1,7 @@
 import type {
   PullActivityPoint,
   PullDetail,
+  PullReviewMark,
   PullFolder,
   PullPhase,
   PullReviewer,
@@ -158,29 +159,75 @@ export interface RawPull {
 const reviewerKey = (r: Requested) => (r.login ?? r.name ?? '').toLowerCase();
 
 /**
- * The whole life of the pull request as consecutive stretches: as a draft, waiting for a first
- * review, in review until the first approval, and after approval until merged, closed or now.
+ * When the pull request became approved for good: the first approval after the last request for
+ * changes, as GitHub keeps them now. An approval or a request later dismissed no longer counts, so
+ * from then on nothing took the approval back until it was merged (or closed, or now).
+ */
+export function finalApproval(reviews: { submittedAt: string | null; state: string }[]): string | null {
+  const dated = reviews.filter((r) => r.submittedAt);
+  const lastChanges = dated
+    .filter((r) => r.state === 'CHANGES_REQUESTED')
+    .map((r) => r.submittedAt!)
+    .sort()
+    .at(-1);
+  return (
+    dated
+      .filter((r) => r.state === 'APPROVED' && (!lastChanges || r.submittedAt! > lastChanges))
+      .map((r) => r.submittedAt!)
+      .sort()[0] ?? null
+  );
+}
+
+/**
+ * The whole life of the pull request, in order, as stretches of one kind each: as a draft (every
+ * time it was one), waiting for a first review, in review (all the back and forth until the final
+ * approval), and after the final approval until merged, closed or now.
  */
 export function buildPhases(
   createdAt: string,
-  ready: string | null,
+  draftEvents: { kind: 'draft' | 'ready'; at: string }[],
+  isDraft: boolean,
   firstReview: string | null,
-  firstApproval: string | null,
+  approvedAt: string | null,
   end: string,
   open: boolean,
 ): PullPhase[] {
-  const points: [PullPhase['kind'], string][] = [];
-  if (ready) points.push(['draft', createdAt]);
-  points.push(['waiting', ready ?? createdAt]);
-  if (firstReview) points.push(['review', firstReview]);
-  if (firstApproval && (!firstReview || firstApproval >= firstReview))
-    points.push(['approved', firstApproval]);
-  return points
-    .map(([kind, from], i) => {
-      const to = points[i + 1]?.[1] ?? end;
-      return { kind, hours: Math.max(0, hoursBetween(from, to)), ongoing: open && i === points.length - 1 };
-    })
-    .filter((p) => p.hours > 0 || p.ongoing);
+  // Draft stretches, from the events that switch it: one marked ready without being converted
+  // first was opened as a draft.
+  const switches = [...draftEvents].sort((a, b) => a.at.localeCompare(b.at));
+  const drafts: [string, string][] = [];
+  let since: string | null =
+    switches[0]?.kind === 'ready' || (!switches.length && isDraft) ? createdAt : null;
+  for (const e of switches) {
+    if (e.kind === 'draft' && since === null) since = e.at;
+    if (e.kind === 'ready' && since !== null) {
+      drafts.push([since, e.at]);
+      since = null;
+    }
+  }
+  if (since !== null) drafts.push([since, end]);
+
+  const kindAt = (t: string): PullPhase['kind'] => {
+    if (drafts.some(([from, to]) => t >= from && t < to)) return 'draft';
+    if (!firstReview || t < firstReview) return 'waiting';
+    return approvedAt && t >= approvedAt ? 'approved' : 'review';
+  };
+  const marks = [createdAt, end, ...drafts.flat(), firstReview, approvedAt]
+    .filter((t): t is string => !!t && t >= createdAt && t <= end)
+    .sort();
+  const bounds = [...new Set(marks)];
+
+  const phases: PullPhase[] = [];
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const kind = kindAt(bounds[i]!);
+    const hours = hoursBetween(bounds[i]!, bounds[i + 1]!);
+    const last = phases.at(-1);
+    if (last?.kind === kind) last.hours += hours;
+    else phases.push({ kind, hours, ongoing: false });
+  }
+  if (!phases.length) phases.push({ kind: kindAt(createdAt), hours: 0, ongoing: false });
+  if (open) phases.at(-1)!.ongoing = true;
+  return phases.filter((p) => p.hours > 0 || p.ongoing);
 }
 
 /** How many folders to show before the rest are grouped as "Other". */
@@ -269,7 +316,7 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     .filter((r) => r.submittedAt && r.author && !isBot(r.author) && !byAuthor(r.author.login))
     .sort((a, b) => a.submittedAt!.localeCompare(b.submittedAt!));
   const firstReview = reviews[0]?.submittedAt ?? null;
-  const firstApproval = reviews.find((r) => r.state === 'APPROVED')?.submittedAt ?? null;
+  const approvedAt = finalApproval(reviews);
   const ready = raw.events.find((e) => e.__typename === 'ReadyForReviewEvent')?.createdAt ?? null;
   // Review time starts when the pull request was ready for it.
   const reviewStart = ready ?? raw.createdAt;
@@ -277,7 +324,7 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
   const stages: Omit<PullStage, 'hours'>[] = [{ kind: 'opened', at: raw.createdAt }];
   if (ready) stages.push({ kind: 'ready', at: ready });
   if (firstReview) stages.push({ kind: 'first-review', at: firstReview });
-  if (firstApproval) stages.push({ kind: 'approved', at: firstApproval });
+  if (approvedAt) stages.push({ kind: 'approved', at: approvedAt });
   if (raw.mergedAt) stages.push({ kind: 'merged', at: raw.mergedAt });
   else if (raw.state === 'CLOSED' && raw.closedAt) stages.push({ kind: 'closed', at: raw.closedAt });
   stages.sort((a, b) => a.at.localeCompare(b.at));
@@ -372,7 +419,32 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
       : open
         ? hoursBetween(raw.createdAt, now.toISOString())
         : null,
-    phases: buildPhases(raw.createdAt, ready, firstReview, firstApproval, end, open),
+    phases: buildPhases(
+      raw.createdAt,
+      raw.events.flatMap((e) =>
+        e.createdAt && (e.__typename === 'ConvertToDraftEvent' || e.__typename === 'ReadyForReviewEvent')
+          ? [
+              {
+                kind: e.__typename === 'ConvertToDraftEvent' ? ('draft' as const) : ('ready' as const),
+                at: e.createdAt,
+              },
+            ]
+          : [],
+      ),
+      raw.isDraft,
+      firstReview,
+      approvedAt,
+      end,
+      open,
+    ),
+    // Every review by a person, placed on the pull request's life, as GitHub keeps it now: an
+    // approval or a request for changes that was later dismissed shows as dismissed.
+    reviewMarks: reviews.map((r) => ({
+      hours: Math.max(0, hoursBetween(raw.createdAt, r.submittedAt!)),
+      state: r.state as PullReviewMark['state'],
+      login: r.author!.login,
+      at: r.submittedAt!,
+    })),
     rounds: {
       changesRequested: changesRequested.length,
       forcePushes: raw.events.filter((e) => e.__typename === 'HeadRefForcePushedEvent').length,

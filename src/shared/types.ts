@@ -518,6 +518,15 @@ export interface PullPhase {
   ongoing: boolean;
 }
 
+/** One review by a person, placed on the pull request's life. */
+export interface PullReviewMark {
+  /** Hours after the pull request was opened. */
+  hours: number;
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED';
+  login: string;
+  at: string;
+}
+
 /** Lines changed under one folder. */
 export interface PullFolder {
   path: string;
@@ -561,8 +570,9 @@ export interface PullDetail {
   firstReviewHours: number | null;
   /** Open: hours so far. Merged: hours to merge. Closed: null. */
   ageHours: number | null;
-  /** The whole life of the pull request, split into consecutive stretches. */
+  /** The whole life of the pull request, in order, split into stretches (a kind can come back). */
   phases: PullPhase[];
+  reviewMarks: PullReviewMark[];
   rounds: {
     changesRequested: number;
     forcePushes: number;

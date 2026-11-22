@@ -980,3 +980,26 @@ a.pull-row {
 .pr-folder-track {
   display: flex;
 }
+
+/* Each review as a tick under the time bar, where it happened. */
+.pr-review-marks {
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
+}
+
+.pr-review-mark {
+  position: absolute;
+  top: 0;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+}
+
+.pr-review-key {
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  flex: none;
+}

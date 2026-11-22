@@ -37,7 +37,14 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
-import type { PullCheck, PullDetail, PullPhase, PullReviewer, PullStage } from '../../../shared/types';
+import type {
+  PullCheck,
+  PullDetail,
+  PullPhase,
+  PullReviewMark,
+  PullReviewer,
+  PullStage,
+} from '../../../shared/types';
 import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } from '../../components/ui';
 import { api } from '../../lib/api';
 import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../lib/format';
@@ -56,7 +63,7 @@ const STAGE: Record<PullStage['kind'], string> = {
   opened: 'Opened',
   ready: 'Ready for review',
   'first-review': 'First review',
-  approved: 'Approved',
+  approved: 'Final approval',
   merged: 'Merged',
   closed: 'Closed',
 };
@@ -83,7 +90,7 @@ const PHASE: Record<PullPhase['kind'], { label: string; color: string }> = {
   draft: { label: 'Draft', color: 'gray.5' },
   waiting: { label: 'Waiting for a first review', color: 'yellow.6' },
   review: { label: 'In review', color: 'blue.5' },
-  approved: { label: 'Approved', color: 'green.6' },
+  approved: { label: 'After the final approval', color: 'green.6' },
 };
 
 const cssColor = (color: string) => `var(--mantine-color-${color.replace('.', '-')})`;
@@ -217,27 +224,45 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
 }
 
 /** The whole life of the pull request as one bar, split into the stretches it went through. */
+const MARK: Record<PullReviewMark['state'], { label: string; color: string }> = {
+  APPROVED: { label: 'approved', color: 'green.6' },
+  CHANGES_REQUESTED: { label: 'asked for changes', color: 'orange.6' },
+  COMMENTED: { label: 'commented', color: 'gray.5' },
+  DISMISSED: { label: 'reviewed, later dismissed', color: 'gray.7' },
+};
+
 function TimeSpent({ pull }: { pull: PullDetail }) {
   const total = pull.phases.reduce((sum, p) => sum + p.hours, 0);
   if (!total) return null;
   const until = pull.state === 'MERGED' ? 'merged' : pull.state === 'CLOSED' ? 'closed' : 'now';
-  const label = (p: PullPhase) =>
-    p.kind === 'approved'
+  const reviewed = pull.firstReviewHours !== null;
+  const label = (kind: PullPhase['kind']) =>
+    kind === 'approved'
       ? pull.state === 'OPEN'
-        ? 'Approved, waiting to be merged'
-        : `Approved, until ${until}`
-      : p.kind === 'waiting' && pull.state !== 'OPEN' && pull.firstReviewHours === null
+        ? 'After the final approval, waiting to be merged'
+        : `After the final approval, until ${until}`
+      : kind === 'waiting' && pull.state !== 'OPEN' && !reviewed
         ? `No review, until ${until}`
-        : PHASE[p.kind].label;
+        : kind === 'review'
+          ? pull.phases.some((p) => p.kind === 'approved')
+            ? 'In review, until the final approval'
+            : 'In review'
+          : PHASE[kind].label;
+  // The legend adds up each kind: a pull request can go back to draft, for instance.
+  const kinds = [...new Set(pull.phases.map((p) => p.kind))].map((kind) => ({
+    kind,
+    hours: pull.phases.filter((p) => p.kind === kind).reduce((sum, p) => sum + p.hours, 0),
+    ongoing: pull.phases.at(-1)!.ongoing && pull.phases.at(-1)!.kind === kind,
+  }));
   return (
     <Box mb={44}>
       <SectionHeader
         title="Where the time went"
-        caption={`${hours(total)} from opening to ${until}, by stretch`}
+        caption={`${hours(total)} from opening to ${until}, in order, with every review on the way`}
       />
       <div className="pr-time-bar">
-        {pull.phases.map((p) => (
-          <Tooltip key={p.kind} label={`${label(p)}: ${hours(p.hours)}`}>
+        {pull.phases.map((p, i) => (
+          <Tooltip key={i} label={`${label(p.kind)}: ${hours(p.hours)}`}>
             <div
               className="pr-time-segment"
               style={{ flexGrow: p.hours, background: cssColor(PHASE[p.kind].color) }}
@@ -245,22 +270,59 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
           </Tooltip>
         ))}
       </div>
+      {/* Each review where it happened, so the back and forth shows. */}
+      {pull.reviewMarks.length > 0 && (
+        <div className="pr-review-marks" aria-label="Reviews over time">
+          {pull.reviewMarks.map((m, i) => (
+            <Tooltip key={i} label={`${m.login} ${MARK[m.state].label} · ${dateTime(m.at)}`}>
+              <span
+                className="pr-review-mark"
+                style={{
+                  left: `${Math.min(100, (m.hours / total) * 100)}%`,
+                  background: cssColor(MARK[m.state].color),
+                }}
+              />
+            </Tooltip>
+          ))}
+        </div>
+      )}
       <Group gap="xl" mt="md" wrap="wrap">
-        {pull.phases.map((p) => (
-          <Group key={p.kind} gap={8} wrap="nowrap" align="flex-start">
-            <span className="pr-time-dot" style={{ background: cssColor(PHASE[p.kind].color) }} />
+        {kinds.map((k) => (
+          <Group key={k.kind} gap={8} wrap="nowrap" align="flex-start">
+            <span className="pr-time-dot" style={{ background: cssColor(PHASE[k.kind].color) }} />
             <Box>
               <Text size="sm" fw={500}>
-                {label(p)}
-                {p.ongoing ? ' (now)' : ''}
+                {label(k.kind)}
+                {k.ongoing ? ' (now)' : ''}
               </Text>
               <Text size="xs" c="dimmed" className="tabular">
-                {hours(p.hours)} · {percent(p.hours / total)}
+                {hours(k.hours)} · {percent(k.hours / total)}
               </Text>
             </Box>
           </Group>
         ))}
       </Group>
+      {pull.reviewMarks.length > 0 && (
+        <Group gap="lg" mt="sm" wrap="wrap">
+          {(Object.keys(MARK) as PullReviewMark['state'][])
+            .filter((state) => pull.reviewMarks.some((m) => m.state === state))
+            .map((state) => (
+              <Group key={state} gap={6} wrap="nowrap">
+                <span className="pr-review-key" style={{ background: cssColor(MARK[state].color) }} />
+                <Text size="xs" c="dimmed">
+                  {num(pull.reviewMarks.filter((m) => m.state === state).length)}{' '}
+                  {state === 'APPROVED'
+                    ? 'approvals'
+                    : state === 'CHANGES_REQUESTED'
+                      ? 'requests for changes'
+                      : state === 'COMMENTED'
+                        ? 'comments as reviews'
+                        : 'dismissed reviews'}
+                </Text>
+              </Group>
+            ))}
+        </Group>
+      )}
     </Box>
   );
 }
