@@ -211,9 +211,18 @@ export function toMyPull(raw: RawListPull, login: string, roles: Role[]): MyPull
   };
 }
 
-/** GitHub's own search, one query per filter, all in a single request. */
-export function searchQueries(state: 'open' | 'closed'): Record<Exclude<PullFilter, 'all'>, string> {
-  const base = `is:pr is:${state} archived:false sort:updated-desc`;
+/** A GitHub account name: letters, digits and single hyphens, at most 39 characters. */
+export const ACCOUNT = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+
+/**
+ * GitHub's own search, one query per filter. `owner` keeps only repositories of that account
+ * (a user or an organization); it must already match {@link ACCOUNT}.
+ */
+export function searchQueries(
+  state: 'open' | 'closed',
+  owner?: string,
+): Record<Exclude<PullFilter, 'all'>, string> {
+  const base = `is:pr is:${state} archived:false sort:updated-desc${owner ? ` user:${owner}` : ''}`;
   return {
     authored: `${base} author:@me`,
     assigned: `${base} assignee:@me`,
@@ -227,9 +236,10 @@ export async function getMyPulls(
   gh: GitHubClient,
   login: string,
   state: 'open' | 'closed',
+  owner?: string,
 ): Promise<MyPullsResponse> {
   // One request per filter, side by side: a single request with all four takes their sum.
-  const queries = searchQueries(state);
+  const queries = searchQueries(state, owner);
   const filters = ['authored', 'assigned', 'involved', 'review'] as const;
   const results = await Promise.all(
     filters.map((filter) =>

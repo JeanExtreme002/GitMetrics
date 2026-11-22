@@ -12,7 +12,7 @@ import { getIssues, getMonthlyCounts, getPulls, windowMonths } from './metrics/p
 import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
 import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
-import { getBaseline, getMyPulls, getMySummary } from './metrics/mine.js';
+import { ACCOUNT, getBaseline, getMyPulls, getMySummary } from './metrics/mine.js';
 import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
@@ -188,15 +188,23 @@ export function createApp(options: AppOptions = {}) {
       getBaseline(gh, repo),
     );
 
-  const myPulls = (state: 'open' | 'closed', refresh = false) => {
+  const myPulls = (state: 'open' | 'closed', owner = '', refresh = false) => {
     const gh = github()!;
     const login = config.auth!.login;
-    return memory.wrap(`${login}:my-pulls:${state}`, 2 * MINUTE, () => getMyPulls(gh, login, state), refresh);
+    return memory.wrap(
+      `${login}:my-pulls:${state}:${owner.toLowerCase()}`,
+      2 * MINUTE,
+      () => getMyPulls(gh, login, state, owner || undefined),
+      refresh,
+    );
   };
 
   app.get('/api/pulls', async (c) => {
     const state = c.req.query('state') === 'closed' ? 'closed' : 'open';
-    return c.json(await myPulls(state, c.req.query('refresh') === '1'));
+    // Only an account name reaches the search, so nothing else can be slipped into it.
+    const owner = c.req.query('owner') ?? '';
+    if (owner && !ACCOUNT.test(owner)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    return c.json(await myPulls(state, owner, c.req.query('refresh') === '1'));
   });
 
   // A repository's usual review and merge times, to put its pull requests in context.

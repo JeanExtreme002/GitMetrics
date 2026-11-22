@@ -140,10 +140,14 @@ export function useOwners() {
 
 // Your pull requests ------------------------------------------------------
 
-export const useMyPulls = (state: 'open' | 'closed') =>
+/** Your pull requests; `owner` keeps only one account's repositories. */
+export const myPullsPath = (state: 'open' | 'closed', owner = '') =>
+  `/pulls?state=${state}${owner ? `&owner=${encodeURIComponent(owner)}` : ''}`;
+
+export const useMyPulls = (state: 'open' | 'closed', owner = '') =>
   useQuery({
-    queryKey: ['my-pulls', state],
-    queryFn: () => api<MyPullsResponse>(`/pulls?state=${state}`),
+    queryKey: ['my-pulls', state, owner.toLowerCase()],
+    queryFn: () => api<MyPullsResponse>(myPullsPath(state, owner)),
     staleTime: 2 * 60_000,
   });
 

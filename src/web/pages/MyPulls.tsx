@@ -1,4 +1,4 @@
-import { Avatar, Badge, Box, Group, SegmentedControl, Text, Tooltip } from '@mantine/core';
+import { Avatar, Badge, Box, Group, SegmentedControl, Select, Text, Tooltip } from '@mantine/core';
 import { useLocalStorage } from '@mantine/hooks';
 import {
   IconClockHour4,
@@ -6,6 +6,7 @@ import {
   IconGitMerge,
   IconGitPullRequest,
   IconUserCheck,
+  IconUsers,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -15,7 +16,7 @@ import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../compone
 import { api } from '../lib/api';
 import { hours, num, relative } from '../lib/format';
 import { pullSignals, span } from '../lib/pulls';
-import { useBaseline, useMyPulls, useMySummary } from '../lib/queries';
+import { myPullsPath, useBaseline, useMyPulls, useMySummary, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -80,6 +81,67 @@ function PullRow({ pull }: { pull: MyPull }) {
   );
 }
 
+interface Account {
+  login: string;
+  avatarUrl: string;
+}
+
+/**
+ * Accounts to filter by: yours and your organizations first, then the owners of any repository
+ * you have pull requests in (someone else's project you contributed to, for instance).
+ */
+function useAccounts(state: 'open' | 'closed', owner: string, data?: MyPullsResponse): Account[] {
+  const owners = useOwners();
+  const client = useQueryClient();
+  const everyone = client.getQueryData<MyPullsResponse>(['my-pulls', state, '']);
+  const list = new Map<string, Account>();
+  for (const o of owners) list.set(o.login.toLowerCase(), { login: o.login, avatarUrl: o.avatarUrl });
+  for (const p of [...(everyone?.pulls ?? []), ...(data?.pulls ?? [])]) {
+    if (!list.has(p.owner.toLowerCase()))
+      list.set(p.owner.toLowerCase(), { login: p.owner, avatarUrl: p.ownerAvatarUrl });
+  }
+  // The chosen account stays in the list even before its pull requests load.
+  if (owner && !list.has(owner.toLowerCase())) {
+    list.set(owner.toLowerCase(), { login: owner, avatarUrl: `https://github.com/${owner}.png?size=40` });
+  }
+  return [...list.values()];
+}
+
+function AccountSelect({
+  accounts,
+  value,
+  onChange,
+}: {
+  accounts: Account[];
+  value: string;
+  onChange: (login: string) => void;
+}) {
+  const avatar = (login: string) =>
+    accounts.find((a) => a.login.toLowerCase() === login.toLowerCase())?.avatarUrl;
+  return (
+    <Select
+      size="xs"
+      w={190}
+      placeholder="All accounts"
+      aria-label="Account"
+      searchable
+      clearable
+      value={value || null}
+      onChange={(v) => onChange(v ?? '')}
+      data={accounts.map((a) => ({ value: a.login, label: a.login }))}
+      leftSection={value ? <Avatar src={avatar(value)} size={16} radius="sm" /> : <IconUsers size={14} />}
+      renderOption={({ option }) => (
+        <Group gap={8} wrap="nowrap">
+          <Avatar src={avatar(option.value)} size={18} radius="sm" />
+          <Text size="xs">{option.label}</Text>
+        </Group>
+      )}
+      nothingFoundMessage="No account"
+      comboboxProps={{ withinPortal: true }}
+    />
+  );
+}
+
 function Summary() {
   const { data } = useMySummary();
   if (!data) return null;
@@ -124,7 +186,13 @@ export function MyPulls() {
     defaultValue: 'all',
     getInitialValueInEffect: false,
   });
-  const query = useMyPulls(state);
+  const [owner, setOwner] = useLocalStorage<string>({
+    key: 'gitmetrics:my-pulls-owner',
+    defaultValue: '',
+    getInitialValueInEffect: false,
+  });
+  const query = useMyPulls(state, owner);
+  const accounts = useAccounts(state, owner, query.data);
   const client = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -132,10 +200,10 @@ export function MyPulls() {
     setRefreshing(true);
     try {
       const [fresh, summary] = await Promise.all([
-        api<MyPullsResponse>(`/pulls?state=${state}&refresh=1`),
+        api<MyPullsResponse>(`${myPullsPath(state, owner)}&refresh=1`),
         api<MyPullsSummary>('/pulls/summary?refresh=1'),
       ]);
-      client.setQueryData(['my-pulls', state], fresh);
+      client.setQueryData(['my-pulls', state, owner.toLowerCase()], fresh);
       client.setQueryData(['my-pulls', 'summary'], summary);
     } finally {
       setRefreshing(false);
@@ -171,15 +239,18 @@ export function MyPulls() {
             }))}
           />
         </Box>
-        <SegmentedControl
-          size="xs"
-          value={state}
-          onChange={(v) => setState(v as 'open' | 'closed')}
-          data={[
-            { value: 'open', label: 'Open' },
-            { value: 'closed', label: 'Closed' },
-          ]}
-        />
+        <Group gap="sm" wrap="nowrap">
+          <AccountSelect accounts={accounts} value={owner} onChange={setOwner} />
+          <SegmentedControl
+            size="xs"
+            value={state}
+            onChange={(v) => setState(v as 'open' | 'closed')}
+            data={[
+              { value: 'open', label: 'Open' },
+              { value: 'closed', label: 'Closed' },
+            ]}
+          />
+        </Group>
       </Group>
 
       <QueryView query={query}>

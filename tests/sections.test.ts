@@ -660,6 +660,17 @@ describe('repository pages, end to end', () => {
     expect(baseline).toEqual({ firstReviewHours: null, mergeHours: 24, size: 50, sample: 1 });
   });
 
+  it('your pull requests from one account only, and nothing but an account name in the search', async () => {
+    const { send, urls } = await signedIn();
+    expect((await send('/api/pulls?owner=octo')).status).toBe(200);
+    const searches = () => urls.filter((u) => u.pathname === '/graphql').length;
+    const before = searches();
+    for (const bad of ['a%20b', 'user%3Ax', '-octo', 'octo%2Fapp']) {
+      expect((await send(`/api/pulls?owner=${bad}`)).status, bad).toBe(400);
+    }
+    expect(searches()).toBe(before);
+  });
+
   it('one pull request in detail, and the ones that do not exist', async () => {
     const { send } = await signedIn();
     const pull = (await (await send('/api/repos/octo/app/pull/7')).json()) as {

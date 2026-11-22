@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GitHubClient } from '../src/server/github';
 import {
+  ACCOUNT,
   buildBaseline,
   checksState,
   getMyPulls,
@@ -196,6 +197,17 @@ describe('your pull requests', () => {
       [1, ['authored'], null],
     ]);
     expect(result.counts).toEqual({ all: 2, authored: 1, assigned: 0, involved: 12, review: 1 });
+  });
+
+  it("keeps one account's repositories when asked, and only takes real account names", () => {
+    expect(Object.values(searchQueries('open', 'octo-org')).every((q) => q.includes(' user:octo-org '))).toBe(
+      true,
+    );
+    expect(searchQueries('open').authored).not.toContain('user:');
+    for (const ok of ['octo', 'Octo-Org', 'a1', 'x'.repeat(39)]) expect(ACCOUNT.test(ok), ok).toBe(true);
+    for (const bad of ['', '-octo', 'octo-', 'oc--to', 'a b', 'user:x', 'a/b', 'x'.repeat(40)]) {
+      expect(ACCOUNT.test(bad), bad).toBe(false);
+    }
   });
 
   it('only searches with GitHub qualifiers for you, and reads reviewed ones once closed', () => {
