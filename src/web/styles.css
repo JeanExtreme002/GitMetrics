@@ -30,6 +30,17 @@
   margin-bottom: 2px;
 }
 
+/* A quiet text action beside a sidebar group label, such as Clear on Recent. */
+.group-action {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+  line-height: 1;
+}
+
+.group-action:hover {
+  color: var(--mantine-color-text);
+}
+
 .repo-identity {
   border-radius: var(--mantine-radius-md);
   background: var(--mantine-color-default-hover);
