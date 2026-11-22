@@ -1,7 +1,15 @@
 import type { PullDetail, PullReviewer, PullStage } from '../../shared/types.js';
 import type { GitHubClient } from '../github.js';
 import { hoursBetween } from '../util.js';
-import { type Baseline, type RawCheck, checksState, isBot, percentile, readChecks } from './mine.js';
+import {
+  type Baseline,
+  type RawCheck,
+  checksState,
+  commentCount,
+  isBot,
+  percentile,
+  readChecks,
+} from './mine.js';
 
 const CHECK_NODES = `nodes {
   __typename
@@ -19,6 +27,8 @@ query ($owner: String!, $name: String!, $number: Int!) {
       commits { totalCount }
       comments { totalCount }
       reviewThreads { totalCount }
+      threadComments: reviewThreads(first: 100) { nodes { comments { totalCount } } }
+      written: reviews(first: 100) { nodes { body } }
       participants { totalCount }
       reviewRequests(first: 30) {
         nodes { requestedReviewer { __typename ... on User { login avatarUrl } ... on Team { name } } }
@@ -93,6 +103,9 @@ export interface RawPull {
   commits: { totalCount: number };
   comments: { totalCount: number };
   reviewThreads: { totalCount: number };
+  /** Comments on the code, thread by thread, and every review's summary: see commentCount. */
+  threadComments?: { nodes: { comments: { totalCount: number } }[] };
+  written?: { nodes: { body: string | null }[] };
   participants: { totalCount: number };
   reviewRequests: { nodes: { requestedReviewer: Requested | null }[] };
   timelineItems: { nodes: Event[] };
@@ -216,7 +229,12 @@ export function buildPull(raw: RawPull, repo: string, baseline: Baseline, now = 
     deletions: raw.deletions,
     changedFiles: raw.changedFiles,
     commits: raw.commits.totalCount,
-    comments: raw.comments.totalCount,
+    // Counted like the list and GitHub's Conversation tab: comments, code comments, written reviews.
+    comments: commentCount({
+      comments: raw.comments,
+      reviewThreads: raw.threadComments,
+      written: raw.written,
+    }),
     reviewThreads: raw.reviewThreads.totalCount,
     participants: raw.participants.totalCount,
     stages: timed,

@@ -209,6 +209,20 @@ describe('a pull request in detail', () => {
     });
   });
 
+  it('counts comments like the list: the conversation, the code and written reviews', () => {
+    const pull = buildPull(
+      raw({
+        comments: { totalCount: 4 },
+        threadComments: { nodes: [{ comments: { totalCount: 3 } }, { comments: { totalCount: 2 } }] },
+        written: { nodes: [{ body: 'LGTM' }, { body: '' }, { body: null }] },
+      }),
+      'octo/app',
+      baseline,
+      now,
+    );
+    expect(pull.comments).toBe(10);
+  });
+
   it('has no age or waiting state once closed without merging', () => {
     const closed = buildPull(raw({ state: 'CLOSED', closedAt: at(5) }), 'octo/app', baseline, now);
     expect(closed.ageHours).toBeNull();
