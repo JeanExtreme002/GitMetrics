@@ -816,3 +816,8 @@
   color: var(--mantine-color-dimmed);
   user-select: none;
 }
+
+/* Sign out looks like the buttons around it and only turns red on hover, as a quiet warning. */
+.sign-out:hover {
+  color: var(--mantine-color-red-6);
+}
