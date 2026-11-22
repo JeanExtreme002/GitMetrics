@@ -810,3 +810,9 @@
   flex: 1;
   min-width: 0;
 }
+
+/* A shell prompt in front of the command, for looks only: it is not part of what Copy copies. */
+.update-prompt {
+  color: var(--mantine-color-dimmed);
+  user-select: none;
+}

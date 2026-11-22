@@ -53,6 +53,7 @@ import { api, post } from '../lib/api';
 import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { useRecentRepos } from '../lib/recent';
+import { snoozed, type Dismissed } from '../lib/update';
 import { sectionQuery, useAuth, useOwners, useRateLimit, useRepos } from '../lib/queries';
 import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
@@ -312,7 +313,7 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
 /**
  * A newer GitMetrics is on npm: a small card in the bottom right corner with the command that
  * updates it. Started through npx GitMetrics updates itself, so this mostly shows for a global
- * install. Closing it hides it until the next version comes out.
+ * install. Closing it hides it for a week, or until an even newer version comes out.
  */
 function UpdatePopup() {
   const { data } = useQuery({
@@ -320,12 +321,12 @@ function UpdatePopup() {
     queryFn: () => api<UpdateInfo>('/update'),
     staleTime: Infinity,
   });
-  const [dismissed, setDismissed] = useLocalStorage<string>({
+  const [dismissed, setDismissed] = useLocalStorage<Dismissed | null>({
     key: 'gitmetrics:update-dismissed',
-    defaultValue: '',
+    defaultValue: null,
     getInitialValueInEffect: false,
   });
-  const show = Boolean(data?.available && data.command && data.latest !== dismissed);
+  const show = Boolean(data?.available && data.command && !snoozed(dismissed, data.latest));
 
   return (
     <Affix position={{ bottom: 20, right: 20 }} zIndex={150}>
@@ -335,15 +336,22 @@ function UpdatePopup() {
             <Group justify="space-between" wrap="nowrap" align="center" gap="sm">
               <Group gap={12} wrap="nowrap" align="center">
                 <Logo size={36} />
-                <Text fw={700}>Your GitMetrics is out of date</Text>
+                <Text fw={700}>Your GitMetrics is out of date!</Text>
               </Group>
-              <CloseButton size="sm" aria-label="Dismiss" onClick={() => setDismissed(data?.latest ?? '')} />
+              <CloseButton
+                size="sm"
+                aria-label="Dismiss"
+                onClick={() => setDismissed({ version: data?.latest ?? '', at: Date.now() })}
+              />
             </Group>
             <Text size="sm" mt="md" lh={1.5}>
               You are missing the latest features and fixes. Update now, then start GitMetrics again:
             </Text>
             <Group gap={8} wrap="nowrap" mt={10} className="update-command">
               <Text component="code" size="xs" truncate>
+                <span className="update-prompt" aria-hidden>
+                  ${' '}
+                </span>
                 {data?.command}
               </Text>
               <CopyButton value={data?.command ?? ''}>
