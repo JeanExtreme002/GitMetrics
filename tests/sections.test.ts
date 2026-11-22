@@ -197,19 +197,11 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
     if (p === '/graphql') {
       const body = JSON.parse(String(init?.body)) as { query: string; variables?: Record<string, unknown> };
       const query = String(body.query);
-      // Your pull requests: one search per filter, the summary, a repository's baseline, one pull request.
+      // Your pull requests: one search per filter, a repository's baseline, one pull request.
       if (query.includes('search(query: $q')) {
         const q = String(body.variables?.q);
         const nodes = q.includes('review-requested:@me') ? [MY_PULL] : [];
         return json({ data: { search: { issueCount: nodes.length, nodes } } });
-      }
-      if (query.includes('reviewed: search')) {
-        return json({
-          data: {
-            reviewed: { nodes: [] },
-            merged: { nodes: [{ createdAt: isoDaysAgo(2), mergedAt: isoDaysAgo(1) }] },
-          },
-        });
       }
       if (query.includes('states: MERGED, orderBy')) {
         return json({
@@ -637,7 +629,7 @@ describe('repository pages, end to end', () => {
     expect(urls.some((u) => u.pathname === '/search/repositories')).toBe(false);
   });
 
-  it("your pull requests: what waits on you, a summary, and each repository's usual pace", async () => {
+  it("your pull requests: what waits on you, and each repository's usual pace", async () => {
     const { send } = await signedIn();
     const list = (await (await send('/api/pulls')).json()) as {
       pulls: { repo: string; number: number; roles: string[]; reviewRequestedAt: string }[];
@@ -652,9 +644,6 @@ describe('repository pages, end to end', () => {
       }),
     ]);
     expect(list.counts).toMatchObject({ all: 1, review: 1, authored: 0 });
-
-    const summary = (await (await send('/api/pulls/summary')).json()) as Record<string, unknown>;
-    expect(summary).toMatchObject({ waitingForReview: 1, timeToMergeHours: 24, mergesSampled: 1 });
 
     const baseline = (await (await send('/api/repos/octo/app/baseline')).json()) as Record<string, unknown>;
     expect(baseline).toEqual({ firstReviewHours: null, mergeHours: 24, size: 50, sample: 1 });

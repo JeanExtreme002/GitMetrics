@@ -4,7 +4,6 @@ import { useParams } from 'react-router';
 import type {
   AuthStatus,
   MyPullsResponse,
-  MyPullsSummary,
   PullDetail,
   RateLimitInfo,
   RepoBaseline,
@@ -149,13 +148,6 @@ export const useMyPulls = (state: 'open' | 'closed', owner = '') =>
     queryKey: ['my-pulls', state, owner.toLowerCase()],
     queryFn: () => api<MyPullsResponse>(myPullsPath(state, owner)),
     staleTime: 2 * 60_000,
-  });
-
-export const useMySummary = () =>
-  useQuery({
-    queryKey: ['my-pulls', 'summary'],
-    queryFn: () => api<MyPullsSummary>('/pulls/summary'),
-    staleTime: 10 * 60_000,
   });
 
 /** A repository's usual review and merge times, shared by every row from that repository. */

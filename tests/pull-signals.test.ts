@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { hasStatus, pullSignals, slower, span, STATUSES, tabCount } from '../src/web/lib/pulls';
+import { hasStatus, pullSignals, slower, span, STATUSES, listCount } from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -126,27 +126,20 @@ describe('filtering by status', () => {
 });
 
 describe('the numbers on the tabs', () => {
-  const data = {
-    state: 'open' as const,
-    // GitHub has 40 authored ones; 2 were listed. The other tabs were listed in full.
-    counts: { all: 3, authored: 40, assigned: 0, involved: 3, review: 1 },
-    pulls: [
-      pull({ roles: ['authored'], isDraft: true }),
-      pull({ roles: ['authored'] }),
-      pull({ roles: ['review'] }),
-    ],
-  };
+  const pulls = [
+    pull({ roles: ['authored'], isDraft: true }),
+    pull({ roles: ['authored'] }),
+    pull({ roles: ['review'] }),
+  ];
   const noDrafts = (p: MyPull) => !p.isDraft;
 
-  it("show GitHub's totals while no draft or status filter narrows the list", () => {
-    expect(tabCount('authored', data, null)).toEqual({ count: 40, more: false });
-    expect(tabCount('all', data, null)).toBeNull();
-  });
-
-  it('count the listed ones that pass the filters, and say when GitHub has more', () => {
-    expect(tabCount('authored', data, noDrafts)).toEqual({ count: 1, more: true });
-    expect(tabCount('review', data, noDrafts)).toEqual({ count: 1, more: false });
-    expect(tabCount('involved', data, noDrafts)).toEqual({ count: 2, more: false });
-    expect(tabCount('all', data, noDrafts)).toEqual({ count: 2, more: true });
+  it('count what each tab lists, with the draft and status filters applied', () => {
+    expect(listCount('authored', pulls, null)).toBe(2);
+    expect(listCount('authored', pulls, noDrafts)).toBe(1);
+    expect(listCount('review', pulls, noDrafts)).toBe(1);
+    expect(listCount('assigned', pulls, null)).toBe(0);
+    expect(listCount('all', pulls, noDrafts)).toBe(2);
+    // Involved is what GitHub's involves:@me found, not everything listed.
+    expect(listCount('involved', [pull({ roles: ['review'] }), pull({ roles: ['involved'] })], null)).toBe(1);
   });
 });

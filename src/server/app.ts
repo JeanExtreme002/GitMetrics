@@ -12,7 +12,7 @@ import { getIssues, getMonthlyCounts, getPulls, windowMonths } from './metrics/p
 import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
 import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
-import { ACCOUNT, getBaseline, getMyPulls, getMySummary } from './metrics/mine.js';
+import { ACCOUNT, getBaseline, getMyPulls } from './metrics/mine.js';
 import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
@@ -232,18 +232,6 @@ export function createApp(options: AppOptions = {}) {
     );
     if (!pull) return c.json({ error: 'Pull request not found.', status: 404 }, 404);
     return c.json(pull);
-  });
-
-  app.get('/api/pulls/summary', async (c) => {
-    const login = config.auth!.login;
-    const refresh = c.req.query('refresh') === '1';
-    const summary = await memory.wrap(
-      `${login}:my-pulls:summary`,
-      30 * MINUTE,
-      async () => getMySummary(github()!, login, await myPulls('open')),
-      refresh,
-    );
-    return c.json(summary);
   });
 
   // Repositories anywhere on GitHub, for opening one that is not in your own list.

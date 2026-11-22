@@ -468,28 +468,14 @@ export interface MyPull {
   reviewRequestedAt: string | null;
   /** When someone other than the author first reviewed it. */
   firstReviewAt: string | null;
-  /** Which filters it belongs to, besides "all" and "involved". */
-  roles: ('authored' | 'assigned' | 'review')[];
+  /** Which of GitHub's searches found it; "all" holds every one. */
+  roles: ('authored' | 'assigned' | 'involved' | 'review')[];
 }
 
 export interface MyPullsResponse {
   state: 'open' | 'closed';
   pulls: MyPull[];
   counts: Record<PullFilter, number>;
-}
-
-export interface MyPullsSummary {
-  /** Open pull requests waiting for your review, and since when the oldest one waits. */
-  waitingForReview: number;
-  oldestWaitSince: string | null;
-  /** Your open pull requests. */
-  openAuthored: number;
-  /** Median hours between a review request to you and your review, over recent reviews. */
-  reviewTurnaroundHours: number | null;
-  reviewsSampled: number;
-  /** Median hours from opening to merge of your recent pull requests. */
-  timeToMergeHours: number | null;
-  mergesSampled: number;
 }
 
 // A single pull request ---------------------------------------------------

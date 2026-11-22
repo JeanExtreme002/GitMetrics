@@ -4,7 +4,6 @@ import {
   IconClockHour4,
   IconEye,
   IconFilter,
-  IconGitMerge,
   IconGitPullRequest,
   IconUserCheck,
   IconUsers,
@@ -12,12 +11,12 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { MyPull, MyPullsResponse, MyPullsSummary, PullFilter } from '../../shared/types';
+import type { MyPull, MyPullsResponse, PullFilter } from '../../shared/types';
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
 import { api } from '../lib/api';
-import { hours, num, relative } from '../lib/format';
-import { hasStatus, inFilter, pullSignals, span, STATUSES, tabCount, type PullStatus } from '../lib/pulls';
-import { myPullsPath, useBaseline, useMyPulls, useMySummary, useOwners } from '../lib/queries';
+import { num, relative } from '../lib/format';
+import { hasStatus, inFilter, listCount, pullSignals, STATUSES, type PullStatus } from '../lib/pulls';
+import { myPullsPath, useBaseline, useMyPulls, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -167,38 +166,35 @@ function StatusSelect({
   );
 }
 
-function Summary() {
-  const { data } = useMySummary();
+/** GitHub's totals of open pull requests, for the chosen account. */
+function Totals({ owner }: { owner: string }) {
+  const { data } = useMyPulls('open', owner);
   if (!data) return null;
   return (
     <Counters>
       <Counter
-        icon={IconEye}
-        value={num(data.waitingForReview)}
-        label="Waiting for you"
-        hint={
-          data.oldestWaitSince
-            ? `Pull requests waiting for your review. The oldest was asked for ${relative(data.oldestWaitSince)}.`
-            : 'Pull requests waiting for your review'
-        }
-      />
-      <Counter
         icon={IconGitPullRequest}
-        value={num(data.openAuthored)}
-        label="Yours open"
-        hint="Your open pull requests"
+        value={num(data.counts.authored)}
+        label="Authored"
+        hint="Open pull requests you opened"
       />
       <Counter
         icon={IconUserCheck}
-        value={data.reviewTurnaroundHours === null ? '—' : span(data.reviewTurnaroundHours)}
-        label="You review in"
-        hint={`Median time between being asked for a review and giving it, over your last ${num(data.reviewsSampled)} requested reviews (${hours(data.reviewTurnaroundHours)})`}
+        value={num(data.counts.assigned)}
+        label="Assigned"
+        hint="Open pull requests assigned to you"
       />
       <Counter
-        icon={IconGitMerge}
-        value={data.timeToMergeHours === null ? '—' : span(data.timeToMergeHours)}
-        label="Yours merge in"
-        hint={`Median time from opening to merge of your last ${num(data.mergesSampled)} merged pull requests (${hours(data.timeToMergeHours)})`}
+        icon={IconUsers}
+        value={num(data.counts.involved)}
+        label="Involved"
+        hint="Open pull requests you opened, were assigned, mentioned in or commented on"
+      />
+      <Counter
+        icon={IconEye}
+        value={num(data.counts.review)}
+        label="Waiting for you"
+        hint="Open pull requests waiting for your review, including requests to your teams"
       />
     </Counters>
   );
@@ -239,12 +235,10 @@ export function MyPulls() {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      const [fresh, summary] = await Promise.all([
-        api<MyPullsResponse>(`${myPullsPath(state, owner)}&refresh=1`),
-        api<MyPullsSummary>('/pulls/summary?refresh=1'),
-      ]);
+      const fresh = await api<MyPullsResponse>(`${myPullsPath(state, owner)}&refresh=1`);
       client.setQueryData(['my-pulls', state, owner.toLowerCase()], fresh);
-      client.setQueryData(['my-pulls', 'summary'], summary);
+      // The totals on top always come from the open ones.
+      if (state === 'closed') await client.invalidateQueries({ queryKey: ['my-pulls', 'open'] });
     } finally {
       setRefreshing(false);
     }
@@ -256,7 +250,7 @@ export function MyPulls() {
         title="Pull requests"
         icon={<IconGitPullRequest size={26} stroke={1.6} />}
         description="What waits on you across every repository, and how each pull request compares with that repository's usual pace."
-        stats={<Summary />}
+        stats={<Totals owner={owner} />}
         statsFrom="xl"
         onRefresh={refresh}
         refreshing={refreshing}
@@ -269,12 +263,9 @@ export function MyPulls() {
             value={filter}
             onChange={(v) => setFilter(v as PullFilter)}
             data={FILTERS.map((f) => {
-              // Only open ones have counts: closed ones just list the latest.
-              const n = query.data && state === 'open' ? tabCount(f.value, query.data, narrowed) : null;
-              return {
-                value: f.value,
-                label: n ? `${f.label} ${num(n.count)}${n.more ? '+' : ''}` : f.label,
-              };
+              // How many the list shows in each tab, with the draft and status filters applied.
+              const n = query.data ? listCount(f.value, query.data.pulls, narrowed) : null;
+              return { value: f.value, label: n === null ? f.label : `${f.label} ${num(n)}` };
             })}
           />
         </Box>

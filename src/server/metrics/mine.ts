@@ -2,7 +2,6 @@ import type {
   ChecksState,
   MyPull,
   MyPullsResponse,
-  MyPullsSummary,
   PullCheck,
   PullFilter,
   RepoBaseline,
@@ -145,7 +144,7 @@ export interface RawListPull {
   commits?: { nodes: { commit: { statusCheckRollup: { contexts: { nodes: RawCheck[] } } | null } }[] };
 }
 
-type Role = Exclude<PullFilter, 'all' | 'involved'>;
+type Role = Exclude<PullFilter, 'all'>;
 type SearchResult = { search: { issueCount: number; nodes: (RawListPull | object)[] } };
 
 const same = (a: string | null | undefined, b: string) => (a ?? '').toLowerCase() === b.toLowerCase();
@@ -253,7 +252,7 @@ export async function getMyPulls(
       if (!('number' in node)) continue;
       const key = `${node.repository.nameWithOwner}#${node.number}`;
       const entry = byKey.get(key) ?? { raw: node, roles: new Set<Role>() };
-      if (filter !== 'involved') entry.roles.add(filter);
+      entry.roles.add(filter);
       byKey.set(key, entry);
     }
   });
@@ -339,72 +338,4 @@ export async function getBaseline(gh: GitHubClient, repo: string): Promise<Basel
 export function percentile(size: number, sizes: number[]): number | null {
   if (!sizes.length) return null;
   return sizes.filter((s) => s < size).length / sizes.length;
-}
-
-// Your summary ---------------------------------------------------------------
-
-const SUMMARY_QUERY = `
-query ($reviewed: String!, $merged: String!, $login: String!) {
-  reviewed: search(query: $reviewed, type: ISSUE, first: 30) { nodes { ... on PullRequest {
-    reviews(author: $login, first: 1) { nodes { submittedAt } }
-    timelineItems(first: 30, itemTypes: [REVIEW_REQUESTED_EVENT]) {
-      nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { __typename ... on User { login } } } }
-    }
-  } } }
-  merged: search(query: $merged, type: ISSUE, first: 30) { nodes { ... on PullRequest { createdAt mergedAt } } }
-}`;
-
-interface RawReviewed {
-  reviews?: { nodes: { submittedAt: string | null }[] };
-  timelineItems?: RawListPull['timelineItems'];
-}
-
-/**
- * For each review you did after being asked: hours from the latest request to you (or, when none
- * names you, to a team) before your first review. Reviews nobody asked for are left out.
- */
-export function reviewTurnarounds(reviewed: RawReviewed[], login: string): number[] {
-  return reviewed.flatMap((pull) => {
-    const reviewedAt = pull.reviews?.nodes[0]?.submittedAt;
-    if (!reviewedAt) return [];
-    const before = (pull.timelineItems?.nodes ?? []).filter((e) => e.createdAt && e.createdAt <= reviewedAt);
-    const latest = (list: typeof before) =>
-      list
-        .map((e) => e.createdAt!)
-        .sort()
-        .at(-1);
-    const asked =
-      latest(before.filter((e) => same(e.requestedReviewer?.login, login))) ??
-      latest(before.filter((e) => askedOf(e.requestedReviewer, login)));
-    return asked ? [hoursBetween(asked, reviewedAt)] : [];
-  });
-}
-
-export async function getMySummary(
-  gh: GitHubClient,
-  login: string,
-  open: MyPullsResponse,
-): Promise<MyPullsSummary> {
-  const data = await gh.graphql<{
-    reviewed: { nodes: RawReviewed[] };
-    merged: { nodes: { createdAt?: string; mergedAt?: string | null }[] };
-  }>(SUMMARY_QUERY, {
-    reviewed: 'is:pr reviewed-by:@me sort:updated-desc',
-    merged: 'is:pr author:@me is:merged sort:updated-desc',
-    login,
-  });
-  const turnarounds = reviewTurnarounds(data.reviewed.nodes, login);
-  const merges = data.merged.nodes.flatMap((p) =>
-    p.createdAt && p.mergedAt ? [hoursBetween(p.createdAt, p.mergedAt)] : [],
-  );
-  const waiting = open.pulls.filter((p) => p.reviewRequestedAt);
-  return {
-    waitingForReview: open.counts.review,
-    oldestWaitSince: waiting.map((p) => p.reviewRequestedAt!).sort()[0] ?? null,
-    openAuthored: open.counts.authored,
-    reviewTurnaroundHours: median(turnarounds),
-    reviewsSampled: turnarounds.length,
-    timeToMergeHours: median(merges),
-    mergesSampled: merges.length,
-  };
 }

@@ -5,11 +5,9 @@ import {
   buildBaseline,
   checksState,
   getMyPulls,
-  getMySummary,
   percentile,
   readChecks,
   reviewRequestedAt,
-  reviewTurnarounds,
   searchQueries,
   type RawListPull,
 } from '../src/server/metrics/mine';
@@ -88,29 +86,6 @@ describe('when your review was asked for', () => {
     expect(reviewRequestedAt(pull({ timelineItems: { nodes: events } }), 'me', true)).toBe(at(1));
     expect(reviewRequestedAt(pull(), 'me', true)).toBe(at(0));
     expect(reviewRequestedAt(pull({ timelineItems: { nodes: events } }), 'me', false)).toBeNull();
-  });
-});
-
-describe('your review turnaround', () => {
-  it('measures from the latest request before your review, and skips reviews nobody asked for', () => {
-    const hours = reviewTurnarounds(
-      [
-        {
-          reviews: { nodes: [{ submittedAt: at(10) }] },
-          timelineItems: {
-            nodes: [
-              { createdAt: at(2), requestedReviewer: { login: 'me' } },
-              { createdAt: at(6), requestedReviewer: { login: 'me' } },
-              { createdAt: at(12), requestedReviewer: { login: 'me' } },
-            ],
-          },
-        },
-        { reviews: { nodes: [{ submittedAt: at(10) }] }, timelineItems: { nodes: [] } },
-        { reviews: { nodes: [] }, timelineItems: { nodes: [] } },
-      ],
-      'me',
-    );
-    expect(hours).toEqual([4]);
   });
 });
 
@@ -193,8 +168,9 @@ describe('your pull requests', () => {
     const result = await getMyPulls(gh, 'me', 'open');
 
     expect(result.pulls.map((p) => [p.number, p.roles, p.reviewRequestedAt])).toEqual([
-      [2, ['review'], at(4)],
-      [1, ['authored'], null],
+      // "Involved" is its own search: GitHub's involves:@me found both.
+      [2, ['involved', 'review'], at(4)],
+      [1, ['authored', 'involved'], null],
     ]);
     expect(result.counts).toEqual({ all: 2, authored: 1, assigned: 0, involved: 12, review: 1 });
   });
@@ -214,42 +190,5 @@ describe('your pull requests', () => {
     expect(searchQueries('open').review).toContain('review-requested:@me');
     expect(searchQueries('closed').review).toContain('reviewed-by:@me');
     expect(Object.values(searchQueries('closed')).every((q) => q.includes('is:closed'))).toBe(true);
-  });
-
-  it('sums up what waits on you and how fast things usually move', async () => {
-    const { gh } = github(
-      {},
-      {
-        reviewed: {
-          nodes: [
-            {
-              reviews: { nodes: [{ submittedAt: at(3) }] },
-              timelineItems: { nodes: [{ createdAt: at(1), requestedReviewer: { login: 'me' } }] },
-            },
-          ],
-        },
-        merged: {
-          nodes: [{ createdAt: at(0), mergedAt: at(6) }, { createdAt: at(0), mergedAt: at(10) }, {}],
-        },
-      },
-    );
-    const open = {
-      state: 'open' as const,
-      counts: { all: 2, authored: 4, assigned: 0, involved: 2, review: 2 },
-      pulls: [
-        { reviewRequestedAt: at(8) },
-        { reviewRequestedAt: at(2) },
-        { reviewRequestedAt: null },
-      ] as never,
-    };
-    expect(await getMySummary(gh, 'me', open)).toEqual({
-      waitingForReview: 2,
-      oldestWaitSince: at(2),
-      openAuthored: 4,
-      reviewTurnaroundHours: 2,
-      reviewsSampled: 1,
-      timeToMergeHours: 8,
-      mergesSampled: 2,
-    });
   });
 });
