@@ -1,7 +1,7 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
-import type { AuthStatus, ReposResponse } from '../shared/types.js';
+import type { AuthStatus, ReposResponse, SearchResponse } from '../shared/types.js';
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getActions } from './metrics/actions.js';
@@ -11,13 +11,19 @@ import { getFiles } from './metrics/files.js';
 import { getIssues, getMonthlyCounts, getPulls, windowMonths } from './metrics/pulls.js';
 import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
-import { getOverview, getRepo, listRepos } from './metrics/repos.js';
+import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
 
 const MINUTE = 60_000;
 const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
+/**
+ * What the quick search accepts: words made of GitHub's name characters, or owner/name (an
+ * account name is letters, digits and hyphens only). Nothing
+ * else, so no search qualifiers (user:, org:...) can be slipped into the GitHub query.
+ */
+const SEARCH = /^(?:[A-Za-z0-9_.-]+(?: [A-Za-z0-9_.-]+)*|[A-Za-z0-9-]+\/[A-Za-z0-9_.-]*)$/;
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 
 export interface AppOptions {
@@ -162,6 +168,18 @@ export function createApp(options: AppOptions = {}) {
       c.req.query('refresh') === '1',
     );
     return c.json({ repos, favorites: config.favorites } satisfies ReposResponse);
+  });
+
+  // Repositories anywhere on GitHub, for opening one that is not in your own list.
+  app.get('/api/search/repos', async (c) => {
+    const text = (c.req.query('q') ?? '').trim();
+    if (text.length > 100 || !SEARCH.test(text)) {
+      return c.json({ error: 'Invalid search.', status: 400 }, 400);
+    }
+    const repos = await memory.wrap(`${config.auth!.login}:search:${text.toLowerCase()}`, 10 * MINUTE, () =>
+      searchRepos(github()!, text),
+    );
+    return c.json({ repos } satisfies SearchResponse);
   });
 
   app.get('/api/rankings/:mode', async (c) => {

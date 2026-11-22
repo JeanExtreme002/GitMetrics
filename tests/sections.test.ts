@@ -128,10 +128,12 @@ const ISSUES = [
 /** A whole repository on a fake GitHub; `calls` records every path that was requested. */
 function fakeGitHub(overrides: Record<string, () => Response> = {}) {
   const calls: string[] = [];
+  const urls: URL[] = [];
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
     const p = url.pathname;
     calls.push(p);
+    urls.push(url);
     if (overrides[p]) return overrides[p]();
 
     if (p === '/user')
@@ -149,6 +151,7 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
         { 'x-oauth-scopes': 'repo, read:user' },
       );
     if (p === '/repos/octo/app') return json(REPO);
+    if (p === '/search/repositories') return json({ total_count: 1, items: [REPO] });
 
     if (p === '/graphql') {
       const query = String(JSON.parse(String(init?.body)).query);
@@ -314,7 +317,7 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
 
     return notFound();
   }) as typeof fetch;
-  return { fetchImpl, calls };
+  return { fetchImpl, calls, urls };
 }
 
 describe('repository pages, end to end', () => {
@@ -500,6 +503,37 @@ describe('repository pages, end to end', () => {
     expect((await send('/api/repos/octo/a%20b/stars')).status).toBe(400);
     expect((await send('/api/repos/octo/app/monthly/pr?range=banana')).status).toBe(400);
     expect((await send('/api/repos/octo/app/monthly/commits')).status).toBe(404);
+  });
+
+  it('searches GitHub for repositories outside your own list', async () => {
+    const { send, urls } = await signedIn();
+    const searches = () => urls.filter((u) => u.pathname === '/search/repositories');
+    const search = async (q: string) => {
+      const res = await send(`/api/search/repos?q=${encodeURIComponent(q)}`);
+      return { status: res.status, body: (await res.json()) as { repos: { fullName: string }[] } };
+    };
+
+    const found = await search('app');
+    expect(found.status).toBe(200);
+    expect(found.body.repos.map((r) => r.fullName)).toEqual(['octo/app']);
+    expect(searches()[0]!.searchParams.get('q')).toBe('app in:name');
+
+    // The same search again, in any case, comes from the cache.
+    await search('APP');
+    expect(searches()).toHaveLength(1);
+
+    // owner/name searches that owner's repositories by name, so the exact one comes up.
+    await search('octo/ap');
+    expect(searches()[1]!.searchParams.get('q')).toBe('ap in:name user:octo');
+  });
+
+  it('never lets search qualifiers or odd characters reach GitHub', async () => {
+    const { send, urls } = await signedIn();
+    for (const bad of ['', 'a user:octo', 'org:x', 'a/b/c', 'x'.repeat(101), '../secret', 'a  b']) {
+      const res = await send(`/api/search/repos?q=${encodeURIComponent(bad)}`);
+      expect(res.status, bad).toBe(400);
+    }
+    expect(urls.some((u) => u.pathname === '/search/repositories')).toBe(false);
   });
 
   it('serves monthly counts for a longer window', async () => {

@@ -70,6 +70,23 @@ export async function listRepos(gh: GitHubClient): Promise<RepoSummary[]> {
   return repos.map(toSummary);
 }
 
+/** How many GitHub search results the quick search shows. */
+const SEARCH_RESULTS = 6;
+
+/**
+ * Finds repositories anywhere on GitHub, best match first, for the quick search. Typing
+ * owner/name searches that owner's repositories by name, so the exact repository comes up.
+ */
+export async function searchRepos(gh: GitHubClient, text: string): Promise<RepoSummary[]> {
+  const [owner, name] = text.split('/');
+  const q = name !== undefined && owner ? `${name} in:name user:${owner}` : `${text} in:name`;
+  const { items } = await gh.get<{ items: RawRepo[] }>('/search/repositories', {
+    q,
+    per_page: SEARCH_RESULTS,
+  });
+  return items.map(toSummary);
+}
+
 export const getRepo = (gh: GitHubClient, owner: string, repo: string) =>
   gh.get<RawRepo>(`/repos/${owner}/${repo}`);
 
