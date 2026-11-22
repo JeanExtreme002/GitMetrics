@@ -16,7 +16,7 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { Spotlight, spotlight, type SpotlightActionData } from '@mantine/spotlight';
 import {
   IconArrowLeft,
@@ -37,17 +37,18 @@ import {
   IconSun,
   IconTag,
   IconUsers,
+  IconWorld,
   IconCircleDot,
 } from '@tabler/icons-react';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router';
-import { post } from '../lib/api';
+import { api, post } from '../lib/api';
 import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { sectionQuery, useAuth, useOwners, useRateLimit, useRepos } from '../lib/queries';
-import type { OverviewResponse } from '../../shared/types';
+import type { OverviewResponse, SearchResponse } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
 
@@ -364,10 +365,57 @@ function UserMenu() {
   );
 }
 
+/** A typed owner/name, or a pasted GitHub link, turned into owner/name. */
+export function parseRepoQuery(text: string): string {
+  const trimmed = text.trim();
+  const link = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)/i.exec(trimmed);
+  return link ? `${link[1]}/${link[2]!.replace(/\.git$/, '')}` : trimmed;
+}
+
+/** Same rule as the server: name characters in words, or owner/name. */
+const SEARCHABLE = /^(?:[\w.-]+(?: [\w.-]+)*|[a-z\d-]+\/[\w.-]*)$/i;
+const FULL_NAME = /^[a-z\d-]+\/[\w.-]+$/i;
+
+/** Pages and your repositories matching the query: by name first, then by description or topic. */
+function matchActions(query: string, actions: SpotlightActionData[]) {
+  const q = query.trim().toLowerCase();
+  if (!q) return actions;
+  const byLabel = actions.filter((a) => a.label?.toLowerCase().includes(q));
+  const byOther = actions.filter(
+    (a) =>
+      !byLabel.includes(a) &&
+      (a.description?.toLowerCase().includes(q) ||
+        (a.keywords as string[] | undefined)?.some((k) => k.toLowerCase().includes(q))),
+  );
+  return [...byLabel, ...byOther];
+}
+
+const stars = (count: number) => (
+  <Group gap={4} wrap="nowrap">
+    <IconStar size={14} stroke={1.6} />
+    <Text size="xs">{compact(count)}</Text>
+  </Group>
+);
+
 function RepoSpotlight() {
   const { data } = useRepos();
   const navigate = useNavigate();
-  const actions: SpotlightActionData[] = [
+  const [query, setQuery] = useState('');
+  const text = parseRepoQuery(query);
+  const [debounced] = useDebouncedValue(text, 300);
+  const searchable = debounced.length >= 2 && debounced.length <= 100 && SEARCHABLE.test(debounced);
+
+  // GitHub is searched only once you type, and only below your own repositories.
+  const search = useQuery({
+    queryKey: ['search', debounced.toLowerCase()],
+    queryFn: () => api<SearchResponse>(`/search/repos?q=${encodeURIComponent(debounced)}`),
+    enabled: searchable,
+    staleTime: 10 * 60_000,
+  });
+
+  const own = data?.repos ?? [];
+  const ownNames = new Set(own.map((r) => r.fullName.toLowerCase()));
+  const pages: SpotlightActionData[] = [
     {
       id: 'home',
       label: 'Home',
@@ -389,31 +437,69 @@ function RepoSpotlight() {
       leftSection: <IconSettings size={20} stroke={1.5} />,
       onClick: () => navigate('/settings'),
     },
-    ...(data?.repos ?? []).map((r) => ({
-      id: r.fullName,
-      label: r.fullName,
-      description: r.description ?? undefined,
-      keywords: [r.name, r.language ?? '', ...r.topics],
-      leftSection: <Avatar src={r.ownerAvatarUrl} size={26} radius="md" />,
-      rightSection: (
-        <Group gap={4} wrap="nowrap">
-          <IconStar size={14} stroke={1.6} />
-          <Text size="xs">{r.stars}</Text>
-        </Group>
-      ),
-      onClick: () => navigate(repoPath(r)),
-    })),
   ];
+  const mine: SpotlightActionData[] = own.map((r) => ({
+    id: r.fullName,
+    label: r.fullName,
+    description: r.description ?? undefined,
+    keywords: [r.name, r.language ?? '', ...r.topics],
+    leftSection: <Avatar src={r.ownerAvatarUrl} size={26} radius="md" />,
+    rightSection: stars(r.stars),
+    onClick: () => navigate(repoPath(r)),
+  }));
+  const local = matchActions(text, [...pages, ...mine]).slice(0, 8);
+
+  const elsewhere: SpotlightActionData[] = [];
+  if (text) {
+    const results = searchable && debounced === text ? (search.data?.repos ?? []) : [];
+    // An exact owner/name opens directly, even before (or without) a search result for it.
+    if (FULL_NAME.test(text) && !ownNames.has(text.toLowerCase())) {
+      const [owner, name] = text.split('/') as [string, string];
+      const found = results.find((r) => r.fullName.toLowerCase() === text.toLowerCase());
+      elsewhere.push({
+        id: `open:${text}`,
+        label: found?.fullName ?? text,
+        description: found?.description ?? 'Open this repository',
+        leftSection: found ? (
+          <Avatar src={found.ownerAvatarUrl} size={26} radius="md" />
+        ) : (
+          <IconWorld size={20} stroke={1.5} />
+        ),
+        rightSection: found ? stars(found.stars) : undefined,
+        onClick: () => navigate(found ? repoPath(found) : `/r/${owner}/${name}`),
+      });
+    }
+    for (const r of results) {
+      const key = r.fullName.toLowerCase();
+      if (ownNames.has(key) || elsewhere.some((a) => a.id.toLowerCase() === `open:${key}`)) continue;
+      elsewhere.push({
+        id: `github:${r.fullName}`,
+        label: r.fullName,
+        description: r.description ?? undefined,
+        leftSection: <Avatar src={r.ownerAvatarUrl} size={26} radius="md" />,
+        rightSection: stars(r.stars),
+        onClick: () => navigate(repoPath(r)),
+      });
+    }
+  }
+
+  const actions = elsewhere.length
+    ? [...local, { group: 'On GitHub', actions: elsewhere.slice(0, 6) }]
+    : local;
+  const searching = searchable && (search.isFetching || debounced !== text);
+
   return (
     <Spotlight
       actions={actions}
-      nothingFound="No repository matches your search"
+      filter={(_query, list) => list}
+      query={query}
+      onQueryChange={setQuery}
+      nothingFound={searching ? 'Searching GitHub…' : 'No repository matches your search'}
       highlightQuery
-      limit={8}
       shortcut={['mod + K', '/']}
       searchProps={{
         leftSection: <IconSearch size={18} stroke={1.5} />,
-        placeholder: 'Jump to a repository…',
+        placeholder: 'Jump to a repository, or search GitHub…',
       }}
     />
   );

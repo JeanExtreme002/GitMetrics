@@ -65,6 +65,11 @@ export interface ReposResponse {
   favorites: string[];
 }
 
+/** Repositories anywhere on GitHub that match a quick search. */
+export interface SearchResponse {
+  repos: RepoSummary[];
+}
+
 export interface RepoDetails extends RepoSummary {
   defaultBranch: string;
   license: string | null;
