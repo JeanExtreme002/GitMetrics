@@ -117,7 +117,12 @@ export function Settings() {
               >
                 Profile
               </Button>
-              <Button color="red" variant="light" leftSection={<IconLogout size={16} />} onClick={signOut}>
+              <Button
+                variant="default"
+                className="sign-out"
+                leftSection={<IconLogout size={16} />}
+                onClick={signOut}
+              >
                 Sign out
               </Button>
             </Group>
