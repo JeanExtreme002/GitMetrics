@@ -299,13 +299,14 @@ export function reviewerActivity(pull: PullDetail): { comments: boolean; people:
 }
 
 /**
- * A pasted pull request link (github.com/owner/name/pull/123, any tab of it) or owner/name#123,
+ * A pasted pull request link (github.com/owner/name/pull/123, any tab of it, with or without the
+ * github.com), or owner/name#123,
  * as the pull request it points to.
  */
 export function parsePullQuery(text: string): { owner: string; name: string; number: number } | null {
   const trimmed = text.trim();
   const match =
-    /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d{1,9})(?:[/?#].*)?$/i.exec(
+    /^(?:(?:https?:\/\/)?(?:www\.)?github\.com\/)?([a-z\d-]+)\/([\w.-]+)\/pull\/(\d{1,9})(?:[/?#].*)?$/i.exec(
       trimmed,
     ) ?? /^([a-z\d-]+)\/([\w.-]+)#(\d{1,9})$/i.exec(trimmed);
   return match ? { owner: match[1]!, name: match[2]!, number: Number(match[3]) } : null;
