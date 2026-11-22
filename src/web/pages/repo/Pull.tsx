@@ -230,6 +230,9 @@ const LANES: { state: PullReviewMark['state']; label: string; verb: string; colo
   { state: 'DISMISSED', label: 'Dismissed', verb: 'reviewed (later dismissed)', color: 'gray.7' },
 ];
 
+/** Review requests, in the "waiting for a review" color, on the time bar and the reviewer chart. */
+const REQUESTS_COLOR = 'yellow.5';
+
 /** The comments lane's color, also used for comments in the reviewer chart. */
 const COMMENTS_COLOR = 'indigo.4';
 
@@ -302,6 +305,14 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
       color: semantic.commits,
       marks: pull.commitMarks ?? [],
     },
+    // Every time someone was asked for a review (teams left out), as in the reviewer chart.
+    {
+      key: 'requests',
+      label: 'Review requests',
+      verb: 'was asked for a review',
+      color: REQUESTS_COLOR,
+      marks: pull.requestMarks,
+    },
     ...LANES.map((lane) => ({
       key: lane.state,
       label: lane.label,
@@ -322,7 +333,7 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
     <Box mb={44}>
       <SectionHeader
         title="Activity over time"
-        caption={`Each stretch of its ${hours(total)} from opening to ${until}, and every commit, review and comment on the way. Commits go by the date written in them`}
+        caption={`Each stretch of its ${hours(total)} from opening to ${until}, and every commit, review request, review and comment on the way. Commits go by the date written in them`}
       />
       {/* One time scale for everything: the stretches on top, a lane per kind of review below. */}
       <div className="pr-time">
@@ -416,7 +427,7 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
     ...LANES.filter((l) => used(l.state)).map((l) => ({ name: l.state, label: l.label, color: l.color })),
     ...(used('comments') ? [{ name: 'comments', label: 'Comments', color: COMMENTS_COLOR }] : []),
     // When they were asked for a review, in the "waiting for a review" color.
-    ...(used('requests') ? [{ name: 'requests', label: 'Review requests', color: 'yellow.5' }] : []),
+    ...(used('requests') ? [{ name: 'requests', label: 'Review requests', color: REQUESTS_COLOR }] : []),
   ];
   const until = pull.state === 'MERGED' ? 'merge' : pull.state === 'CLOSED' ? 'closing' : 'today';
   return (
