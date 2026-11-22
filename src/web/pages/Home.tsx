@@ -305,8 +305,15 @@ export function Home() {
   if (repos.isLoading) return <PageSkeleton />;
   if (repos.error || !repos.data) return <ErrorState error={repos.error} onRetry={() => repos.refetch()} />;
 
+  // Always four cards: pinned repositories first, then your most starred ones fill the rest, so a
+  // single pin never leaves the grid (and the activity column next to it) half empty.
   const pinned = all.filter((r) => repos.data.favorites.includes(r.fullName));
-  const highlighted = (pinned.length ? pinned : sources).slice(0, 4);
+  const highlighted = [...pinned, ...sources.filter((r) => !pinned.includes(r))].slice(0, 4);
+  const title = !pinned.length
+    ? 'Your top repositories'
+    : pinned.length >= highlighted.length
+      ? 'Pinned'
+      : 'Pinned and top repositories';
 
   return (
     <>
@@ -353,7 +360,7 @@ export function Home() {
       <Grid gap="md">
         <Grid.Col span={{ base: 12, lg: 8 }}>
           <SectionTitle
-            title={pinned.length ? 'Pinned' : 'Your top repositories'}
+            title={title}
             action={
               <Button
                 component={Link}
