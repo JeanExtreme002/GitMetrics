@@ -69,7 +69,7 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
     return signals;
   }
   if (p.state === 'CLOSED') {
-    return [{ label: 'Closed', color: 'gray', hint: 'Closed without being merged.' }];
+    return [{ label: 'Closed', color: 'red', hint: 'Closed without being merged.' }];
   }
 
   if (p.reviewRequestedAt) {

@@ -115,7 +115,7 @@ describe('what a pull request needs', () => {
     expect(labels(pull({ state: 'MERGED', createdAt: hoursAgo(200), mergedAt: hoursAgo(20) }))).toEqual([
       ['Merged in 8d', 'orange'],
     ]);
-    expect(labels(pull({ state: 'CLOSED' }))).toEqual([['Closed', 'gray']]);
+    expect(labels(pull({ state: 'CLOSED' }))).toEqual([['Closed', 'red']]);
   });
 
   it('explains the usual pace in the hint when it is known', () => {
