@@ -27,11 +27,12 @@ export interface Signal {
   hint: string;
 }
 
-export type PullStatus = 'approved' | 'failing' | 'unreviewed';
+export type PullStatus = 'approved' | 'failing' | 'conflicts' | 'unreviewed';
 
 export const STATUSES: { value: PullStatus; label: string }[] = [
   { value: 'approved', label: 'Approved' },
   { value: 'failing', label: 'Checks failing' },
+  { value: 'conflicts', label: 'Has conflicts' },
   { value: 'unreviewed', label: 'No review yet' },
 ];
 
@@ -43,6 +44,8 @@ export function hasStatus(p: MyPull, status: PullStatus): boolean {
       return p.reviewDecision === 'APPROVED';
     case 'failing':
       return p.checks === 'failure';
+    case 'conflicts':
+      return p.conflicts;
     case 'unreviewed':
       return !p.isDraft && !p.firstReviewAt;
   }
@@ -82,6 +85,14 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
       label: `No review yet · ${span(waited)}`,
       color: slower(waited, baseline?.firstReviewHours) ? 'orange' : 'gray',
       hint: `Opened ${span(waited)} ago and not reviewed yet.${usually('a first review', baseline?.firstReviewHours)}`,
+    });
+  }
+  // A blocker GitHub only shows at the bottom of the pull request: it can't merge as it is.
+  if (p.conflicts) {
+    signals.push({
+      label: 'Conflicts',
+      color: 'red',
+      hint: "Conflicts with its base branch, so it can't be merged until they are resolved.",
     });
   }
   if (p.checks === 'failure') {

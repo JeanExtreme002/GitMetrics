@@ -463,6 +463,8 @@ export interface MyPull {
   additions: number;
   deletions: number;
   reviewDecision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
+  /** Open and in conflict with its base branch, so it can't be merged as it is. */
+  conflicts: boolean;
   /** Comments in the conversation and on the code, plus reviews with a written summary. */
   comments: number;
   checks: ChecksState | null;

@@ -77,6 +77,7 @@ const CHECKS_FIELDS = `
 const PULL_FIELDS = `
 fragment pull on PullRequest {
   number title url state isDraft createdAt updatedAt mergedAt closedAt additions deletions reviewDecision
+  mergeable
   author { login avatarUrl }
   repository { nameWithOwner name owner { login avatarUrl } }
   comments { totalCount }
@@ -142,6 +143,8 @@ export interface RawListPull {
   additions: number;
   deletions: number;
   reviewDecision?: MyPull['reviewDecision'];
+  /** CONFLICTING when it can't merge into its base branch; UNKNOWN while GitHub works it out. */
+  mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
   author: (Login & { avatarUrl: string }) | null;
   repository: { nameWithOwner: string; name: string; owner: { login: string; avatarUrl: string } };
   comments?: { totalCount: number };
@@ -229,6 +232,7 @@ export function toMyPull(raw: RawListPull, login: string, roles: Role[]): MyPull
     additions: raw.additions,
     deletions: raw.deletions,
     reviewDecision: raw.reviewDecision ?? null,
+    conflicts: raw.state === 'OPEN' && raw.mergeable === 'CONFLICTING',
     comments: commentCount(raw),
     checks: checksState(readChecks(contexts)),
     reviewRequestedAt:

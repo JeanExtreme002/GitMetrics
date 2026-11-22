@@ -226,6 +226,24 @@ describe('your pull requests', () => {
     expect(asked.map((q) => q.split(' ').at(-1))).toEqual(['involves:@me', 'review-requested:@me']);
   });
 
+  it('marks open pull requests in conflict with their base branch', async () => {
+    const { gh } = github({
+      involved: [
+        pull({ number: 1, mergeable: 'CONFLICTING' }),
+        pull({ number: 2, mergeable: 'MERGEABLE' }),
+        pull({ number: 3, mergeable: 'UNKNOWN' }),
+        pull({ number: 4, mergeable: 'CONFLICTING', state: 'MERGED' }),
+      ],
+    });
+    const result = await getMyPulls(gh, 'me', 'open');
+    expect(Object.fromEntries(result.pulls.map((p) => [p.number, p.conflicts]))).toEqual({
+      1: true,
+      2: false,
+      3: false,
+      4: false,
+    });
+  });
+
   it('only searches with GitHub qualifiers for you, and reads reviewed ones once closed', () => {
     expect(searchQueries('open').review).toContain('review-requested:@me');
     expect(searchQueries('closed').review).toContain('reviewed-by:@me');

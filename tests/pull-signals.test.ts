@@ -33,6 +33,7 @@ const pull = (overrides: Partial<MyPull> = {}): MyPull => ({
   additions: 1,
   deletions: 1,
   reviewDecision: null,
+  conflicts: false,
   comments: 0,
   checks: null,
   reviewRequestedAt: null,
@@ -92,6 +93,15 @@ describe('what a pull request needs', () => {
     ]);
   });
 
+  it('calls out conflicts with the base branch, even on an approved one', () => {
+    expect(labels(pull({ conflicts: true, reviewDecision: 'APPROVED', firstReviewAt: hoursAgo(5) }))).toEqual(
+      [
+        ['Conflicts', 'red'],
+        ['Approved', 'green'],
+      ],
+    );
+  });
+
   it('says how long a merged one took next to the usual pace, and marks closed ones', () => {
     expect(labels(pull({ state: 'MERGED', createdAt: hoursAgo(30), mergedAt: hoursAgo(20) }))).toEqual([
       ['Merged in 10h', 'violet'],
@@ -124,6 +134,7 @@ describe('filtering by status', () => {
     expect(states(pull({ isDraft: true }))).toEqual([]);
     expect(states(pull({ reviewDecision: 'APPROVED', firstReviewAt: hoursAgo(5) }))).toEqual(['approved']);
     expect(states(pull({ checks: 'failure', firstReviewAt: hoursAgo(5) }))).toEqual(['failing']);
+    expect(states(pull({ conflicts: true, firstReviewAt: hoursAgo(5) }))).toEqual(['conflicts']);
     expect(states(pull())).toEqual(['unreviewed']);
     expect(states(pull({ firstReviewAt: hoursAgo(500), updatedAt: hoursAgo(24 * 15) }))).toEqual([]);
   });
