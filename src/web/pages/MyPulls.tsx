@@ -125,7 +125,6 @@ function AccountSelect({
       w={190}
       placeholder="All accounts"
       aria-label="Account"
-      searchable
       clearable
       value={value || null}
       onChange={(v) => onChange(v ?? '')}
@@ -137,7 +136,6 @@ function AccountSelect({
           <Text size="xs">{option.label}</Text>
         </Group>
       )}
-      nothingFoundMessage="No account"
       comboboxProps={{ withinPortal: true }}
     />
   );
