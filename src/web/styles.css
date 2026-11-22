@@ -894,20 +894,9 @@
   border: 2px dashed var(--mantine-color-yellow-6);
 }
 
-.pr-person,
 .pr-check {
   padding: 10px 4px;
   border-bottom: 1px solid var(--mantine-color-default-border);
-}
-
-.pr-person {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-}
-
-.pr-check {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;

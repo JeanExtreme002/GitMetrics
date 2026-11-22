@@ -22,6 +22,7 @@ import {
   IconCircleDashed,
   IconCircleX,
   IconClockHour4,
+  IconEye,
   IconFileDiff,
   IconFiles,
   IconGitCommit,
@@ -39,14 +40,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
-import type {
-  PullCheck,
-  PullDetail,
-  PullPhase,
-  PullReviewMark,
-  PullReviewer,
-  PullStage,
-} from '../../../shared/types';
+import type { PullCheck, PullDetail, PullPhase, PullReviewMark, PullStage } from '../../../shared/types';
 import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } from '../../components/ui';
 import { api } from '../../lib/api';
 import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../lib/format';
@@ -68,14 +62,6 @@ const STAGE: Record<PullStage['kind'], string> = {
   approved: 'Final approval',
   merged: 'Merged',
   closed: 'Closed',
-};
-
-const REVIEW: Record<PullReviewer['state'], { label: string; color: string }> = {
-  APPROVED: { label: 'Approved', color: 'green' },
-  CHANGES_REQUESTED: { label: 'Changes requested', color: 'orange' },
-  COMMENTED: { label: 'Commented', color: 'gray' },
-  DISMISSED: { label: 'Dismissed', color: 'gray' },
-  PENDING: { label: 'Pending', color: 'yellow' },
 };
 
 const CHECK_ICON: Record<PullCheck['conclusion'], ReactNode> = {
@@ -418,6 +404,8 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
   if (!activity || activity.people.length === 0) return null;
   const person = activity.people.find((p) => p.login === picked) ?? activity.people[0]!;
   const used = (key: keyof Omit<ReviewerPoint, 'day'>) => person.points.some((p) => p[key] > 0);
+  const sum = (...keys: (keyof Omit<ReviewerPoint, 'day'>)[]) =>
+    person.points.reduce((total, p) => total + keys.reduce((n, k) => n + p[k], 0), 0);
   const series = [
     ...LANES.filter((l) => used(l.state)).map((l) => ({ name: l.state, label: l.label, color: l.color })),
     ...(used('comments') ? [{ name: 'comments', label: 'Comments', color: COMMENTS_COLOR }] : []),
@@ -456,6 +444,22 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
           />
         }
       />
+      {/* What the picked reviewer did over the whole pull request, before the chart spreads it out. */}
+      <Box mb="lg">
+        <Counters>
+          <Counter icon={IconCircleCheck} value={num(sum('APPROVED'))} label="Approvals" />
+          <Counter icon={IconPencil} value={num(sum('CHANGES_REQUESTED'))} label="Changes requested" />
+          <Counter
+            icon={IconEye}
+            value={num(sum('APPROVED', 'CHANGES_REQUESTED', 'COMMENTED', 'DISMISSED'))}
+            label="Reviews"
+            hint="Every review: approvals, requests for changes, with comments, and dismissed"
+          />
+          {activity.comments && (
+            <Counter icon={IconMessageCircle} value={num(sum('comments'))} label="Comments" />
+          )}
+        </Counters>
+      </Box>
       <BarChart
         h={220}
         data={person.points}
@@ -515,50 +519,6 @@ function Timeline({ pull }: { pull: PullDetail }) {
           </div>
         )}
       </div>
-    </Box>
-  );
-}
-
-/** A pending request reads differently once someone reviewed already, or the pull request ended. */
-function reviewState(r: PullReviewer, pull: PullDetail) {
-  if (r.state !== 'PENDING') return REVIEW[r.state];
-  if (pull.state !== 'OPEN') return { label: 'Not reviewed', color: 'gray' };
-  return r.reviews > 0 ? { label: 'Requested again', color: 'yellow' } : REVIEW.PENDING;
-}
-
-function Reviewers({ pull }: { pull: PullDetail }) {
-  return (
-    <Box>
-      <SectionHeader title="Reviewers" caption="Who reviewed, and how fast each one answered" />
-      {pull.reviewers.length ? (
-        <div className="rank-list">
-          {pull.reviewers.map((r) => (
-            <div key={r.login} className="pr-person">
-              <Avatar src={r.avatarUrl} size={24} radius="xl">
-                {/* Teams have no picture. */}
-                <IconUsers size={14} />
-              </Avatar>
-              <Box miw={0}>
-                <Text size="sm" fw={500} truncate>
-                  {r.login}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {r.responseHours !== null
-                    ? `Answered in ${span(r.responseHours)}${r.reviews > 1 ? ` · ${r.reviews} reviews` : r.reviews === 0 ? ' · on the code' : ''}`
-                    : r.requestedAt
-                      ? `Asked ${relative(r.requestedAt)}`
-                      : 'Asked'}
-                </Text>
-              </Box>
-              <Badge variant="light" color={reviewState(r, pull).color} tt="none" radius="sm">
-                {reviewState(r, pull).label}
-              </Badge>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <NoData>No reviews yet.</NoData>
-      )}
     </Box>
   );
 }
@@ -859,13 +819,12 @@ export function Pull() {
               <Grid.Col span={{ base: 12, lg: 6 }}>
                 <Timeline pull={data} />
                 <Box mt={44}>
-                  <Reviewers pull={data} />
+                  <Checks pull={data} />
                 </Box>
               </Grid.Col>
               <Grid.Col span={{ base: 12, lg: 6 }}>
                 <Changes pull={data} />
                 <Recurring owner={owner} repo={repo} number={number} />
-                <Checks pull={data} />
               </Grid.Col>
             </Grid>
 
