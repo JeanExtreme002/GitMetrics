@@ -35,7 +35,7 @@ import {
   type Icon,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import type {
   PullCheck,
@@ -224,12 +224,42 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
 }
 
 /** The whole life of the pull request as one bar, split into the stretches it went through. */
-const MARK: Record<PullReviewMark['state'], { label: string; color: string }> = {
-  APPROVED: { label: 'approved', color: 'green.6' },
-  CHANGES_REQUESTED: { label: 'asked for changes', color: 'orange.6' },
-  COMMENTED: { label: 'commented', color: 'gray.5' },
-  DISMISSED: { label: 'reviewed, later dismissed', color: 'gray.7' },
-};
+/** Review lanes under the time bar, top to bottom, each with its color. */
+const LANES: { state: PullReviewMark['state']; label: string; verb: string; color: string }[] = [
+  { state: 'APPROVED', label: 'Approvals', verb: 'approved', color: 'green.6' },
+  { state: 'CHANGES_REQUESTED', label: 'Changes requested', verb: 'asked for changes', color: 'orange.6' },
+  { state: 'COMMENTED', label: 'Comments', verb: 'commented', color: 'gray.5' },
+  { state: 'DISMISSED', label: 'Dismissed', verb: 'reviewed (later dismissed)', color: 'gray.7' },
+];
+
+/** Reviews this close together on the bar (in % of its width) share one dot, with their count. */
+const CLUSTER = 1.5;
+
+/** Reviews of one kind grouped into dots, each at the average place of the reviews in it. */
+function clusters(marks: PullReviewMark[], total: number) {
+  const groups: PullReviewMark[][] = [];
+  for (const m of [...marks].sort((a, b) => a.hours - b.hours)) {
+    const last = groups.at(-1);
+    const pct = (m.hours / total) * 100;
+    if (last && pct - (last[0]!.hours / total) * 100 <= CLUSTER) last.push(m);
+    else groups.push([m]);
+  }
+  return groups.map((g) => ({
+    marks: g,
+    left: Math.min(100, (g.reduce((sum, m) => sum + m.hours, 0) / g.length / total) * 100),
+  }));
+}
+
+const clock = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+
+/** Dates (or times, for a pull request shorter than two days) along the bar. */
+function axisTicks(createdAt: string, total: number) {
+  const start = new Date(createdAt).getTime();
+  return [0, 0.25, 0.5, 0.75, 1].map((f) => {
+    const at = new Date(start + f * total * 3_600_000);
+    return { left: f * 100, label: total < 48 ? clock.format(at) : dayLabel(at.toISOString()) };
+  });
+}
 
 function TimeSpent({ pull }: { pull: PullDetail }) {
   const total = pull.phases.reduce((sum, p) => sum + p.hours, 0);
@@ -254,39 +284,73 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
     hours: pull.phases.filter((p) => p.kind === kind).reduce((sum, p) => sum + p.hours, 0),
     ongoing: pull.phases.at(-1)!.ongoing && pull.phases.at(-1)!.kind === kind,
   }));
+  const lanes = LANES.map((lane) => ({
+    ...lane,
+    marks: pull.reviewMarks.filter((m) => m.state === lane.state),
+  })).filter((lane) => lane.marks.length > 0);
   return (
     <Box mb={44}>
       <SectionHeader
         title="Where the time went"
         caption={`${hours(total)} from opening to ${until}, in order, with every review on the way`}
       />
-      <div className="pr-time-bar">
-        {pull.phases.map((p, i) => (
-          <Tooltip key={i} label={`${label(p.kind)}: ${hours(p.hours)}`}>
-            <div
-              className="pr-time-segment"
-              style={{ flexGrow: p.hours, background: cssColor(PHASE[p.kind].color) }}
-            />
-          </Tooltip>
-        ))}
-      </div>
-      {/* Each review where it happened, so the back and forth shows. */}
-      {pull.reviewMarks.length > 0 && (
-        <div className="pr-review-marks" aria-label="Reviews over time">
-          {pull.reviewMarks.map((m, i) => (
-            <Tooltip key={i} label={`${m.login} ${MARK[m.state].label} · ${dateTime(m.at)}`}>
-              <span
-                className="pr-review-mark"
-                style={{
-                  left: `${Math.min(100, (m.hours / total) * 100)}%`,
-                  background: cssColor(MARK[m.state].color),
-                }}
+      {/* One time scale for everything: the stretches on top, a lane per kind of review below. */}
+      <div className="pr-time">
+        <Text size="xs" c="dimmed">
+          Stretches
+        </Text>
+        <div className="pr-time-bar">
+          {pull.phases.map((p, i) => (
+            <Tooltip key={i} label={`${label(p.kind)}: ${hours(p.hours)}`}>
+              <div
+                className="pr-time-segment"
+                style={{ flexGrow: p.hours, background: cssColor(PHASE[p.kind].color) }}
               />
             </Tooltip>
           ))}
         </div>
-      )}
-      <Group gap="xl" mt="md" wrap="wrap">
+        {lanes.map((lane) => (
+          <Fragment key={lane.state}>
+            <Text size="xs" c="dimmed" lh={1.3}>
+              {lane.label}{' '}
+              <Text component="span" inherit fw={600} c="var(--mantine-color-text)" className="tabular">
+                {num(lane.marks.length)}
+              </Text>
+            </Text>
+            <div className="pr-lane">
+              {clusters(lane.marks, total).map((c, i) => (
+                <Tooltip
+                  key={i}
+                  multiline
+                  w={260}
+                  label={c.marks
+                    .slice(0, 6)
+                    .map((m) => `${m.login} ${lane.verb} · ${dateTime(m.at)}`)
+                    .concat(c.marks.length > 6 ? [`and ${c.marks.length - 6} more`] : [])
+                    .join('\n')}
+                  style={{ whiteSpace: 'pre-line' }}
+                >
+                  <span
+                    className={c.marks.length > 1 ? 'pr-dot pr-dot-many' : 'pr-dot'}
+                    style={{ left: `${c.left}%`, background: cssColor(lane.color) }}
+                  >
+                    {c.marks.length > 1 ? c.marks.length : null}
+                  </span>
+                </Tooltip>
+              ))}
+            </div>
+          </Fragment>
+        ))}
+        <span />
+        <div className="pr-axis">
+          {axisTicks(pull.createdAt, total).map((t) => (
+            <Text key={t.left} size="xs" c="dimmed" className="pr-axis-tick" style={{ left: `${t.left}%` }}>
+              {t.label}
+            </Text>
+          ))}
+        </div>
+      </div>
+      <Group gap="xl" mt="lg" wrap="wrap">
         {kinds.map((k) => (
           <Group key={k.kind} gap={8} wrap="nowrap" align="flex-start">
             <span className="pr-time-dot" style={{ background: cssColor(PHASE[k.kind].color) }} />
@@ -302,27 +366,6 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
           </Group>
         ))}
       </Group>
-      {pull.reviewMarks.length > 0 && (
-        <Group gap="lg" mt="sm" wrap="wrap">
-          {(Object.keys(MARK) as PullReviewMark['state'][])
-            .filter((state) => pull.reviewMarks.some((m) => m.state === state))
-            .map((state) => (
-              <Group key={state} gap={6} wrap="nowrap">
-                <span className="pr-review-key" style={{ background: cssColor(MARK[state].color) }} />
-                <Text size="xs" c="dimmed">
-                  {num(pull.reviewMarks.filter((m) => m.state === state).length)}{' '}
-                  {state === 'APPROVED'
-                    ? 'approvals'
-                    : state === 'CHANGES_REQUESTED'
-                      ? 'requests for changes'
-                      : state === 'COMMENTED'
-                        ? 'comments as reviews'
-                        : 'dismissed reviews'}
-                </Text>
-              </Group>
-            ))}
-        </Group>
-      )}
     </Box>
   );
 }
