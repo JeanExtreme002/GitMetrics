@@ -875,7 +875,7 @@ export function Pull() {
                     <Tooltip label={copied ? 'Copied' : 'Copy branch name'} withArrow>
                       <ActionIcon
                         variant="subtle"
-                        color={copied ? 'teal' : 'gray'}
+                        color="gray"
                         size="sm"
                         onClick={copy}
                         aria-label="Copy branch name"
