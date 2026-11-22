@@ -50,6 +50,14 @@ gitmetrics
 
 Each repository also gets **Overview**, **Traffic**, **Issues**, **Contributors**, **Hotspots**, **Releases** and **Deployments**, plus a home page across everything you own and <kbd>Ctrl</kbd> + <kbd>K</kbd> to jump anywhere. Light and dark themes included.
 
+## Every pull request, and what it needs
+
+<p align="center">
+  <img src="assets/pull-request.png" alt="A pull request in GitMetrics: its activity over time and one reviewer's activity" width="880" />
+</p>
+
+One list of every pull request that involves you, across all your repositories, with what each one waits on. Open one to see where its time went, every commit, review request, review and comment on the way, and how fast each reviewer answered.
+
 ## Follow how your projects grow
 
 See where every repository is heading: stars gained, release cadence, how fast pull requests land and how healthy your CI is. Pin the projects you care about, and the home page ranks all of them by stars, activity or traffic.
@@ -60,13 +68,19 @@ GitHub keeps only the last 14 days of traffic. Each time you open GitMetrics (an
 
 ## Signing in
 
-**With GitHub CLI:**<br>
-If you use the [GitHub CLI](https://cli.github.com), one click reuses your session.
+GitMetrics uses your own GitHub access, so it sees exactly what you can see.
 
-**With a personal access token:**<br>
-Paste a [token](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=GitMetrics) with the `repo`, `read:user` and `read:org` scopes.<br><br>
+<p align="center">
+  <img src="assets/sign-in.png" alt="The GitMetrics sign-in screen: Continue with GitHub CLI, or use a personal access token" width="560" />
+</p>
 
-Have your own GitHub OAuth App? Set its client ID in the `GITMETRICS_CLIENT_ID` environment variable to also get a **Sign in with GitHub** button that confirms a short code in your browser.
+- **GitHub CLI:** if you use the [GitHub CLI](https://cli.github.com), one click reuses its session.
+- **Personal access token:** [create one](https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=GitMetrics) with the `repo`, `read:user` and `read:org` scopes, then paste it.
+
+Your token is kept in `~/.gitmetrics`, readable only by you, and signing out deletes it.
+
+> [!TIP]
+> Have your own GitHub OAuth App? Set its client ID in the `GITMETRICS_CLIENT_ID` environment variable to also get a **Sign in with GitHub** button that confirms a short code in your browser.
 
 ## Privacy
 

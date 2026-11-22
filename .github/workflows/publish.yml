@@ -67,3 +67,19 @@ jobs:
           else
             npm publish --provenance --access public
           fi
+
+  # The landing page names the latest version: once npm has it, rebuild the page from main (the only
+  # branch allowed to deploy to GitHub Pages), so "See what's new" points to this release.
+  site:
+    name: Update the landing page
+    needs: publish
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Run the landing page workflow on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "${{ github.repository }}" --ref main

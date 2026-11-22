@@ -5,14 +5,23 @@ import { defineConfig, type Plugin } from 'vite';
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-/** Replaces <!-- include:name --> with site/partials/name.html, so every page shares one header and footer. */
+/** The version being released, so the page always names the one npm serves. */
+const VERSION = (JSON.parse(readFileSync(here('../package.json'), 'utf8')) as { version: string }).version;
+
+/**
+ * Replaces <!-- include:name --> with site/partials/name.html, so every page shares one header and
+ * footer, then %VERSION% and %YEAR% with the package's version and the current year.
+ */
 function partials(): Plugin {
   return {
     name: 'site-partials',
     transformIndexHtml(html) {
-      return html.replace(/<!-- include:([\w-]+) -->/g, (_match, name: string) =>
-        readFileSync(here(`partials/${name}.html`), 'utf8'),
-      );
+      return html
+        .replace(/<!-- include:([\w-]+) -->/g, (_match, name: string) =>
+          readFileSync(here(`partials/${name}.html`), 'utf8'),
+        )
+        .replaceAll('%VERSION%', VERSION)
+        .replaceAll('%YEAR%', String(new Date().getFullYear()));
     },
   };
 }
@@ -21,6 +30,8 @@ function partials(): Plugin {
 const SCREENSHOTS: Record<string, string> = {
   overview: '../assets/overview.png',
   'pages-grid': '../assets/pages-grid.png',
+  'pull-request': '../assets/pull-request.png',
+  'sign-in': '../assets/sign-in.png',
 };
 export const SCREENSHOT_WIDTHS = [640, 1040, 1600, 2080];
 

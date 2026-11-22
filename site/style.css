@@ -188,17 +188,9 @@ img {
   text-align: center;
 }
 
-.eyebrow {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 h1 {
   max-width: 760px;
-  margin: 14px auto 0;
+  margin: 22px auto 0;
   font-size: clamp(32px, 4.6vw, 52px);
   font-weight: 750;
   line-height: 1.08;
@@ -300,8 +292,21 @@ h1 {
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
-  max-width: 100%;
-  margin-top: 30px;
+  width: min(460px, 100%);
+  margin-top: 32px;
+}
+
+.install .actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.install .button {
+  justify-content: center;
+  height: 46px;
+  padding-block: 0;
 }
 
 .install .command {
@@ -311,7 +316,7 @@ h1 {
 }
 
 .hint {
-  margin-top: 10px;
+  margin-top: 14px;
   color: var(--faint);
   font-size: 13px;
 }
@@ -409,45 +414,31 @@ section h2 {
   padding: 88px 0 24px;
 }
 
-.grid {
+.highlights {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-top: 40px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  margin-top: 44px;
 }
 
-.card {
-  padding: 20px 22px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
-  transition: border-color 150ms ease;
+.highlights > div {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
 }
 
-.card:hover {
-  border-color: rgba(229, 56, 59, 0.4);
-}
-
-.card-icon {
+.highlight-icon {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 14px;
-  border: 1px solid rgba(229, 56, 59, 0.28);
-  border-radius: var(--radius);
-  background: rgba(229, 56, 59, 0.1);
   color: #ff6a5c;
 }
 
-.card h3 {
+.highlights h3 {
+  margin-top: 12px;
   font-size: 15px;
   font-weight: 650;
 }
 
-.card p {
-  margin-top: 6px;
+.highlights p {
+  margin-top: 4px;
   color: var(--muted);
   font-size: 14px;
 }
@@ -479,7 +470,15 @@ section h2 {
   align-items: center;
 }
 
+.cta-block {
+  display: grid;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .cta-inner .command {
+  width: 100%;
+  min-width: 0;
   margin-top: 22px;
 }
 
@@ -494,6 +493,341 @@ section h2 {
   font-weight: 600;
 }
 
+/* The latest release, above the headline: a quiet link to what changed. */
+.release {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.release:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.release-version {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.release-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--border-strong);
+}
+
+.release-arrow {
+  margin-left: -4px;
+  transition: transform 150ms ease;
+}
+
+.release:hover .release-arrow {
+  transform: translateX(2px);
+}
+
+/* Pull requests */
+.pulls {
+  padding: 72px 0 0;
+}
+
+.pulls img {
+  width: 100%;
+  margin-top: 36px;
+}
+
+.points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.points h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.points p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Privacy: three plain promises, and the app's own startup output as proof. */
+.privacy {
+  padding: 88px 0;
+  border-top: 1px solid var(--border);
+}
+
+.privacy-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.privacy h2 {
+  text-align: left;
+}
+
+.privacy-inner > div > p {
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.promises {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.promises li {
+  position: relative;
+  padding-left: 26px;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.promises li::before {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  background: #3fb950;
+  content: '';
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.promises code {
+  color: var(--text);
+  font-size: 0.86em;
+}
+
+.text-link {
+  display: inline-block;
+  margin-top: 18px;
+  color: #ff6a5c;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 220ms ease;
+}
+
+/* On hover the text warms up a little and the arrow slides forward. */
+.text-link:hover {
+  color: #ff8a7e;
+}
+
+.text-link-arrow {
+  display: inline-block;
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.text-link:hover .text-link-arrow {
+  transform: translateX(3px);
+}
+
+/* A terminal window with what GitMetrics prints when it starts. */
+.terminal {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #07090d;
+  box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.8);
+}
+
+.terminal-bar {
+  position: relative;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: #11161d;
+}
+
+.terminal-bar span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.terminal-bar span:nth-child(2) {
+  background: #febc2e;
+}
+
+.terminal-bar span:nth-child(3) {
+  background: #28c840;
+}
+
+.terminal-bar p {
+  position: absolute;
+  inset: 0;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 34px;
+  text-align: center;
+}
+
+.terminal pre {
+  margin: 0;
+  padding: 18px 20px 20px;
+  overflow-x: auto;
+  color: #c9d1d9;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.terminal code {
+  font-size: inherit;
+}
+
+.t-prompt {
+  color: var(--faint);
+}
+
+.t-link {
+  color: #58a6ff;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+/* Questions: the intro on the left, the questions on the right. */
+.faq {
+  padding: 88px 0;
+  border-top: 1px solid var(--border);
+}
+
+.faq-inner {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 56px;
+  align-items: start;
+}
+
+.faq-intro {
+  position: sticky;
+  top: 96px;
+}
+
+.faq-intro h2 {
+  text-align: left;
+}
+
+.faq-intro p {
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.faq-list {
+  border-top: 1px solid var(--border);
+}
+
+.faq details {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 2px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  transition: color 150ms ease;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary:hover {
+  color: #fff;
+}
+
+/* A chevron that turns as the answer opens. */
+.faq summary::after {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: var(--faint);
+  content: '';
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    background 150ms ease;
+}
+
+.faq summary:hover::after {
+  background: var(--muted);
+}
+
+.faq details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.faq details p {
+  max-width: 620px;
+  padding: 0 2px 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.faq code {
+  color: var(--text);
+  font-size: 0.86em;
+}
+
+/* Where the browser can animate it, the answer opens smoothly. */
+@supports (interpolate-size: allow-keywords) {
+  .faq {
+    interpolate-size: allow-keywords;
+  }
+
+  .faq details::details-content {
+    height: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      height 260ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      opacity 200ms ease,
+      content-visibility 260ms allow-discrete;
+  }
+
+  .faq details[open]::details-content {
+    height: auto;
+    opacity: 1;
+  }
+}
+
 /* Footer */
 .footer {
   border-top: 1px solid var(--border);
@@ -504,19 +838,61 @@ section h2 {
 .footer-inner {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 22px 0;
+  gap: 32px;
+  padding: 44px 0 48px;
+}
+
+.footer-brand {
+  max-width: 420px;
+}
+
+.footer-brand p a {
+  white-space: nowrap;
+}
+
+.footer-brand .brand {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.footer-brand p {
+  margin-top: 10px;
+}
+
+.footer-note {
+  color: var(--faint);
+  font-size: 12px;
 }
 
 .footer a {
   color: var(--muted);
 }
 
-.footer-links {
+.footer-columns {
   display: flex;
-  gap: 18px;
+  gap: 56px;
+}
+
+.footer-columns div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-columns h4 {
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.footer-columns a {
+  text-decoration: none;
+}
+
+.footer-columns a:hover {
+  color: var(--text);
 }
 
 :focus-visible {
@@ -525,14 +901,41 @@ section h2 {
 }
 
 @media (max-width: 900px) {
-  .grid {
+  .highlights {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .privacy-inner,
+  .faq-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .faq-intro {
+    position: static;
   }
 }
 
 @media (max-width: 640px) {
   .hero {
     padding-top: 52px;
+  }
+
+  .points {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  /* A narrow terminal wraps its lines, as a real one does. */
+  .terminal pre {
+    padding: 16px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .footer-columns {
+    gap: 36px;
   }
 
   .menu-toggle {
@@ -572,8 +975,9 @@ section h2 {
     margin-left: auto;
   }
 
-  .grid {
+  .highlights {
     grid-template-columns: 1fr;
+    gap: 22px;
   }
 
   .command {
@@ -603,75 +1007,109 @@ section h2 {
 
   .button,
   .copy,
-  .card {
+  .release,
+  .release-arrow,
+  .text-link,
+  .text-link-arrow,
+  .tab-list button,
+  .faq summary,
+  .faq summary::after,
+  .faq details::details-content {
     transition: none;
   }
 }
 
 /* Get started page */
 .doc {
-  padding: 64px 0 40px;
+  padding: 72px 0 56px;
 }
 
 .doc-inner {
   max-width: 760px;
 }
 
-.doc-header {
-  text-align: left;
+.doc-kicker {
+  color: #ff6a5c;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .doc-header h1 {
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   font-size: clamp(30px, 4vw, 42px);
 }
 
 .doc-header .lead {
-  max-width: none;
+  max-width: 640px;
   margin: 16px 0 0;
 }
 
-.step {
-  display: grid;
-  grid-template-columns: 34px 1fr;
-  gap: 18px;
-  margin-top: 48px;
+/* Steps joined by a line, like a timeline: a numbered dot, then the step. */
+.steps {
+  margin-top: 56px;
+  padding: 0;
+  counter-reset: step;
+  list-style: none;
 }
 
-.step-number {
-  display: inline-flex;
+.step {
+  position: relative;
+  padding: 0 0 48px 52px;
+  counter-increment: step;
+}
+
+.step::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(229, 56, 59, 0.28);
-  border-radius: var(--radius);
-  background: rgba(229, 56, 59, 0.1);
-  color: #ff6a5c;
-  font-weight: 700;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  content: counter(step);
+}
+
+.step::after {
+  position: absolute;
+  top: 38px;
+  bottom: 8px;
+  left: 15px;
+  width: 1px;
+  background: var(--border);
+  content: '';
+}
+
+.step:last-child {
+  padding-bottom: 0;
+}
+
+.step:last-child::after {
+  display: none;
 }
 
 .doc h2 {
-  font-size: 20px;
+  font-size: 19px;
+  line-height: 30px;
   text-align: left;
 }
 
-.step-body p,
-.reference p {
-  margin-top: 10px;
+.step p,
+.doc-more p {
+  margin-top: 8px;
   color: var(--muted);
-}
-
-.step-body strong,
-.doc-cta strong {
-  color: var(--text);
-  font-weight: 600;
 }
 
 .doc .command {
   display: flex;
   min-width: 0;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .doc .command.multi {
@@ -679,23 +1117,24 @@ section h2 {
 }
 
 .doc .note {
-  font-size: 14px;
+  margin-top: 12px;
+  color: var(--faint);
+  font-size: 13.5px;
 }
 
-.doc a:not(.button) {
+.doc a:not(.button, .text-link) {
   color: var(--text);
   text-underline-offset: 3px;
 }
 
-.doc p code,
-.doc dd code {
+.doc p code {
   padding: 1px 5px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-raised);
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 kbd {
@@ -712,81 +1151,107 @@ kbd {
     monospace;
 }
 
-.options {
+/* Two ways to run it, one shown at a time. */
+.tabs {
   margin-top: 14px;
-  border-top: 1px solid var(--border);
 }
 
-.options dt {
-  margin-top: 14px;
-  color: var(--text);
-  font-weight: 600;
-}
-
-.options dd {
-  margin: 4px 0 0;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-  color: var(--muted);
-}
-
-.reference {
-  margin-top: 56px;
-  padding-top: 36px;
-  border-top: 1px solid var(--border);
-}
-
-.table {
-  margin-top: 14px;
-  border-top: 1px solid var(--border);
-}
-
-.table .row {
-  display: grid;
-  grid-template-columns: 210px 1fr;
-  gap: 16px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.table code {
-  color: var(--text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
-}
-
-.doc-cta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 56px;
-  padding: 22px 24px;
+.tab-list {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-raised);
 }
 
-.doc-cta p {
+.tab-list button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
   color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.tab-list button:hover {
+  color: var(--text);
+}
+
+.tab-list button[aria-selected='true'] {
+  background: rgba(240, 246, 252, 0.09);
+  color: var(--text);
+}
+
+.tab-panel p {
+  margin-top: 12px;
+}
+
+.doc-shot {
+  display: block;
+}
+
+/* The image has 40px of room for its shadow around an 880px window: pulled out by that room on
+   every side, the window's edges line up with the column and its spacing. */
+.doc-shot img {
+  width: calc(100% * 960 / 880);
+  max-width: none;
+  margin: calc(18px - 100% * 40 / 880) 0 calc(-100% * 40 / 880) calc(-100% * 40 / 880);
+}
+
+/* The two ways to sign in, side by side. */
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.choices h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.choices p {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.doc-more {
+  margin-top: 64px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.doc-help {
+  margin-top: 36px !important;
+}
+
+.doc-help .text-link {
+  margin: 0;
 }
 
 @media (max-width: 640px) {
   .doc {
-    padding-top: 44px;
+    padding-top: 48px;
   }
 
   .step {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    padding-left: 44px;
   }
 
-  .table .row {
+  .choices {
     grid-template-columns: 1fr;
-    gap: 2px;
+    gap: 14px;
   }
 }
 
