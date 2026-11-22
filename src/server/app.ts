@@ -10,6 +10,7 @@ import type {
   UpdateInfo,
 } from '../shared/types.js';
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
+import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getActions } from './metrics/actions.js';
 import { getCommits } from './metrics/commits.js';
@@ -42,6 +43,13 @@ export interface AppOptions {
   webDir?: string | null;
   fetchImpl?: typeof fetch;
   ghToken?: () => Promise<string | null>;
+  /** Set to false to leave the traffic history alone (tests that count requests). */
+  collectTraffic?: boolean;
+  /**
+   * How often the server itself checks that today's traffic was collected, in ms. The CLI sets it,
+   * so a GitMetrics left open for days collects every day even with nobody on the page.
+   */
+  collectEvery?: number;
   /** What the CLI found out about updates when it started. */
   update?: UpdateInfo;
 }
@@ -53,6 +61,7 @@ export function createApp(options: AppOptions = {}) {
   const commitCache = new DiskCache(path.join(config.dir, 'cache'));
   const traffic = new TrafficStore(path.join(config.dir, 'traffic'));
   const memory = new MemoryCache();
+  const collection = new CollectionStore(config.dir);
   const fetchImpl = options.fetchImpl ?? fetch;
   const ghToken = options.ghToken ?? readGhToken;
   let device = new DeviceFlow(fetchImpl);
@@ -66,10 +75,26 @@ export function createApp(options: AppOptions = {}) {
     return client.gh;
   };
 
+  // Your repositories, shared by the pages and the traffic collection.
+  const ownRepos = (gh: GitHubClient) =>
+    memory.wrap(`${config.auth!.login}:repos`, 10 * MINUTE, () => listRepos(gh));
+  const collector = new TrafficCollector(traffic, collection, ownRepos);
+  const collect = () => {
+    const gh = github();
+    if (gh && options.collectTraffic !== false) collector.poke(gh, config.auth!.login);
+  };
+  if (options.collectEvery) {
+    // Right away when it starts (if signed in), then on a clock: once a day is all it collects.
+    setTimeout(collect, 0).unref();
+    setInterval(collect, options.collectEvery).unref();
+  }
+
   const signIn = async (token: string, source: 'device' | 'token' | 'gh') => {
     const { viewer, scopes } = await validateToken(token, fetchImpl);
     config.setAuth({ token, source, login: viewer.login, scopes, createdAt: new Date().toISOString() });
     memory.clear();
+    // Signed in: the day's collection starts now, without waiting for a page.
+    collect();
     return viewer;
   };
 
@@ -157,8 +182,21 @@ export function createApp(options: AppOptions = {}) {
   // Everything below needs a signed-in user.
   app.use('/api/*', async (c, next) => {
     if (c.req.path.startsWith('/api/auth/')) return next();
-    if (!github()) return c.json({ error: 'You are not signed in.', status: 401 }, 401);
+    const gh = github();
+    if (!gh) return c.json({ error: 'You are not signed in.', status: 401 }, 401);
+    // Keeps the traffic history growing: once a day, in the background, never in the way.
+    collect();
     await next();
+  });
+
+  // A repository opened in GitMetrics keeps its traffic collected for a year. Only once its page
+  // loaded, so a mistyped address doesn't count; the pull request list's baselines aren't visits.
+  app.use('/api/repos/:owner/:repo/*', async (c, next) => {
+    await next();
+    const { owner, repo } = c.req.param();
+    if (c.res.status !== 200 || !NAME.test(owner) || !NAME.test(repo) || c.req.path.endsWith('/baseline'))
+      return;
+    collection.visit(config.auth!.login, `${owner}/${repo}`);
   });
 
   app.get('/api/rate-limit', async (c) => {
@@ -296,7 +334,7 @@ export function createApp(options: AppOptions = {}) {
       );
     }
     if (mode === 'traffic') {
-      const repos = await memory.wrap(`${login}:repos`, 10 * MINUTE, () => listRepos(gh));
+      const repos = await ownRepos(gh);
       const owned = repos.filter((r) => r.owner.toLowerCase() === login.toLowerCase() && !r.fork);
       return c.json(
         await memory.wrap(

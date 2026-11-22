@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -453,6 +453,75 @@ describe('repository pages, end to end', () => {
     };
     return { ...github, send, page };
   }
+
+  it('keeps the traffic history growing on its own, for your repositories and the ones you open', async () => {
+    const day = isoDaysAgo(1);
+    const traffic = (kind: string) => () =>
+      json({ count: 4, uniques: 3, [kind]: [{ timestamp: day, count: 4, uniques: 3 }] });
+    const { send, page, calls } = await signedIn({
+      '/user/repos': () => json([REPO]),
+      '/repos/octo/app/traffic/views': traffic('views'),
+      '/repos/octo/app/traffic/clones': traffic('clones'),
+    });
+    // Opening a repository's page: a visit, and the first request starts today's collection.
+    await page('stars');
+    const history = path.join(dir, 'traffic', 'octo__app.json');
+    await vi.waitFor(() => expect(existsSync(history)).toBe(true));
+    expect(JSON.parse(readFileSync(history, 'utf8'))).toEqual({
+      views: { [day.slice(0, 10)]: [4, 3] },
+      clones: { [day.slice(0, 10)]: [4, 3] },
+    });
+    // The pull request list's baselines, and a page that didn't load, aren't visits.
+    await send('/api/repos/acme/api/baseline');
+    await send('/api/repos/acme/missing/stars');
+    const saved = JSON.parse(readFileSync(path.join(dir, 'collection.json'), 'utf8'));
+    expect(Object.keys(saved.octo.visits)).toEqual(['octo/app']);
+    expect(saved.octo.collectedOn).toBe(new Date().toISOString().slice(0, 10));
+    // Once a day: later requests don't collect again.
+    const asked = calls.filter((c) => c.includes('/traffic/')).length;
+    await page('stars');
+    expect(calls.filter((c) => c.includes('/traffic/')).length).toBe(asked);
+  });
+
+  it('collects every day while it stays open, with nobody on the page', async () => {
+    vi.useFakeTimers({
+      now: new Date('2026-11-22T10:00:00Z'),
+      toFake: ['Date', 'setTimeout', 'setInterval'],
+    });
+    try {
+      const traffic = (kind: string) => () =>
+        json({ count: 1, uniques: 1, [kind]: [{ timestamp: '2026-11-21T00:00:00Z', count: 1, uniques: 1 }] });
+      const github = fakeGitHub({
+        '/user/repos': () => json([REPO]),
+        '/repos/octo/app/traffic/views': traffic('views'),
+        '/repos/octo/app/traffic/clones': traffic('clones'),
+      });
+      const app = createApp({
+        dataDir: dir,
+        fetchImpl: github.fetchImpl,
+        ghToken: async () => 'gho_cli',
+        collectEvery: 60 * 60_000,
+      });
+      const send = (url: string, init: RequestInit = {}) =>
+        app.request(url, {
+          ...init,
+          headers: { host: 'localhost:4280', 'x-gitmetrics': '1', ...init.headers },
+        });
+      const collections = () => github.calls.filter((c) => c.endsWith('/traffic/views')).length;
+
+      // Signing in starts the day's collection; no page is opened afterwards.
+      expect((await send('/api/auth/gh', { method: 'POST' })).status).toBe(200);
+      await vi.waitFor(() => expect(collections()).toBe(1));
+      // The same day, the clock finds it done.
+      await vi.advanceTimersByTimeAsync(5 * 60 * 60_000);
+      expect(collections()).toBe(1);
+      // Past midnight (UTC), the next check collects again.
+      await vi.advanceTimersByTimeAsync(10 * 60 * 60_000);
+      await vi.waitFor(() => expect(collections()).toBe(2));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('stars: history, recent stargazers and totals', async () => {
     const { page } = await signedIn();

@@ -148,7 +148,12 @@ async function main() {
 
 async function start(args: Args, update: UpdateInfo | undefined) {
   const port = args.dev ? DEV_API_PORT : await pickPort(args.port ?? DEFAULT_PORT, args.port !== undefined);
-  const app = createApp({ webDir: args.dev ? null : path.join(here, 'web'), update });
+  const app = createApp({
+    webDir: args.dev ? null : path.join(here, 'web'),
+    update,
+    // Checked every hour; it collects once a day.
+    collectEvery: 60 * 60_000,
+  });
 
   serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, () => {
     const url = `http://localhost:${port}`;
