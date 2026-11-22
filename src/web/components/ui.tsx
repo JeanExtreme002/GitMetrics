@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Alert,
   Box,
   Button,
@@ -75,17 +76,31 @@ export function Counter({
   );
 }
 
-/** "Refresh" keeps its label while it works; only the icon spins. */
+/**
+ * "Refresh" keeps its label while it works; only the icon spins. On phones it is the icon alone,
+ * so the page title beside it keeps its line.
+ */
 export function RefreshButton({ onRefresh, refreshing }: { onRefresh: () => void; refreshing?: boolean }) {
+  const icon = <IconRefresh size={16} stroke={1.8} className={refreshing ? 'spin' : undefined} />;
+  const refresh = () => !refreshing && onRefresh();
   return (
-    <Button
-      variant="default"
-      leftSection={<IconRefresh size={16} stroke={1.8} className={refreshing ? 'spin' : undefined} />}
-      onClick={() => !refreshing && onRefresh()}
-      aria-busy={refreshing}
-    >
-      Refresh
-    </Button>
+    <>
+      <Button variant="default" leftSection={icon} onClick={refresh} aria-busy={refreshing} visibleFrom="sm">
+        Refresh
+      </Button>
+      <Tooltip label="Refresh">
+        <ActionIcon
+          variant="default"
+          size={36}
+          onClick={refresh}
+          aria-busy={refreshing}
+          aria-label="Refresh"
+          hiddenFrom="sm"
+        >
+          {icon}
+        </ActionIcon>
+      </Tooltip>
+    </>
   );
 }
 
