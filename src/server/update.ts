@@ -24,11 +24,16 @@ export const NO_UPDATE_CHECK = 'GITMETRICS_NO_UPDATE_CHECK';
 /**
  * npx runs packages from its own cache folder (`.../_npx/<hash>/node_modules/...`), and a
  * global or project install lives in a node_modules folder. Anything else is a checkout.
+ *
+ * When the package is also installed globally, `npx @gitmetrics/app` runs that install instead of
+ * its cache, so the folder alone says "installed". npm marks what npx starts with
+ * `npm_command=exec`, which tells the two apart.
  */
-export function installKind(file: string): InstallKind {
+export function installKind(file: string, env: NodeJS.ProcessEnv = process.env): InstallKind {
   const parts = path.resolve(file).split(/[\\/]/);
   if (parts.includes('_npx')) return 'npx';
-  return parts.includes('node_modules') ? 'installed' : 'source';
+  if (!parts.includes('node_modules')) return 'source';
+  return env.npm_command === 'exec' ? 'npx' : 'installed';
 }
 
 /** Whether version `a` is newer than `b`. Prereleases are never offered as updates. */
