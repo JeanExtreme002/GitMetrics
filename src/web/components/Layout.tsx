@@ -222,10 +222,9 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   const params = new URLSearchParams(location.search);
   const onRepositories = location.pathname === '/repositories';
   const pinned = (data?.repos ?? []).filter((r) => data?.favorites.includes(r.fullName));
-  // Recently viewed, minus what is already pinned: those are one click away anyway.
+  // The last repositories opened, exactly as they were opened, pinned ones included.
   const { recent, clear } = useRecentRepos();
-  const pinnedNames = new Set(data?.favorites.map((f) => f.toLowerCase()));
-  const recentShown = recent.filter((r) => !pinnedNames.has(r.fullName.toLowerCase())).slice(0, 4);
+  const recentShown = recent.slice(0, 4);
 
   return (
     <>
