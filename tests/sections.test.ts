@@ -363,6 +363,27 @@ describe('repository pages, end to end', () => {
     expect(stars.stats.last7Days).toBe(1);
   });
 
+  it('stars: keeps the exact total when GitHub hides the stargazers from someone without write access', async () => {
+    const { page } = await signedIn({ '/repos/octo/app/stargazers': notFound });
+    const stars = await page<{
+      total: number;
+      historyHidden: boolean;
+      points: unknown[];
+      monthly: unknown[];
+    }>('stars');
+    expect(stars).toMatchObject({ total: 3, historyHidden: true, points: [], monthly: [] });
+  });
+
+  it('stars: any other GitHub failure is still reported, not taken for a hidden history', async () => {
+    const { send } = await signedIn({
+      '/repos/octo/app/stargazers': () =>
+        new Response(JSON.stringify({ message: 'Server Error' }), { status: 500 }),
+    });
+    const res = await send('/api/repos/octo/app/stars');
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(await res.json()).not.toHaveProperty('historyHidden');
+  });
+
   it('commits: weekly activity, code frequency and the latest commits', async () => {
     const { page } = await signedIn();
     const commits = await page<{

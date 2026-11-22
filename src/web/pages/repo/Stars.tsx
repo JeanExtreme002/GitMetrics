@@ -174,6 +174,15 @@ function StarStats({ data }: { data: StarsResponse }) {
         label="Total"
         hint={data.firstStarAt ? `First star on ${date(data.firstStarAt)}` : undefined}
       />
+      {/* Without the list of stargazers there are no rates to show, only the exact total. */}
+      {!data.historyHidden && <StarRates data={data} />}
+    </Counters>
+  );
+}
+
+function StarRates({ data }: { data: StarsResponse }) {
+  return (
+    <>
       <Counter
         icon={IconTrendingUp}
         value={`+${num(data.stats.last30Days)}`}
@@ -192,7 +201,7 @@ function StarStats({ data }: { data: StarsResponse }) {
         label="Best month"
         hint={data.stats.bestMonth ? monthName(data.stats.bestMonth.month) : undefined}
       />
-    </Counters>
+    </>
   );
 }
 
@@ -218,6 +227,15 @@ export function Stars() {
                 icon={<IconStar size={28} stroke={1.5} />}
                 title="No stars yet"
                 description="Once people start starring this repository, its history shows up here."
+              />
+            );
+          }
+          if (data.historyHidden) {
+            return (
+              <EmptyState
+                icon={<IconStar size={28} stroke={1.5} />}
+                title="Star history not available"
+                description={`GitHub only shows who starred a repository to people who can push to it, so the history, monthly chart and milestones can't be built here. The total of ${num(data.total)} stars is exact.`}
               />
             );
           }
