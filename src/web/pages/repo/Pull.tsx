@@ -352,7 +352,7 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
           ))}
         </div>
       </div>
-      <Group gap="xl" mt="lg" wrap="wrap">
+      <Group gap="xl" mt="lg" wrap="wrap" style={{ rowGap: 'var(--mantine-spacing-sm)' }}>
         {kinds.map((k) => (
           <Group key={k.kind} gap={8} wrap="nowrap" align="flex-start">
             <span className="pr-time-dot" style={{ background: cssColor(PHASE[k.kind].color) }} />
