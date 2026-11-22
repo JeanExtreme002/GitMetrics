@@ -23,6 +23,7 @@ import {
   IconCircleDashed,
   IconCircleX,
   IconCheck,
+  IconChevronDown,
   IconClockHour4,
   IconCopy,
   IconEye,
@@ -800,6 +801,7 @@ function Checks({ pull }: { pull: PullDetail }) {
             variant="subtle"
             color="gray"
             size="compact-sm"
+            rightSection={<IconChevronDown size={14} />}
             onClick={() => setShown((n) => n + CHECKS_PAGE)}
           >
             Show more ({num(list.length - shown)} left)
