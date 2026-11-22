@@ -243,6 +243,13 @@ export function MyPulls() {
   // Every visit starts from the defaults: the filters only last while you are on the page.
   const [filter, setFilter] = useState<PullFilter>('all');
   const [owner, setOwner] = useState('');
+  // Your repositories only exist under your account: the tab shows for all accounts or yours.
+  const yoursShown = !owner || owner.toLowerCase() === login.toLowerCase();
+  const chooseOwner = (next: string) => {
+    setOwner(next);
+    const stillYours = !next || next.toLowerCase() === login.toLowerCase();
+    if (!stillYours && filter === 'owned') setFilter('all');
+  };
   const [status, setStatus] = useState<PullStatus | ''>('');
   const [drafts, setDrafts] = useState(true);
   const [input, setInput] = useState('');
@@ -311,7 +318,7 @@ export function MyPulls() {
             size="xs"
             value={filter}
             onChange={(v) => setFilter(v as PullFilter)}
-            data={FILTERS}
+            data={yoursShown ? FILTERS : FILTERS.filter((f) => f.value !== 'owned')}
           />
         </Box>
         {/* On narrow screens the controls wrap onto more lines instead of running off the screen. */}
@@ -325,7 +332,7 @@ export function MyPulls() {
             />
           )}
           {state === 'open' && <StatusSelect value={status} onChange={setStatus} />}
-          <AccountSelect accounts={accounts} value={owner} onChange={setOwner} />
+          <AccountSelect accounts={accounts} value={owner} onChange={chooseOwner} />
           <SegmentedControl
             size="xs"
             value={state}
