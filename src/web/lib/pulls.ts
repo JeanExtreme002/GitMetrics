@@ -27,20 +27,16 @@ export interface Signal {
   hint: string;
 }
 
-/** Pull requests nobody touched for this long are called out as idle. */
-const IDLE_DAYS = 14;
-
-export type PullStatus = 'approved' | 'failing' | 'unreviewed' | 'idle';
+export type PullStatus = 'approved' | 'failing' | 'unreviewed';
 
 export const STATUSES: { value: PullStatus; label: string }[] = [
   { value: 'approved', label: 'Approved' },
   { value: 'failing', label: 'Checks failing' },
   { value: 'unreviewed', label: 'No review yet' },
-  { value: 'idle', label: 'Idle' },
 ];
 
 /** Whether an open pull request is in that state, by the same rules as its signals. */
-export function hasStatus(p: MyPull, status: PullStatus, now = Date.now()): boolean {
+export function hasStatus(p: MyPull, status: PullStatus): boolean {
   if (p.state !== 'OPEN') return false;
   switch (status) {
     case 'approved':
@@ -49,8 +45,6 @@ export function hasStatus(p: MyPull, status: PullStatus, now = Date.now()): bool
       return p.checks === 'failure';
     case 'unreviewed':
       return !p.isDraft && !p.firstReviewAt;
-    case 'idle':
-      return now - new Date(p.updatedAt).getTime() > IDLE_DAYS * 24 * HOUR;
   }
 }
 
@@ -97,10 +91,6 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
     signals.push({ label: 'Changes requested', color: 'orange', hint: 'A reviewer asked for changes.' });
   } else if (p.reviewDecision === 'APPROVED') {
     signals.push({ label: 'Approved', color: 'green', hint: 'Approved and ready to be merged.' });
-  }
-  const idle = since(p.updatedAt);
-  if (idle > IDLE_DAYS * 24) {
-    signals.push({ label: `Idle ${span(idle)}`, color: 'gray', hint: `No activity for ${span(idle)}.` });
   }
   return signals.slice(0, 2);
 }

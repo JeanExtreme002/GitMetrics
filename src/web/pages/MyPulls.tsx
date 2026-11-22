@@ -159,7 +159,7 @@ function AccountSelect({
   );
 }
 
-/** Approved, failing, unreviewed or idle. */
+/** Approved, failing or unreviewed. */
 function StatusSelect({
   value,
   onChange,

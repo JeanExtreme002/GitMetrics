@@ -80,7 +80,6 @@ describe('what a pull request needs', () => {
     ]);
     expect(labels(pull({ reviewDecision: 'APPROVED', updatedAt: hoursAgo(24 * 21) }))).toEqual([
       ['Approved', 'green'],
-      ['Idle 3w', 'gray'],
     ]);
   });
 
@@ -109,7 +108,7 @@ describe('what a pull request needs', () => {
 });
 
 describe('filtering by status', () => {
-  const states = (p: MyPull) => STATUSES.map((s) => s.value).filter((s) => hasStatus(p, s, NOW));
+  const states = (p: MyPull) => STATUSES.map((s) => s.value).filter((s) => hasStatus(p, s));
 
   it('matches each open pull request by the same rules as its signals', () => {
     // A draft isn't waiting for a review yet.
@@ -117,7 +116,7 @@ describe('filtering by status', () => {
     expect(states(pull({ reviewDecision: 'APPROVED', firstReviewAt: hoursAgo(5) }))).toEqual(['approved']);
     expect(states(pull({ checks: 'failure', firstReviewAt: hoursAgo(5) }))).toEqual(['failing']);
     expect(states(pull())).toEqual(['unreviewed']);
-    expect(states(pull({ firstReviewAt: hoursAgo(500), updatedAt: hoursAgo(24 * 15) }))).toEqual(['idle']);
+    expect(states(pull({ firstReviewAt: hoursAgo(500), updatedAt: hoursAgo(24 * 15) }))).toEqual([]);
   });
 
   it('never puts a merged or closed pull request in any of them', () => {
