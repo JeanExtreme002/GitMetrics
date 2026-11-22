@@ -125,6 +125,47 @@ const ISSUES = [
   },
 ];
 
+/** An open pull request on the fake repository, waiting for your review. */
+const MY_PULL = {
+  number: 7,
+  title: 'Add caching',
+  url: 'https://github.com/octo/app/pull/7',
+  state: 'OPEN',
+  isDraft: false,
+  createdAt: isoDaysAgo(2),
+  updatedAt: isoDaysAgo(1),
+  mergedAt: null,
+  closedAt: null,
+  additions: 120,
+  deletions: 30,
+  reviewDecision: 'REVIEW_REQUIRED',
+  author: { login: 'bo', avatarUrl: '' },
+  repository: { nameWithOwner: 'octo/app', name: 'app', owner: { login: 'octo', avatarUrl: '' } },
+  reviews: { nodes: [] },
+  reviewRequests: { nodes: [{ requestedReviewer: { __typename: 'User', login: 'octo' } }] },
+  timelineItems: {
+    nodes: [{ createdAt: isoDaysAgo(2), requestedReviewer: { __typename: 'User', login: 'octo' } }],
+  },
+  commits: { nodes: [] },
+};
+
+const DETAIL = {
+  ...MY_PULL,
+  // The full timeline names each event's type, as GitHub does.
+  timelineItems: {
+    nodes: MY_PULL.timelineItems.nodes.map((e) => ({ ...e, __typename: 'ReviewRequestedEvent' })),
+  },
+  changedFiles: 4,
+  baseRefName: 'main',
+  headRefName: 'cache',
+  commits: { totalCount: 2 },
+  comments: { totalCount: 1 },
+  reviewThreads: { totalCount: 0 },
+  participants: { totalCount: 2 },
+  history: { nodes: [] },
+  latest: { nodes: [] },
+};
+
 /** A whole repository on a fake GitHub; `calls` records every path that was requested. */
 function fakeGitHub(overrides: Record<string, () => Response> = {}) {
   const calls: string[] = [];
@@ -154,7 +195,46 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
     if (p === '/search/repositories') return json({ total_count: 1, items: [REPO] });
 
     if (p === '/graphql') {
-      const query = String(JSON.parse(String(init?.body)).query);
+      const body = JSON.parse(String(init?.body)) as { query: string; variables?: Record<string, unknown> };
+      const query = String(body.query);
+      // Your pull requests: one search per filter, the summary, a repository's baseline, one pull request.
+      if (query.includes('search(query: $q')) {
+        const q = String(body.variables?.q);
+        const nodes = q.includes('review-requested:@me') ? [MY_PULL] : [];
+        return json({ data: { search: { issueCount: nodes.length, nodes } } });
+      }
+      if (query.includes('reviewed: search')) {
+        return json({
+          data: {
+            reviewed: { nodes: [] },
+            merged: { nodes: [{ createdAt: isoDaysAgo(2), mergedAt: isoDaysAgo(1) }] },
+          },
+        });
+      }
+      if (query.includes('states: MERGED, orderBy')) {
+        return json({
+          data: {
+            repository: {
+              pullRequests: {
+                nodes: [
+                  {
+                    createdAt: isoDaysAgo(3),
+                    mergedAt: isoDaysAgo(2),
+                    additions: 40,
+                    deletions: 10,
+                    author: { login: 'bo' },
+                    reviews: { nodes: [] },
+                  },
+                ],
+              },
+            },
+          },
+        });
+      }
+      if (query.includes('pullRequest(number: $number)')) {
+        const pull = body.variables?.number === 7 ? DETAIL : null;
+        return json({ data: { repository: { pullRequest: pull } } });
+      }
       if (query.includes('pullRequests(first')) {
         return json({
           data: {
@@ -555,6 +635,42 @@ describe('repository pages, end to end', () => {
       expect(res.status, bad).toBe(400);
     }
     expect(urls.some((u) => u.pathname === '/search/repositories')).toBe(false);
+  });
+
+  it("your pull requests: what waits on you, a summary, and each repository's usual pace", async () => {
+    const { send } = await signedIn();
+    const list = (await (await send('/api/pulls')).json()) as {
+      pulls: { repo: string; number: number; roles: string[]; reviewRequestedAt: string }[];
+      counts: Record<string, number>;
+    };
+    expect(list.pulls).toEqual([
+      expect.objectContaining({
+        repo: 'octo/app',
+        number: 7,
+        roles: ['review'],
+        reviewRequestedAt: MY_PULL.timelineItems.nodes[0]!.createdAt,
+      }),
+    ]);
+    expect(list.counts).toMatchObject({ all: 1, review: 1, authored: 0 });
+
+    const summary = (await (await send('/api/pulls/summary')).json()) as Record<string, unknown>;
+    expect(summary).toMatchObject({ waitingForReview: 1, timeToMergeHours: 24, mergesSampled: 1 });
+
+    const baseline = (await (await send('/api/repos/octo/app/baseline')).json()) as Record<string, unknown>;
+    expect(baseline).toEqual({ firstReviewHours: null, mergeHours: 24, size: 50, sample: 1 });
+  });
+
+  it('one pull request in detail, and the ones that do not exist', async () => {
+    const { send } = await signedIn();
+    const pull = (await (await send('/api/repos/octo/app/pull/7')).json()) as {
+      waitingOn: { kind: string; who: string[] };
+      sizePercentile: number;
+    };
+    expect(pull.waitingOn).toMatchObject({ kind: 'review', who: ['octo'] });
+    expect(pull.sizePercentile).toBe(1);
+    expect((await send('/api/repos/octo/app/pull/8')).status).toBe(404);
+    expect((await send('/api/repos/octo/app/pull/abc')).status).toBe(400);
+    expect((await send('/api/repos/octo/a%20b/baseline')).status).toBe(400);
   });
 
   it('serves monthly counts for a longer window', async () => {

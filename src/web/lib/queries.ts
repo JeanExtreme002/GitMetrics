@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import type { AuthStatus, RateLimitInfo, ReposResponse } from '../../shared/types';
+import type {
+  AuthStatus,
+  MyPullsResponse,
+  MyPullsSummary,
+  PullDetail,
+  RateLimitInfo,
+  RepoBaseline,
+  ReposResponse,
+} from '../../shared/types';
 import { api, put } from './api';
 
 export const useAuth = () =>
@@ -129,3 +137,34 @@ export function useOwners() {
     );
   }, [auth, data]);
 }
+
+// Your pull requests ------------------------------------------------------
+
+export const useMyPulls = (state: 'open' | 'closed') =>
+  useQuery({
+    queryKey: ['my-pulls', state],
+    queryFn: () => api<MyPullsResponse>(`/pulls?state=${state}`),
+    staleTime: 2 * 60_000,
+  });
+
+export const useMySummary = () =>
+  useQuery({
+    queryKey: ['my-pulls', 'summary'],
+    queryFn: () => api<MyPullsSummary>('/pulls/summary'),
+    staleTime: 10 * 60_000,
+  });
+
+/** A repository's usual review and merge times, shared by every row from that repository. */
+export const useBaseline = (repo: string) =>
+  useQuery({
+    queryKey: ['baseline', repo.toLowerCase()],
+    queryFn: () => api<RepoBaseline>(`/repos/${repo}/baseline`),
+    staleTime: 60 * 60_000,
+  });
+
+export const usePull = (owner: string, repo: string, number: string) =>
+  useQuery({
+    queryKey: ['pull', owner.toLowerCase(), repo.toLowerCase(), number],
+    queryFn: () => api<PullDetail>(`/repos/${owner}/${repo}/pull/${number}`),
+    staleTime: 2 * 60_000,
+  });

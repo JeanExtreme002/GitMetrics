@@ -1,7 +1,7 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
-import type { AuthStatus, ReposResponse, SearchResponse, UpdateInfo } from '../shared/types.js';
+import type { AuthStatus, RepoBaseline, ReposResponse, SearchResponse, UpdateInfo } from '../shared/types.js';
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getActions } from './metrics/actions.js';
@@ -12,6 +12,8 @@ import { getIssues, getMonthlyCounts, getPulls, windowMonths } from './metrics/p
 import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
 import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
+import { getBaseline, getMyPulls, getMySummary } from './metrics/mine.js';
+import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
@@ -176,6 +178,64 @@ export function createApp(options: AppOptions = {}) {
       c.req.query('refresh') === '1',
     );
     return c.json({ repos, favorites: config.favorites } satisfies ReposResponse);
+  });
+
+  // Your pull requests, across every repository ---------------------------------
+
+  /** What a repository's merged pull requests usually look like, kept for an hour. */
+  const baseline = (gh: GitHubClient, repo: string) =>
+    memory.wrap(`${config.auth!.login}:baseline:${repo.toLowerCase()}`, 60 * MINUTE, () =>
+      getBaseline(gh, repo),
+    );
+
+  const myPulls = (state: 'open' | 'closed', refresh = false) => {
+    const gh = github()!;
+    const login = config.auth!.login;
+    return memory.wrap(`${login}:my-pulls:${state}`, 2 * MINUTE, () => getMyPulls(gh, login, state), refresh);
+  };
+
+  app.get('/api/pulls', async (c) => {
+    const state = c.req.query('state') === 'closed' ? 'closed' : 'open';
+    return c.json(await myPulls(state, c.req.query('refresh') === '1'));
+  });
+
+  // A repository's usual review and merge times, to put its pull requests in context.
+  app.get('/api/repos/:owner/:repo/baseline', async (c) => {
+    const { owner, repo } = c.req.param();
+    if (!NAME.test(owner) || !NAME.test(repo)) {
+      return c.json({ error: 'Invalid repository name.', status: 400 }, 400);
+    }
+    const { firstReviewHours, mergeHours, size, sample } = await baseline(github()!, `${owner}/${repo}`);
+    return c.json({ firstReviewHours, mergeHours, size, sample } satisfies RepoBaseline);
+  });
+
+  // One pull request, with how it compares with the repository's usual ones.
+  app.get('/api/repos/:owner/:repo/pull/:number', async (c) => {
+    const { owner, repo, number } = c.req.param();
+    if (!NAME.test(owner) || !NAME.test(repo) || !/^\d{1,9}$/.test(number)) {
+      return c.json({ error: 'Invalid pull request.', status: 400 }, 400);
+    }
+    const gh = github()!;
+    const pull = await memory.wrap(
+      `${config.auth!.login}:pull:${owner}/${repo}#${number}`.toLowerCase(),
+      2 * MINUTE,
+      async () => getPull(gh, owner, repo, Number(number), await baseline(gh, `${owner}/${repo}`)),
+      c.req.query('refresh') === '1',
+    );
+    if (!pull) return c.json({ error: 'Pull request not found.', status: 404 }, 404);
+    return c.json(pull);
+  });
+
+  app.get('/api/pulls/summary', async (c) => {
+    const login = config.auth!.login;
+    const refresh = c.req.query('refresh') === '1';
+    const summary = await memory.wrap(
+      `${login}:my-pulls:summary`,
+      30 * MINUTE,
+      async () => getMySummary(github()!, login, await myPulls('open')),
+      refresh,
+    );
+    return c.json(summary);
   });
 
   // Repositories anywhere on GitHub, for opening one that is not in your own list.

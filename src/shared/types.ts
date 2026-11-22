@@ -424,3 +424,149 @@ export interface RankingResponse {
   windowDays: number;
   entries: RankingEntry[];
 }
+
+// Your pull requests ------------------------------------------------------
+
+/** How you are related to a pull request. "involved" covers all of them. */
+export type PullFilter = 'all' | 'authored' | 'assigned' | 'involved' | 'review';
+
+/** What a repository's merged pull requests usually look like, to put one in context. */
+export interface RepoBaseline {
+  /** Median hours from opening to the first review by someone other than the author. */
+  firstReviewHours: number | null;
+  /** Median hours from opening to merge. */
+  mergeHours: number | null;
+  /** Median lines changed (additions + deletions). */
+  size: number | null;
+  /** How many merged pull requests the medians come from. */
+  sample: number;
+}
+
+export type ChecksState = 'success' | 'failure' | 'pending';
+
+export interface MyPull {
+  repo: string;
+  owner: string;
+  name: string;
+  ownerAvatarUrl: string;
+  number: number;
+  title: string;
+  url: string;
+  author: string | null;
+  authorAvatarUrl: string | null;
+  state: 'OPEN' | 'MERGED' | 'CLOSED';
+  isDraft: boolean;
+  createdAt: string;
+  updatedAt: string;
+  mergedAt: string | null;
+  closedAt: string | null;
+  additions: number;
+  deletions: number;
+  reviewDecision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
+  checks: ChecksState | null;
+  /** When your review was requested, while it is still pending. */
+  reviewRequestedAt: string | null;
+  /** When someone other than the author first reviewed it. */
+  firstReviewAt: string | null;
+  /** Which filters it belongs to, besides "all" and "involved". */
+  roles: ('authored' | 'assigned' | 'review')[];
+}
+
+export interface MyPullsResponse {
+  state: 'open' | 'closed';
+  pulls: MyPull[];
+  counts: Record<PullFilter, number>;
+}
+
+export interface MyPullsSummary {
+  /** Open pull requests waiting for your review, and since when the oldest one waits. */
+  waitingForReview: number;
+  oldestWaitSince: string | null;
+  /** Your open pull requests. */
+  openAuthored: number;
+  /** Median hours between a review request to you and your review, over recent reviews. */
+  reviewTurnaroundHours: number | null;
+  reviewsSampled: number;
+  /** Median hours from opening to merge of your recent pull requests. */
+  timeToMergeHours: number | null;
+  mergesSampled: number;
+}
+
+// A single pull request ---------------------------------------------------
+
+export interface PullStage {
+  kind: 'opened' | 'ready' | 'first-review' | 'approved' | 'merged' | 'closed';
+  at: string;
+  /** Hours since the previous stage. */
+  hours: number | null;
+}
+
+export interface PullReviewer {
+  login: string;
+  avatarUrl: string | null;
+  /** The latest state of this person's review, or PENDING if requested and not reviewed yet. */
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
+  reviews: number;
+  requestedAt: string | null;
+  firstReviewAt: string | null;
+  /** Hours from the request (or opening) to this person's first review. */
+  responseHours: number | null;
+}
+
+export interface PullCheck {
+  name: string;
+  conclusion: 'success' | 'failure' | 'pending' | 'skipped' | 'cancelled' | 'neutral';
+  minutes: number | null;
+}
+
+export interface PullDetail {
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  author: string | null;
+  authorAvatarUrl: string | null;
+  state: 'OPEN' | 'MERGED' | 'CLOSED';
+  isDraft: boolean;
+  createdAt: string;
+  mergedAt: string | null;
+  closedAt: string | null;
+  baseRef: string;
+  headRef: string;
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+  commits: number;
+  comments: number;
+  reviewThreads: number;
+  participants: number;
+  stages: PullStage[];
+  /** Hours to first review and to merge (or open so far), next to the repository's medians. */
+  firstReviewHours: number | null;
+  /** Open: hours so far. Merged: hours to merge. Closed: null. */
+  ageHours: number | null;
+  baseline: RepoBaseline;
+  /** Where this pull request's size falls among the repository's recent merged ones (0 to 1). */
+  sizePercentile: number | null;
+  rounds: {
+    changesRequested: number;
+    commitsAfterFirstReview: number;
+    forcePushes: number;
+  };
+  reviewers: PullReviewer[];
+  checks: {
+    state: ChecksState | null;
+    list: PullCheck[];
+    /** Longest check run on the latest commit, in minutes. */
+    minutes: number | null;
+    /** Pushes whose checks failed, out of the pushes with checks. */
+    failedPushes: number;
+    pushesWithChecks: number;
+  };
+  /** Who or what the pull request is waiting on, while it is open. */
+  waitingOn: {
+    kind: 'review' | 'author' | 'checks' | 'merge' | 'draft';
+    who: string[];
+    since: string | null;
+  } | null;
+}

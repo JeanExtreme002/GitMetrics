@@ -1,6 +1,7 @@
 import { DonutChart } from '@mantine/charts';
 import { Anchor, Avatar, Badge, Box, Button, Grid, Group, Text } from '@mantine/core';
 import { MarkGithubIcon } from '@primer/octicons-react';
+import { Link } from 'react-router';
 import {
   IconArrowUpRight,
   IconInfoCircle,
@@ -188,18 +189,12 @@ function Authors({ people, analyzed }: { people: PersonCount[]; analyzed: number
 
 /** Pull requests as hairline rows: author, title with number and age, and lines changed. */
 function PullList({ pulls, empty, merged }: { pulls: PullItem[]; empty: string; merged?: boolean }) {
+  const { fullName } = useRepoParams();
   if (!pulls.length) return <NoData>{empty}</NoData>;
   return (
     <div className="rank-list">
       {pulls.map((p) => (
-        <Anchor
-          key={p.number}
-          href={p.url}
-          target="_blank"
-          underline="never"
-          c="inherit"
-          className="pull-row"
-        >
+        <Link key={p.number} to={`/r/${fullName}/pull/${p.number}`} className="pull-row">
           <Avatar src={p.avatarUrl} size={22} radius="xl" />
           <Box miw={0}>
             <Group gap={6} wrap="nowrap">
@@ -225,7 +220,7 @@ function PullList({ pulls, empty, merged }: { pulls: PullItem[]; empty: string; 
               −{num(p.deletions)}
             </Text>
           </Group>
-        </Anchor>
+        </Link>
       ))}
     </div>
   );

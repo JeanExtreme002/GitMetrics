@@ -54,7 +54,7 @@ import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { useRecentRepos } from '../lib/recent';
 import { snoozed, type Dismissed } from '../lib/update';
-import { sectionQuery, useAuth, useOwners, useRateLimit, useRepos } from '../lib/queries';
+import { sectionQuery, useAuth, useMyPulls, useOwners, useRateLimit, useRepos } from '../lib/queries';
 import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
@@ -228,6 +228,9 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   const params = new URLSearchParams(location.search);
   const onRepositories = location.pathname === '/repositories';
   const pinned = (data?.repos ?? []).filter((r) => data?.favorites.includes(r.fullName));
+  // How many pull requests wait for your review, next to the link that lists them.
+  const reviews = useMyPulls('open').data?.counts.review;
+
   // The last repositories opened, exactly as they were opened, pinned ones included.
   const { recent, clear } = useRecentRepos();
   const recentShown = recent.slice(0, 4);
@@ -241,6 +244,14 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         icon={icon(IconBook2)}
         active={onRepositories && !params.get('owner')}
         right={<Count>{data ? data.repos.length : ''}</Count>}
+        onClick={onNavigate}
+      />
+
+      <NavItemLink
+        to="/pulls"
+        label="Your pull requests"
+        icon={icon(IconGitPullRequest)}
+        right={reviews ? <Count>{reviews}</Count> : undefined}
         onClick={onNavigate}
       />
 
