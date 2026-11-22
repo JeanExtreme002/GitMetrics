@@ -16,7 +16,7 @@ import type { MyPull, MyPullsResponse, MyPullsSummary, PullFilter } from '../../
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
 import { api } from '../lib/api';
 import { hours, num, relative } from '../lib/format';
-import { hasStatus, pullSignals, span, STATUSES, type PullStatus } from '../lib/pulls';
+import { hasStatus, inFilter, pullSignals, span, STATUSES, tabCount, type PullStatus } from '../lib/pulls';
 import { myPullsPath, useBaseline, useMyPulls, useMySummary, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
@@ -34,9 +34,6 @@ const EMPTY: Record<PullFilter, string> = {
   involved: 'You are not involved in any pull request here.',
   review: 'Nobody is waiting for your review. Nice.',
 };
-
-const inFilter = (p: MyPull, filter: PullFilter) =>
-  filter === 'all' || filter === 'involved' || p.roles.includes(filter);
 
 /** One pull request: where it lives, who opened it, and what it needs, in context. */
 function PullRow({ pull }: { pull: MyPull }) {
@@ -230,6 +227,11 @@ export function MyPulls() {
     getInitialValueInEffect: false,
   });
   const query = useMyPulls(state, owner);
+  /** The draft switch and the status picker, as one check, or null when neither narrows the list. */
+  const narrowed =
+    state === 'open' && (!drafts || status)
+      ? (p: MyPull) => (drafts || !p.isDraft) && (!status || hasStatus(p, status))
+      : null;
   const accounts = useAccounts(state, owner, query.data);
   const client = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -266,15 +268,14 @@ export function MyPulls() {
             size="xs"
             value={filter}
             onChange={(v) => setFilter(v as PullFilter)}
-            data={FILTERS.map((f) => ({
-              value: f.value,
-              // GitHub's totals for open ones. Closed ones only list the latest, so no totals there,
-              // and "All" can't be added up exactly from the others.
-              label:
-                query.data && state === 'open' && f.value !== 'all'
-                  ? `${f.label} ${num(query.data.counts[f.value])}`
-                  : f.label,
-            }))}
+            data={FILTERS.map((f) => {
+              // Only open ones have counts: closed ones just list the latest.
+              const n = query.data && state === 'open' ? tabCount(f.value, query.data, narrowed) : null;
+              return {
+                value: f.value,
+                label: n ? `${f.label} ${num(n.count)}${n.more ? '+' : ''}` : f.label,
+              };
+            })}
           />
         </Box>
         <Group gap="sm" wrap="nowrap">
@@ -308,12 +309,7 @@ export function MyPulls() {
 
       <QueryView query={query}>
         {(data) => {
-          // Statuses only apply to open pull requests.
-          const pulls = data.pulls.filter(
-            (p) =>
-              inFilter(p, filter) &&
-              (state !== 'open' || ((drafts || !p.isDraft) && (!status || hasStatus(p, status)))),
-          );
+          const pulls = data.pulls.filter((p) => inFilter(p, filter) && (!narrowed || narrowed(p)));
           const note =
             state === 'closed' ? (
               <Text size="xs" c="dimmed" mt="md" ta="center">

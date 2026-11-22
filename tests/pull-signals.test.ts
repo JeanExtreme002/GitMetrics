@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { hasStatus, pullSignals, slower, span, STATUSES } from '../src/web/lib/pulls';
+import { hasStatus, pullSignals, slower, span, STATUSES, tabCount } from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -122,5 +122,31 @@ describe('filtering by status', () => {
   it('never puts a merged or closed pull request in any of them', () => {
     expect(states(pull({ state: 'MERGED', isDraft: true }))).toEqual([]);
     expect(states(pull({ state: 'CLOSED' }))).toEqual([]);
+  });
+});
+
+describe('the numbers on the tabs', () => {
+  const data = {
+    state: 'open' as const,
+    // GitHub has 40 authored ones; 2 were listed. The other tabs were listed in full.
+    counts: { all: 3, authored: 40, assigned: 0, involved: 3, review: 1 },
+    pulls: [
+      pull({ roles: ['authored'], isDraft: true }),
+      pull({ roles: ['authored'] }),
+      pull({ roles: ['review'] }),
+    ],
+  };
+  const noDrafts = (p: MyPull) => !p.isDraft;
+
+  it("show GitHub's totals while no draft or status filter narrows the list", () => {
+    expect(tabCount('authored', data, null)).toEqual({ count: 40, more: false });
+    expect(tabCount('all', data, null)).toBeNull();
+  });
+
+  it('count the listed ones that pass the filters, and say when GitHub has more', () => {
+    expect(tabCount('authored', data, noDrafts)).toEqual({ count: 1, more: true });
+    expect(tabCount('review', data, noDrafts)).toEqual({ count: 1, more: false });
+    expect(tabCount('involved', data, noDrafts)).toEqual({ count: 2, more: false });
+    expect(tabCount('all', data, noDrafts)).toEqual({ count: 2, more: true });
   });
 });

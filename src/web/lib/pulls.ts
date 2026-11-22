@@ -1,4 +1,4 @@
-import type { MyPull, RepoBaseline } from '../../shared/types';
+import type { MyPull, MyPullsResponse, PullFilter, RepoBaseline } from '../../shared/types';
 
 const HOUR = 3_600_000;
 
@@ -103,4 +103,29 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
     signals.push({ label: `Idle ${span(idle)}`, color: 'gray', hint: `No activity for ${span(idle)}.` });
   }
   return signals.slice(0, 2);
+}
+
+/** Whether a pull request belongs to a tab. "All" and "Involved" hold everything listed. */
+export const inFilter = (p: MyPull, filter: PullFilter) =>
+  filter === 'all' || filter === 'involved' || p.roles.includes(filter);
+
+/**
+ * The number on a tab. Without the draft or status filters it's GitHub's own total (none for
+ * "All", which can't be added up from the others). With them, it's how many listed ones pass, and
+ * `more` says GitHub has more in that tab than were listed, so the real number may be higher.
+ */
+export function tabCount(
+  filter: PullFilter,
+  data: MyPullsResponse,
+  passes: ((p: MyPull) => boolean) | null,
+): { count: number; more: boolean } | null {
+  const listed = data.pulls.filter((p) => inFilter(p, filter));
+  const tabs = ['authored', 'assigned', 'involved', 'review'] as const;
+  const cut = (tab: (typeof tabs)[number]) =>
+    data.counts[tab] > data.pulls.filter((p) => inFilter(p, tab)).length;
+  if (!passes) return filter === 'all' ? null : { count: data.counts[filter], more: false };
+  return {
+    count: listed.filter(passes).length,
+    more: filter === 'all' ? tabs.some(cut) : cut(filter),
+  };
 }
