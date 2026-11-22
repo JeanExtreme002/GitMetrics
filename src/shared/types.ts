@@ -490,6 +490,8 @@ export interface MyPullsResponse {
 export interface PullStage {
   kind: 'opened' | 'ready' | 'first-review' | 'approved' | 'merged' | 'closed';
   at: string;
+  /** For an approval: who gave it. */
+  login?: string;
   /** Hours since the previous stage. */
   hours: number | null;
 }

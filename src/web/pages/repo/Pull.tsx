@@ -534,12 +534,22 @@ function Timeline({ pull }: { pull: PullDetail }) {
     <Box>
       <SectionHeader title="Timeline" caption="Each step, and how long it took after the one before" />
       <div className="pr-timeline">
-        {pull.stages.map((s) => (
-          <div key={s.kind} className="pr-stage">
+        {pull.stages.map((s, i) => (
+          // A kind can come more than once: one approval per person.
+          <div key={`${s.kind}-${i}`} className="pr-stage">
             <span className="pr-stage-dot" />
             <Box miw={0}>
               <Text size="sm" fw={500}>
                 {STAGE[s.kind]}
+                {s.login && (
+                  <Text component="span" inherit fw={400} c="dimmed">
+                    {' '}
+                    by{' '}
+                    <Text component="span" inherit fw={500} c="var(--mantine-color-text)">
+                      {s.login}
+                    </Text>
+                  </Text>
+                )}
               </Text>
               <Text size="xs" c="dimmed">
                 {dateTime(s.at)}

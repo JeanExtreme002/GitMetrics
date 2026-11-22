@@ -174,6 +174,30 @@ const reviewerKey = (r: Requested) => (r.login ?? r.name ?? '').toLowerCase();
  * changes, as GitHub keeps them now. An approval or a request later dismissed no longer counts, so
  * from then on nothing took the approval back until it was merged (or closed, or now).
  */
+/**
+ * The approvals that still stand: given after the last request for changes, one per person, when
+ * they first approved since then. The earliest is the final approval. A dismissed approval isn't
+ * among them: GitHub keeps it as dismissed.
+ */
+export function keptApprovals(
+  reviews: { submittedAt: string | null; state: string; author?: { login: string } | null }[],
+): { login: string; at: string }[] {
+  const lastChanges = reviews
+    .filter((r) => r.submittedAt && r.state === 'CHANGES_REQUESTED')
+    .map((r) => r.submittedAt!)
+    .sort()
+    .at(-1);
+  const first = new Map<string, { login: string; at: string }>();
+  for (const r of reviews) {
+    if (r.state !== 'APPROVED' || !r.submittedAt || !r.author) continue;
+    if (lastChanges && r.submittedAt <= lastChanges) continue;
+    const key = r.author.login.toLowerCase();
+    const known = first.get(key);
+    if (!known || r.submittedAt < known.at) first.set(key, { login: r.author.login, at: r.submittedAt });
+  }
+  return [...first.values()].sort((a, b) => a.at.localeCompare(b.at));
+}
+
 export function finalApproval(reviews: { submittedAt: string | null; state: string }[]): string | null {
   const dated = reviews.filter((r) => r.submittedAt);
   const lastChanges = dated
@@ -343,7 +367,8 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
   const stages: Omit<PullStage, 'hours'>[] = [{ kind: 'opened', at: raw.createdAt }];
   if (ready) stages.push({ kind: 'ready', at: ready });
   if (firstReview) stages.push({ kind: 'first-review', at: firstReview });
-  if (approvedAt) stages.push({ kind: 'approved', at: approvedAt });
+  // Every approval that still stands, each with who gave it.
+  for (const a of keptApprovals(reviews)) stages.push({ kind: 'approved', at: a.at, login: a.login });
   if (raw.mergedAt) stages.push({ kind: 'merged', at: raw.mergedAt });
   else if (raw.state === 'CLOSED' && raw.closedAt) stages.push({ kind: 'closed', at: raw.closedAt });
   stages.sort((a, b) => a.at.localeCompare(b.at));
