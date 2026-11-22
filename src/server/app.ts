@@ -20,6 +20,7 @@ import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
 import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
 import { ACCOUNT, SEARCH_TEXT, getBaseline, getMyPulls } from './metrics/mine.js';
+import { getPullChurn } from './metrics/churn.js';
 import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
@@ -238,7 +239,24 @@ export function createApp(options: AppOptions = {}) {
     return c.json({ firstReviewHours, mergeHours, size, sample } satisfies RepoBaseline);
   });
 
-  // One pull request, with how it compares with the repository's usual ones.
+  // Which files and folders a pull request's commits keep coming back to. Read apart from the
+  // rest of the page, since it takes one request per commit the first time.
+  app.get('/api/repos/:owner/:repo/pull/:number/churn', async (c) => {
+    const { owner, repo, number } = c.req.param();
+    if (!NAME.test(owner) || !NAME.test(repo) || !/^\d{1,9}$/.test(number)) {
+      return c.json({ error: 'Invalid pull request.', status: 400 }, 400);
+    }
+    const gh = github()!;
+    const churn = await memory.wrap(
+      `${config.auth!.login}:pull-churn:${owner}/${repo}#${number}`.toLowerCase(),
+      10 * MINUTE,
+      () => getPullChurn(gh, commitCache, owner, repo, Number(number)),
+      c.req.query('refresh') === '1',
+    );
+    return c.json({ churn });
+  });
+
+  // One pull request, everything about it exact.
   app.get('/api/repos/:owner/:repo/pull/:number', async (c) => {
     const { owner, repo, number } = c.req.param();
     if (!NAME.test(owner) || !NAME.test(repo) || !/^\d{1,9}$/.test(number)) {

@@ -8,6 +8,8 @@ import {
   Code,
   Grid,
   Group,
+  SegmentedControl,
+  Skeleton,
   Text,
   Title,
   Tooltip,
@@ -48,7 +50,7 @@ import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } fr
 import { api } from '../../lib/api';
 import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../lib/format';
 import { sharedFolder, span } from '../../lib/pulls';
-import { usePull } from '../../lib/queries';
+import { usePull, usePullChurn } from '../../lib/queries';
 import { semantic } from '../../theme';
 
 const STATE: Record<string, { label: string; color: string; icon: ReactNode }> = {
@@ -549,6 +551,92 @@ function Changes({ pull }: { pull: PullDetail }) {
   );
 }
 
+/**
+ * The files (or folders) the pull request's commits keep coming back to: how many of its commits
+ * touched each one. Merge commits are left out, since they bring the base branch in.
+ */
+function Recurring({ owner, repo, number }: { owner: string; repo: string; number: string }) {
+  const query = usePullChurn(owner, repo, number);
+  const [by, setBy] = useState<'files' | 'folders'>('files');
+  const churn = query.data?.churn;
+  // Nothing recurs with a single commit, and past GitHub's limits there is no exact answer.
+  if (query.isError || (query.data && (!churn || churn.commits < 2))) return null;
+  const rows = churn ? churn[by] : [];
+  // A long path every row starts with is said once, in the caption.
+  const dirs = rows.map((r) =>
+    by === 'files' ? r.path.slice(0, Math.max(0, r.path.lastIndexOf('/'))) : r.path,
+  );
+  const shared = rows.length > 1 && dirs.every((d) => d && d !== '(root)') ? sharedFolder(dirs) : '';
+  const within = (dir: string) => (shared && dir.startsWith(shared) ? dir.slice(shared.length + 1) : dir);
+  return (
+    <Box mb={44}>
+      <SectionHeader
+        title="Changed again and again"
+        caption={
+          churn
+            ? `How many of its ${num(churn.commits)} commits touched each ${by === 'files' ? 'file' : 'folder'}${shared ? ` under ${shared}` : ''}${churn.merges ? `, merge commits left out` : ''}`
+            : 'Reading every commit…'
+        }
+        right={
+          <SegmentedControl
+            size="xs"
+            value={by}
+            onChange={(v) => setBy(v as 'files' | 'folders')}
+            data={[
+              { value: 'files', label: 'Files' },
+              { value: 'folders', label: 'Folders' },
+            ]}
+          />
+        }
+      />
+      <div className="rank-list">
+        {!churn &&
+          Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="pr-recurring">
+              <Skeleton h={12} w={`${70 - i * 10}%`} />
+              <Skeleton h={4} />
+              <Skeleton h={12} />
+            </div>
+          ))}
+        {churn &&
+          rows.map((r) => {
+            const slash = r.path.lastIndexOf('/');
+            const name = by === 'files' ? r.path.slice(slash + 1) : within(r.path) || '(this folder)';
+            const folder = by === 'files' && slash > 0 ? within(r.path.slice(0, slash)) : '';
+            return (
+              <div key={r.path} className="pr-recurring">
+                <Tooltip label={`${r.path} · +${num(r.additions)} −${num(r.deletions)} over these commits`}>
+                  <Box miw={0}>
+                    <Text size="sm" fw={500} truncate>
+                      {name}
+                    </Text>
+                    {folder && (
+                      <Text size="xs" c="dimmed" truncate>
+                        {folder}
+                      </Text>
+                    )}
+                  </Box>
+                </Tooltip>
+                <div className="rank-track">
+                  <div
+                    className="rank-fill"
+                    style={{ width: `${(r.commits / churn.commits) * 100}%`, background: cssColor('teal.5') }}
+                  />
+                </div>
+                <Text size="xs" c="dimmed" ta="right" className="tabular">
+                  <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
+                    {num(r.commits)}
+                  </Text>{' '}
+                  of {num(churn.commits)}
+                </Text>
+              </div>
+            );
+          })}
+      </div>
+    </Box>
+  );
+}
+
 function Checks({ pull }: { pull: PullDetail }) {
   const c = pull.checks;
   if (!c.list.length) {
@@ -709,6 +797,7 @@ export function Pull() {
               </Grid.Col>
               <Grid.Col span={{ base: 12, lg: 6 }}>
                 <Changes pull={data} />
+                <Recurring owner={owner} repo={repo} number={number} />
                 <Checks pull={data} />
               </Grid.Col>
             </Grid>

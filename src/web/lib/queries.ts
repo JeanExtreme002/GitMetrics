@@ -4,6 +4,7 @@ import { useParams } from 'react-router';
 import type {
   AuthStatus,
   MyPullsResponse,
+  PullChurn,
   PullDetail,
   PullFilter,
   RateLimitInfo,
@@ -178,4 +179,12 @@ export const usePull = (owner: string, repo: string, number: string) =>
     queryKey: ['pull', owner.toLowerCase(), repo.toLowerCase(), number],
     queryFn: () => api<PullDetail>(`/repos/${owner}/${repo}/pull/${number}`),
     staleTime: 2 * 60_000,
+  });
+
+/** Which files and folders a pull request's commits keep coming back to; null past GitHub's limits. */
+export const usePullChurn = (owner: string, repo: string, number: string) =>
+  useQuery({
+    queryKey: ['pull-churn', owner.toLowerCase(), repo.toLowerCase(), number],
+    queryFn: () => api<{ churn: PullChurn | null }>(`/repos/${owner}/${repo}/pull/${number}/churn`),
+    staleTime: 10 * 60_000,
   });

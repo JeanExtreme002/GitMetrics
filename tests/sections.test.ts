@@ -233,6 +233,23 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
           },
         });
       }
+      // The commits of a pull request, for which files they keep coming back to.
+      if (query.includes('oid parents')) {
+        const nodes = [
+          { commit: { oid: 'c3', parents: { totalCount: 1 } } },
+          { commit: { oid: 'm2', parents: { totalCount: 2 } } },
+          { commit: { oid: 'c1', parents: { totalCount: 1 } } },
+        ];
+        return json({
+          data: {
+            repository: {
+              pullRequest: {
+                commits: { totalCount: 3, pageInfo: { hasNextPage: false, endCursor: null }, nodes },
+              },
+            },
+          },
+        });
+      }
       if (query.includes('pullRequest(number: $number)')) {
         const pull = body.variables?.number === 7 ? DETAIL : null;
         return json({ data: { repository: { pullRequest: pull } } });
@@ -681,6 +698,16 @@ describe('repository pages, end to end', () => {
     }
     expect((await send('/api/pulls?q=cache&tab=everything')).status).toBe(400);
     expect(searches()).toBe(before);
+  });
+
+  it('which files the commits of a pull request keep coming back to', async () => {
+    const { send } = await signedIn();
+    const { churn } = (await (await send('/api/repos/octo/app/pull/7/churn')).json()) as {
+      churn: { commits: number; merges: number; files: { path: string; commits: number }[] };
+    };
+    expect(churn).toMatchObject({ commits: 2, merges: 1 });
+    expect(churn.files).toEqual([expect.objectContaining({ path: 'src/app/main.ts', commits: 2 })]);
+    expect((await send('/api/repos/octo/app/pull/x/churn')).status).toBe(400);
   });
 
   it('one pull request in detail, and the ones that do not exist', async () => {

@@ -535,6 +535,23 @@ export interface PullFolder {
   files: number;
 }
 
+/** A file or folder, and how many of a pull request's commits touched it. */
+export interface ChurnEntry {
+  path: string;
+  commits: number;
+  additions: number;
+  deletions: number;
+}
+
+/** The files and folders a pull request's commits keep coming back to. */
+export interface PullChurn {
+  /** Commits looked at: every commit of the pull request but merge commits. */
+  commits: number;
+  merges: number;
+  files: ChurnEntry[];
+  folders: ChurnEntry[];
+}
+
 /** What happened on one day (or week) of the pull request's life. */
 export interface PullActivityPoint {
   day: string;

@@ -1051,3 +1051,13 @@ a.pull-row {
     column-gap: 10px;
   }
 }
+
+/* Changed again and again: a file (and its folder), how many commits touched it, out of all. */
+.pr-recurring {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(60px, 1fr) 64px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
