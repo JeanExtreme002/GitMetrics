@@ -660,6 +660,19 @@ describe('repository pages, end to end', () => {
     expect(searches()).toBe(before);
   });
 
+  it('searches your pull requests on GitHub, and only with plain words', async () => {
+    const { send, urls } = await signedIn();
+    const res = await send('/api/pulls?state=closed&q=cache%20bug&tab=authored');
+    expect(res.status).toBe(200);
+    const searches = () => urls.filter((u) => u.pathname === '/graphql').length;
+    const before = searches();
+    for (const bad of ['user%3Aother', '%22quoted%22', 'a%2Fb', 'x'.repeat(101)]) {
+      expect((await send(`/api/pulls?q=${bad}`)).status, bad).toBe(400);
+    }
+    expect((await send('/api/pulls?q=cache&tab=everything')).status).toBe(400);
+    expect(searches()).toBe(before);
+  });
+
   it('one pull request in detail, and the ones that do not exist', async () => {
     const { send } = await signedIn();
     const pull = (await (await send('/api/repos/octo/app/pull/7')).json()) as {

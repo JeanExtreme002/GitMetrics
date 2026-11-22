@@ -1,7 +1,14 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
-import type { AuthStatus, RepoBaseline, ReposResponse, SearchResponse, UpdateInfo } from '../shared/types.js';
+import type {
+  AuthStatus,
+  PullFilter,
+  RepoBaseline,
+  ReposResponse,
+  SearchResponse,
+  UpdateInfo,
+} from '../shared/types.js';
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getActions } from './metrics/actions.js';
@@ -12,13 +19,14 @@ import { getIssues, getMonthlyCounts, getPulls, windowMonths } from './metrics/p
 import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
 import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
-import { ACCOUNT, getBaseline, getMyPulls } from './metrics/mine.js';
+import { ACCOUNT, SEARCH_TEXT, getBaseline, getMyPulls } from './metrics/mine.js';
 import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
 
 const MINUTE = 60_000;
+const TABS = new Set<string>(['all', 'authored', 'assigned', 'involved', 'review']);
 const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
 /**
  * What the quick search accepts: words made of GitHub's name characters, or owner/name (an
@@ -188,13 +196,19 @@ export function createApp(options: AppOptions = {}) {
       getBaseline(gh, repo),
     );
 
-  const myPulls = (state: 'open' | 'closed', owner = '', refresh = false) => {
+  const myPulls = (
+    state: 'open' | 'closed',
+    owner = '',
+    refresh = false,
+    search?: { text: string; tab: PullFilter },
+  ) => {
     const gh = github()!;
     const login = config.auth!.login;
+    const searched = search ? `:${search.tab}:${search.text.toLowerCase()}` : '';
     return memory.wrap(
-      `${login}:my-pulls:${state}:${owner.toLowerCase()}`,
+      `${login}:my-pulls:${state}:${owner.toLowerCase()}${searched}`,
       2 * MINUTE,
-      () => getMyPulls(gh, login, state, owner || undefined),
+      () => getMyPulls(gh, login, state, owner || undefined, search),
       refresh,
     );
   };
@@ -204,7 +218,14 @@ export function createApp(options: AppOptions = {}) {
     // Only an account name reaches the search, so nothing else can be slipped into it.
     const owner = c.req.query('owner') ?? '';
     if (owner && !ACCOUNT.test(owner)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
-    return c.json(await myPulls(state, owner, c.req.query('refresh') === '1'));
+    // A text search: plain words only, looked up on GitHub for the open tab.
+    const text = (c.req.query('q') ?? '').trim();
+    const tab = (c.req.query('tab') ?? 'all') as PullFilter;
+    if (text && (text.length > 100 || !SEARCH_TEXT.test(text) || !TABS.has(tab))) {
+      return c.json({ error: 'Invalid search.', status: 400 }, 400);
+    }
+    const search = text ? { text, tab } : undefined;
+    return c.json(await myPulls(state, owner, c.req.query('refresh') === '1', search));
   });
 
   // A repository's usual review and merge times, to put its pull requests in context.

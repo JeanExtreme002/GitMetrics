@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import type {
   AuthStatus,
   MyPullsResponse,
   PullDetail,
+  PullFilter,
   RateLimitInfo,
   RepoBaseline,
   ReposResponse,
@@ -140,14 +141,28 @@ export function useOwners() {
 // Your pull requests ------------------------------------------------------
 
 /** Your pull requests; `owner` keeps only one account's repositories. */
-export const myPullsPath = (state: 'open' | 'closed', owner = '') =>
-  `/pulls?state=${state}${owner ? `&owner=${encodeURIComponent(owner)}` : ''}`;
+export interface PullSearch {
+  text: string;
+  tab: PullFilter;
+}
 
-export const useMyPulls = (state: 'open' | 'closed', owner = '') =>
+export const myPullsPath = (state: 'open' | 'closed', owner = '', search?: PullSearch) => {
+  const params = new URLSearchParams({ state });
+  if (owner) params.set('owner', owner);
+  if (search) {
+    params.set('q', search.text);
+    params.set('tab', search.tab);
+  }
+  return `/pulls?${params.toString()}`;
+};
+
+export const useMyPulls = (state: 'open' | 'closed', owner = '', search?: PullSearch) =>
   useQuery({
-    queryKey: ['my-pulls', state, owner.toLowerCase()],
-    queryFn: () => api<MyPullsResponse>(myPullsPath(state, owner)),
+    queryKey: ['my-pulls', state, owner.toLowerCase(), search?.tab ?? '', search?.text.toLowerCase() ?? ''],
+    queryFn: () => api<MyPullsResponse>(myPullsPath(state, owner, search)),
     staleTime: 2 * 60_000,
+    // While a search runs, keep the results on screen instead of flashing a skeleton.
+    placeholderData: search ? keepPreviousData : undefined,
   });
 
 /** A repository's usual review and merge times, shared by every row from that repository. */

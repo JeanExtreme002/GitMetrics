@@ -105,7 +105,7 @@ export const inFilter = (p: MyPull, filter: PullFilter) => filter === 'all' || p
  * The same list on github.com/pulls, which lists everything, not just the latest. "All" opens
  * involves:@me, the closest single GitHub search to it.
  */
-export function githubPullsUrl(state: 'open' | 'closed', filter: PullFilter, owner = ''): string {
+export function githubPullsUrl(state: 'open' | 'closed', filter: PullFilter, owner = '', text = ''): string {
   const who: Record<PullFilter, string> = {
     all: 'involves:@me',
     authored: 'author:@me',
@@ -113,6 +113,20 @@ export function githubPullsUrl(state: 'open' | 'closed', filter: PullFilter, own
     involved: 'involves:@me',
     review: state === 'open' ? 'review-requested:@me' : 'reviewed-by:@me',
   };
-  const q = `is:pr is:${state} ${who[filter]}${owner ? ` user:${owner}` : ''} sort:updated-desc`;
+  const q = `is:pr is:${state} ${who[filter]}${owner ? ` user:${owner}` : ''}${text ? ` ${text}` : ''} sort:updated-desc`;
   return `https://github.com/pulls?q=${encodeURIComponent(q)}`;
+}
+
+/** Same rule as the server: words of letters, digits, dots, hyphens and underscores. */
+const SEARCH_TEXT = /^[\p{L}\p{N}_.-]+(?: [\p{L}\p{N}_.-]+)*$/u;
+
+/**
+ * What a search box holds, ready for GitHub: spaces squeezed, at least two characters. Null when
+ * there's nothing to search; `invalid` when it holds something GitHub's search would read as a
+ * qualifier or an operator (a colon, quotes...).
+ */
+export function searchText(input: string): { text: string } | { invalid: true } | null {
+  const text = input.trim().replace(/\s+/g, ' ');
+  if (text.length < 2) return null;
+  return text.length <= 100 && SEARCH_TEXT.test(text) ? { text } : { invalid: true };
 }

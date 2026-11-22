@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { githubPullsUrl, hasStatus, pullSignals, slower, span, STATUSES } from '../src/web/lib/pulls';
+import {
+  githubPullsUrl,
+  hasStatus,
+  pullSignals,
+  searchText,
+  slower,
+  span,
+  STATUSES,
+} from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -140,5 +148,22 @@ describe('the same list on GitHub', () => {
       'is:pr is:open review-requested:@me sort:updated-desc',
     );
     expect(query(githubPullsUrl('closed', 'all'))).toBe('is:pr is:closed involves:@me sort:updated-desc');
+  });
+});
+
+describe('the search box', () => {
+  it('waits for two characters, squeezes spaces, and refuses what GitHub would read as a qualifier', () => {
+    expect(searchText('')).toBeNull();
+    expect(searchText(' a ')).toBeNull();
+    expect(searchText('  fix   login ')).toEqual({ text: 'fix login' });
+    expect(searchText('versão')).toEqual({ text: 'versão' });
+    expect(searchText('author:someone')).toEqual({ invalid: true });
+    expect(searchText('"exact"')).toEqual({ invalid: true });
+  });
+
+  it('carries the words to the same list on GitHub', () => {
+    expect(decodeURIComponent(githubPullsUrl('open', 'authored', '', 'cache').split('?q=')[1]!)).toBe(
+      'is:pr is:open author:@me cache sort:updated-desc',
+    );
   });
 });

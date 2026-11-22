@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GitHubClient } from '../src/server/github';
 import {
   ACCOUNT,
+  SEARCH_TEXT,
   buildBaseline,
   checksState,
   getMyPulls,
@@ -146,7 +147,10 @@ describe('your pull requests', () => {
       graphql: async (_query: string, variables: Record<string, string>) => {
         if (variables.q) {
           asked.push(variables.q);
-          const filter = Object.entries(queries).find(([, q]) => q === variables.q)![0];
+          // Recognize the tab by its qualifier, which ends every search, with or without words.
+          const filter = Object.entries(queries).find(([, q]) =>
+            variables.q!.endsWith(q.split(' ').at(-1)!),
+          )![0];
           const nodes = byFilter[filter] ?? [];
           return { search: { issueCount: nodes.length + (filter === 'involved' ? 10 : 0), nodes } };
         }
@@ -202,6 +206,24 @@ describe('your pull requests', () => {
     const { gh } = github({ involved: [commented, pull({ number: 2 })] });
     const result = await getMyPulls(gh, 'me', 'open');
     expect(result.pulls.map((p) => p.comments)).toEqual([8, 0]);
+  });
+
+  it('looks for words on GitHub, only with the searches the open tab needs', async () => {
+    expect(searchQueries('closed', 'octo', 'cache bug').authored).toBe(
+      'is:pr is:closed archived:false sort:updated-desc user:octo cache bug author:@me',
+    );
+    for (const ok of ['cache', 'fix login', 'versão', 'v1.2-rc_3'])
+      expect(SEARCH_TEXT.test(ok), ok).toBe(true);
+    for (const bad of ['user:x', 'a "b"', 'a  b', ' a', 'a OR b:', 'x/y', '-x:y', '(a)']) {
+      expect(SEARCH_TEXT.test(bad), bad).toBe(false);
+    }
+
+    const { gh, asked } = github({});
+    await getMyPulls(gh, 'me', 'open', undefined, { text: 'cache', tab: 'authored' });
+    expect(asked).toEqual([expect.stringMatching(/ cache author:@me$/)]);
+    asked.length = 0;
+    await getMyPulls(gh, 'me', 'open', undefined, { text: 'cache', tab: 'all' });
+    expect(asked.map((q) => q.split(' ').at(-1))).toEqual(['involves:@me', 'review-requested:@me']);
   });
 
   it('only searches with GitHub qualifiers for you, and reads reviewed ones once closed', () => {

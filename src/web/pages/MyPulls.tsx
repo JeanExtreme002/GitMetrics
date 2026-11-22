@@ -3,14 +3,18 @@ import {
   Badge,
   Box,
   Button,
+  CloseButton,
   Group,
+  Loader,
   SegmentedControl,
   Select,
   Stack,
   Switch,
   Text,
+  TextInput,
   Tooltip,
 } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import {
   IconArrowUpRight,
@@ -19,6 +23,7 @@ import {
   IconFilter,
   IconGitPullRequest,
   IconMessageCircle,
+  IconSearch,
   IconUserCheck,
   IconUsers,
 } from '@tabler/icons-react';
@@ -29,7 +34,15 @@ import type { MyPull, MyPullsResponse, PullFilter } from '../../shared/types';
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
 import { api } from '../lib/api';
 import { num, relative } from '../lib/format';
-import { githubPullsUrl, hasStatus, inFilter, pullSignals, STATUSES, type PullStatus } from '../lib/pulls';
+import {
+  githubPullsUrl,
+  hasStatus,
+  inFilter,
+  pullSignals,
+  searchText,
+  STATUSES,
+  type PullStatus,
+} from '../lib/pulls';
 import { myPullsPath, useBaseline, useMyPulls, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
@@ -224,7 +237,13 @@ export function MyPulls() {
   const [owner, setOwner] = useState('');
   const [status, setStatus] = useState<PullStatus | ''>('');
   const [drafts, setDrafts] = useState(true);
-  const query = useMyPulls(state, owner);
+  const [input, setInput] = useState('');
+  const [typed] = useDebouncedValue(input, 400);
+  const parsed = searchText(typed);
+  const search = parsed && 'text' in parsed ? { text: parsed.text, tab: filter } : undefined;
+  const now = searchText(input);
+  const invalid = now !== null && 'invalid' in now;
+  const query = useMyPulls(state, owner, search);
   /** The draft switch and the status picker, as one check, or null when neither narrows the list. */
   const narrowed =
     state === 'open' && (!drafts || status)
@@ -237,8 +256,11 @@ export function MyPulls() {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      const fresh = await api<MyPullsResponse>(`${myPullsPath(state, owner)}&refresh=1`);
-      client.setQueryData(['my-pulls', state, owner.toLowerCase()], fresh);
+      const fresh = await api<MyPullsResponse>(`${myPullsPath(state, owner, search)}&refresh=1`);
+      client.setQueryData(
+        ['my-pulls', state, owner.toLowerCase(), search?.tab ?? '', search?.text.toLowerCase() ?? ''],
+        fresh,
+      );
       // The totals on top always come from the open ones.
       if (state === 'closed') await client.invalidateQueries({ queryKey: ['my-pulls', 'open'] });
     } finally {
@@ -256,6 +278,23 @@ export function MyPulls() {
         statsFrom="xl"
         onRefresh={refresh}
         refreshing={refreshing}
+      />
+
+      <TextInput
+        mb="md"
+        value={input}
+        onChange={(e) => setInput(e.currentTarget.value)}
+        placeholder="Search titles, descriptions and comments on GitHub…"
+        aria-label="Search pull requests"
+        leftSection={<IconSearch size={16} stroke={1.6} />}
+        rightSection={
+          search && query.isFetching ? (
+            <Loader size={14} />
+          ) : input ? (
+            <CloseButton size="sm" aria-label="Clear the search" onClick={() => setInput('')} />
+          ) : null
+        }
+        error={invalid ? 'Only words: letters, digits, dots and hyphens.' : undefined}
       />
 
       <Group justify="space-between" mb="md" gap="sm">
@@ -294,15 +333,18 @@ export function MyPulls() {
       <QueryView query={query}>
         {(data) => {
           const pulls = data.pulls.filter((p) => inFilter(p, filter) && (!narrowed || narrowed(p)));
+          const matching = search ? ` matching “${search.text}”` : '';
           const note =
-            state === 'closed' ? (
+            state === 'closed' || search ? (
               <Stack align="center" gap={8} mt="md">
                 <Text size="xs" c="dimmed" ta="center">
-                  The most recently updated ones, up to 30 for each filter.
+                  {search
+                    ? 'The most recently updated matches, up to 30 for each filter.'
+                    : 'The most recently updated ones, up to 30 for each filter.'}
                 </Text>
                 <Button
                   component="a"
-                  href={githubPullsUrl(state, filter, owner)}
+                  href={githubPullsUrl(state, filter, owner, search?.text)}
                   target="_blank"
                   variant="subtle"
                   color="gray"
@@ -316,17 +358,33 @@ export function MyPulls() {
             ) : null;
           if (!pulls.length) {
             return (
-              <EmptyState
-                icon={<IconClockHour4 size={28} stroke={1.5} />}
-                title={state === 'open' && status ? 'No pull request in this state.' : EMPTY[filter]}
-                description={state === 'open' ? undefined : 'Recently closed pull requests show up here.'}
-              />
+              <>
+                <EmptyState
+                  icon={<IconClockHour4 size={28} stroke={1.5} />}
+                  title={
+                    search
+                      ? `No pull request${matching}.`
+                      : state === 'open' && status
+                        ? 'No pull request in this state.'
+                        : EMPTY[filter]
+                  }
+                  description={
+                    search
+                      ? 'GitHub looks for every word in titles, descriptions and comments.'
+                      : state === 'open'
+                        ? undefined
+                        : 'Recently closed pull requests show up here.'
+                  }
+                />
+                {search && note}
+              </>
             );
           }
           return (
             <>
               <Text size="xs" c="dimmed" mb={8}>
                 Showing {num(pulls.length)} {pulls.length === 1 ? 'pull request' : 'pull requests'}
+                {matching}
               </Text>
               <div className="rank-list">
                 {pulls.map((p) => (
