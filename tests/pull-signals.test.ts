@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { pullSignals, slower, span } from '../src/web/lib/pulls';
+import { hasStatus, pullSignals, slower, span, type PullStatus } from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -104,5 +104,25 @@ describe('what a pull request needs', () => {
     expect(withContext!.hint).toBe(
       'Your review was asked for 6h ago. Here, a first review usually takes 4h.',
     );
+  });
+});
+
+describe('filtering by status', () => {
+  const states = (p: MyPull) =>
+    (['draft', 'approved', 'failing', 'unreviewed', 'idle'] as PullStatus[]).filter((s) =>
+      hasStatus(p, s, NOW),
+    );
+
+  it('matches each open pull request by the same rules as its signals', () => {
+    expect(states(pull({ isDraft: true }))).toEqual(['draft']);
+    expect(states(pull({ reviewDecision: 'APPROVED', firstReviewAt: hoursAgo(5) }))).toEqual(['approved']);
+    expect(states(pull({ checks: 'failure', firstReviewAt: hoursAgo(5) }))).toEqual(['failing']);
+    expect(states(pull())).toEqual(['unreviewed']);
+    expect(states(pull({ firstReviewAt: hoursAgo(500), updatedAt: hoursAgo(24 * 15) }))).toEqual(['idle']);
+  });
+
+  it('never puts a merged or closed pull request in any of them', () => {
+    expect(states(pull({ state: 'MERGED', isDraft: true }))).toEqual([]);
+    expect(states(pull({ state: 'CLOSED' }))).toEqual([]);
   });
 });

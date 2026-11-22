@@ -30,6 +30,33 @@ export interface Signal {
 /** Pull requests nobody touched for this long are called out as idle. */
 const IDLE_DAYS = 14;
 
+export type PullStatus = 'draft' | 'approved' | 'failing' | 'unreviewed' | 'idle';
+
+export const STATUSES: { value: PullStatus; label: string }[] = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'failing', label: 'Checks failing' },
+  { value: 'unreviewed', label: 'No review yet' },
+  { value: 'idle', label: 'Idle' },
+];
+
+/** Whether an open pull request is in that state, by the same rules as its signals. */
+export function hasStatus(p: MyPull, status: PullStatus, now = Date.now()): boolean {
+  if (p.state !== 'OPEN') return false;
+  switch (status) {
+    case 'draft':
+      return p.isDraft;
+    case 'approved':
+      return p.reviewDecision === 'APPROVED';
+    case 'failing':
+      return p.checks === 'failure';
+    case 'unreviewed':
+      return !p.isDraft && !p.firstReviewAt;
+    case 'idle':
+      return now - new Date(p.updatedAt).getTime() > IDLE_DAYS * 24 * HOUR;
+  }
+}
+
 /**
  * What matters about a pull request at a glance, most pressing first, at most two: whether it
  * waits on you, how its wait compares with the repository's usual pace, and what blocks it.

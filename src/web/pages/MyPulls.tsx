@@ -3,6 +3,7 @@ import { useLocalStorage } from '@mantine/hooks';
 import {
   IconClockHour4,
   IconEye,
+  IconFilter,
   IconGitMerge,
   IconGitPullRequest,
   IconUserCheck,
@@ -15,7 +16,7 @@ import type { MyPull, MyPullsResponse, MyPullsSummary, PullFilter } from '../../
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
 import { api } from '../lib/api';
 import { hours, num, relative } from '../lib/format';
-import { pullSignals, span } from '../lib/pulls';
+import { hasStatus, pullSignals, span, STATUSES, type PullStatus } from '../lib/pulls';
 import { myPullsPath, useBaseline, useMyPulls, useMySummary, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
@@ -142,6 +143,35 @@ function AccountSelect({
   );
 }
 
+/** Draft, approved, failing, unreviewed or idle, with how many of the listed ones are in each. */
+function StatusSelect({
+  value,
+  onChange,
+  pulls,
+}: {
+  value: PullStatus | '';
+  onChange: (status: PullStatus | '') => void;
+  pulls: MyPull[];
+}) {
+  return (
+    <Select
+      size="xs"
+      w={170}
+      placeholder="Any status"
+      aria-label="Status"
+      clearable
+      value={value || null}
+      onChange={(v) => onChange((v as PullStatus | null) ?? '')}
+      data={STATUSES.map((s) => ({
+        value: s.value,
+        label: `${s.label} (${num(pulls.filter((p) => hasStatus(p, s.value)).length)})`,
+      }))}
+      leftSection={<IconFilter size={14} />}
+      comboboxProps={{ withinPortal: true }}
+    />
+  );
+}
+
 function Summary() {
   const { data } = useMySummary();
   if (!data) return null;
@@ -188,6 +218,11 @@ export function MyPulls() {
   });
   const [owner, setOwner] = useLocalStorage<string>({
     key: 'gitmetrics:my-pulls-owner',
+    defaultValue: '',
+    getInitialValueInEffect: false,
+  });
+  const [status, setStatus] = useLocalStorage<PullStatus | ''>({
+    key: 'gitmetrics:my-pulls-status',
     defaultValue: '',
     getInitialValueInEffect: false,
   });
@@ -240,6 +275,13 @@ export function MyPulls() {
           />
         </Box>
         <Group gap="sm" wrap="nowrap">
+          {state === 'open' && (
+            <StatusSelect
+              value={status}
+              onChange={setStatus}
+              pulls={query.data?.pulls.filter((p) => inFilter(p, filter)) ?? []}
+            />
+          )}
           <AccountSelect accounts={accounts} value={owner} onChange={setOwner} />
           <SegmentedControl
             size="xs"
@@ -255,7 +297,10 @@ export function MyPulls() {
 
       <QueryView query={query}>
         {(data) => {
-          const pulls = data.pulls.filter((p) => inFilter(p, filter));
+          // Statuses only apply to open pull requests.
+          const pulls = data.pulls.filter(
+            (p) => inFilter(p, filter) && (state !== 'open' || !status || hasStatus(p, status)),
+          );
           const note =
             state === 'closed' ? (
               <Text size="xs" c="dimmed" mt="md" ta="center">
@@ -266,7 +311,7 @@ export function MyPulls() {
             return (
               <EmptyState
                 icon={<IconClockHour4 size={28} stroke={1.5} />}
-                title={EMPTY[filter]}
+                title={state === 'open' && status ? 'No pull request in this state.' : EMPTY[filter]}
                 description={state === 'open' ? undefined : 'Recently closed pull requests show up here.'}
               />
             );
