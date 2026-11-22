@@ -311,6 +311,36 @@ describe('a pull request in detail', () => {
     ]);
   });
 
+  it('counts comments on the code by others as reviewing, as before GitHub had reviews', () => {
+    const thread = (h: number, login: string, typename = 'User') => ({
+      comments: {
+        totalCount: 1,
+        nodes: [{ createdAt: at(h), author: { ...person(login), __typename: typename } }],
+      },
+    });
+    const pull = buildPull(
+      raw({
+        state: 'CLOSED',
+        closedAt: at(100),
+        // The author's own and an app's comments don't count; bo's does, long before any review.
+        threads: { totalCount: 3, nodes: [thread(2, 'ana'), thread(3, 'lint-bot', 'Bot'), thread(5, 'bo')] },
+        reviews: [review(60, 'cy', 'CHANGES_REQUESTED')],
+      }),
+      'octo/app',
+      now,
+    );
+    expect(pull.firstReviewHours).toBe(5);
+    expect(pull.stages.find((s) => s.kind === 'first-review')?.at).toBe(at(5));
+    expect(pull.phases.map((p) => [p.kind, p.hours])).toEqual([
+      ['waiting', 5],
+      ['review', 95],
+    ]);
+    expect(pull.reviewers.map((r) => [r.login, r.state, r.responseHours])).toEqual([
+      ['cy', 'CHANGES_REQUESTED', 60],
+      ['bo', 'COMMENTED', 5],
+    ]);
+  });
+
   it('counts requested changes and force pushes, and then waits on the author', () => {
     const pull = buildPull(
       raw({

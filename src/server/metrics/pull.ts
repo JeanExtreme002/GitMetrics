@@ -50,7 +50,7 @@ export interface RawEvent {
 }
 
 export interface RawThread {
-  comments: { totalCount: number; nodes: { createdAt: string }[] };
+  comments: { totalCount: number; nodes: { createdAt: string; author?: Person | null }[] };
 }
 
 export interface RawFile {
@@ -68,7 +68,7 @@ const CONNECTIONS = {
   commits:
     'commits(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { commit { committedDate } } }',
   threads:
-    'reviewThreads(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { comments(first: 100) { totalCount nodes { createdAt } } } }',
+    'reviewThreads(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { comments(first: 100) { totalCount nodes { createdAt author { __typename login avatarUrl } } } } }',
   requests:
     'reviewRequests(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { requestedReviewer { __typename ... on User { login avatarUrl } ... on Team { name } } } }',
   files:
@@ -315,7 +315,15 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
   const reviews = raw.reviews
     .filter((r) => r.submittedAt && r.author && !isBot(r.author) && !byAuthor(r.author.login))
     .sort((a, b) => a.submittedAt!.localeCompare(b.submittedAt!));
-  const firstReview = reviews[0]?.submittedAt ?? null;
+  // Comments on the code by other people. Before GitHub had reviews (2016), reviewing was
+  // commenting on the code, so these count as reviewing too. A thread's first page holds its
+  // earliest comments, so the first one is always among those read.
+  const codeReviews = raw.threads.nodes
+    .flatMap((t) => t.comments.nodes)
+    .filter((c) => c.author && !isBot(c.author) && !byAuthor(c.author.login))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const firstReview =
+    [reviews[0]?.submittedAt, codeReviews[0]?.createdAt].filter((t): t is string => !!t).sort()[0] ?? null;
   const approvedAt = finalApproval(reviews);
   const ready = raw.events.find((e) => e.__typename === 'ReadyForReviewEvent')?.createdAt ?? null;
   // Review time starts when the pull request was ready for it.
@@ -365,16 +373,24 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     if (review.state !== 'COMMENTED' || r.state === 'PENDING')
       r.state = review.state as PullReviewer['state'];
   }
+  // Someone who only commented on the code reviewed too, the way it was done before reviews.
+  for (const c of codeReviews) {
+    const r = person({ __typename: 'User', ...c.author! });
+    if (!r.firstReviewAt || c.createdAt < r.firstReviewAt) r.firstReviewAt = c.createdAt;
+    if (r.reviews === 0) r.state = 'COMMENTED';
+  }
   for (const r of people.values()) {
     // Still asked: pending while open. Once merged or closed, a request left over doesn't hide
     // the review someone gave.
-    if (pending.has(r.login.toLowerCase()) && (open || r.reviews === 0)) r.state = 'PENDING';
+    if (pending.has(r.login.toLowerCase()) && (open || !r.firstReviewAt)) r.state = 'PENDING';
     if (r.firstReviewAt) {
       const from = r.requestedAt && r.requestedAt <= r.firstReviewAt ? r.requestedAt : reviewStart;
       r.responseHours = Math.max(0, hoursBetween(from, r.firstReviewAt));
     }
   }
-  const reviewers = [...people.values()].filter((r) => r.reviews > 0 || pending.has(r.login.toLowerCase()));
+  const reviewers = [...people.values()].filter(
+    (r) => r.reviews > 0 || r.firstReviewAt !== null || pending.has(r.login.toLowerCase()),
+  );
 
   // Checks on the latest commit, read in full.
   const list = readChecks(raw.checks).sort((a, b) => a.name.localeCompare(b.name));

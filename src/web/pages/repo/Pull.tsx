@@ -276,7 +276,9 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
         : kind === 'review'
           ? pull.phases.some((p) => p.kind === 'approved')
             ? 'In review, until the final approval'
-            : 'In review'
+            : pull.state === 'OPEN'
+              ? 'In review'
+              : `In review, until ${until}`
           : PHASE[kind].label;
   // The legend adds up each kind: a pull request can go back to draft, for instance.
   const kinds = [...new Set(pull.phases.map((p) => p.kind))].map((kind) => ({
@@ -474,7 +476,7 @@ function Reviewers({ pull }: { pull: PullDetail }) {
                 </Text>
                 <Text size="xs" c="dimmed">
                   {r.responseHours !== null
-                    ? `Answered in ${span(r.responseHours)}${r.reviews > 1 ? ` · ${r.reviews} reviews` : ''}`
+                    ? `Answered in ${span(r.responseHours)}${r.reviews > 1 ? ` · ${r.reviews} reviews` : r.reviews === 0 ? ' · on the code' : ''}`
                     : r.requestedAt
                       ? `Asked ${relative(r.requestedAt)}`
                       : 'Asked'}
@@ -667,7 +669,13 @@ export function Pull() {
               <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
                 {pull.author ?? 'ghost'}
               </Text>
-              <span>{pull.state === 'MERGED' ? 'merged into' : 'wants to merge into'}</span>
+              <span>
+                {pull.state === 'MERGED'
+                  ? 'merged into'
+                  : pull.state === 'CLOSED'
+                    ? 'wanted to merge into'
+                    : 'wants to merge into'}
+              </span>
               <Code className="pr-branch">{pull.baseRef}</Code>
               <span>from</span>
               <Code className="pr-branch">{pull.headRef}</Code>
