@@ -895,8 +895,7 @@
 }
 
 .pr-person,
-.pr-check,
-.pr-fact {
+.pr-check {
   padding: 10px 4px;
   border-bottom: 1px solid var(--mantine-color-default-border);
 }
@@ -938,12 +937,10 @@ a.pull-row {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.pr-fact {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
+/* The state of a pull request, as a filled pill like GitHub's. */
+.pr-state {
+  padding-inline: 10px;
 }

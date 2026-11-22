@@ -45,10 +45,10 @@ import { slower, span } from '../../lib/pulls';
 import { usePull } from '../../lib/queries';
 
 const STATE: Record<string, { label: string; color: string; icon: ReactNode }> = {
-  OPEN: { label: 'Open', color: 'green', icon: <IconGitPullRequest size={13} stroke={2} /> },
-  MERGED: { label: 'Merged', color: 'violet', icon: <IconGitMerge size={13} stroke={2} /> },
-  CLOSED: { label: 'Closed', color: 'red', icon: <IconGitPullRequestClosed size={13} stroke={2} /> },
-  DRAFT: { label: 'Draft', color: 'gray', icon: <IconGitPullRequestDraft size={13} stroke={2} /> },
+  OPEN: { label: 'Open', color: 'green.7', icon: <IconGitPullRequest size={14} stroke={2.2} /> },
+  MERGED: { label: 'Merged', color: 'violet.6', icon: <IconGitMerge size={14} stroke={2.2} /> },
+  CLOSED: { label: 'Closed', color: 'red.7', icon: <IconGitPullRequestClosed size={14} stroke={2.2} /> },
+  DRAFT: { label: 'Draft', color: 'gray.6', icon: <IconGitPullRequestDraft size={14} stroke={2.2} /> },
 };
 
 const STAGE: Record<PullStage['kind'], string> = {
@@ -348,29 +348,29 @@ function Checks({ pull }: { pull: PullDetail }) {
   );
 }
 
-function Activity({ pull }: { pull: PullDetail }) {
-  const rows: [string, number, Icon][] = [
-    ['Commits', pull.commits, IconGitCommit],
-    ['Files changed', pull.changedFiles, IconFiles],
-    ['Comments', pull.comments, IconMessageCircle],
-    ['Review threads', pull.reviewThreads, IconMessages],
-    ['People involved', pull.participants, IconUsers],
+/** What went into the pull request, as one compact line under the description. */
+function ActivityLine({ pull }: { pull: PullDetail }) {
+  const items: [number, string, string, Icon][] = [
+    [pull.commits, 'commit', 'commits', IconGitCommit],
+    [pull.changedFiles, 'file changed', 'files changed', IconFiles],
+    [pull.comments, 'comment', 'comments', IconMessageCircle],
+    [pull.reviewThreads, 'review thread', 'review threads', IconMessages],
+    [pull.participants, 'person involved', 'people involved', IconUsers],
   ];
   return (
-    <Box>
-      <SectionHeader title="Activity" caption="How much went into it" />
-      <div className="rank-list">
-        {rows.map(([label, value, RowIcon]) => (
-          <div key={label} className="pr-fact">
-            <RowIcon size={16} stroke={1.7} color="var(--mantine-color-dimmed)" />
-            <Text size="sm">{label}</Text>
-            <Text size="sm" fw={600} className="tabular">
+    <Group gap="lg" mt={12} wrap="wrap">
+      {items.map(([value, one, many, ItemIcon]) => (
+        <Group key={many} gap={6} wrap="nowrap">
+          <ItemIcon size={15} stroke={1.7} color="var(--mantine-color-dimmed)" />
+          <Text fz={13} c="dimmed">
+            <Text component="span" inherit fw={600} c="var(--mantine-color-text)" className="tabular">
               {num(value)}
-            </Text>
-          </div>
-        ))}
-      </div>
-    </Box>
+            </Text>{' '}
+            {value === 1 ? one : many}
+          </Text>
+        </Group>
+      ))}
+    </Group>
   );
 }
 
@@ -394,17 +394,15 @@ export function Pull() {
 
   return (
     <>
-      {/* The same header as every page: title and actions, a description, then the counters. */}
-      <Box mb={36}>
+      {/* Title and actions, the state and a short description, what went into it, then the numbers. */}
+      <Box mb={32}>
         <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
-          <Group gap={10} wrap="nowrap" align="flex-start" miw={0}>
-            <span className="page-icon">
-              <IconGitPullRequest size={26} stroke={1.6} />
-            </span>
-            <Title order={2} fz={{ base: 21, sm: 26 }} style={{ overflowWrap: 'anywhere' }}>
-              {pull?.title ?? `Pull request #${number}`}
-            </Title>
-          </Group>
+          <Title order={2} fz={{ base: 18, sm: 20 }} fw={600} lh={1.4} style={{ overflowWrap: 'anywhere' }}>
+            {pull?.title ?? 'Pull request'}{' '}
+            <Text component="span" inherit fw={400} c="dimmed">
+              #{number}
+            </Text>
+          </Title>
           <Group gap="xs" wrap="nowrap" style={{ flex: 'none' }}>
             {pull && (
               <Tooltip label="Open on GitHub">
@@ -424,23 +422,33 @@ export function Pull() {
           </Group>
         </Group>
         {pull && state && (
-          <Group gap={8} mt={8} wrap="wrap" c="dimmed" fz={14}>
-            <Badge variant="light" color={state.color} leftSection={state.icon} tt="none" radius="sm">
+          <Group gap={10} mt={10} wrap="wrap" align="center">
+            <Badge
+              variant="filled"
+              color={state.color}
+              radius="xl"
+              size="lg"
+              tt="none"
+              fw={600}
+              leftSection={state.icon}
+              className="pr-state"
+            >
               {state.label}
             </Badge>
-            <span>#{pull.number}</span>
-            <span>·</span>
-            <Group gap={6} wrap="nowrap">
+            <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
               <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
-              <span>{pull.author ?? 'ghost'}</span>
+              <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
+                {pull.author ?? 'ghost'}
+              </Text>
+              <span>{pull.state === 'MERGED' ? 'merged into' : 'wants to merge into'}</span>
+              <Code className="pr-branch">{pull.baseRef}</Code>
+              <span>from</span>
+              <Code className="pr-branch">{pull.headRef}</Code>
+              <span>· opened {relative(pull.createdAt)}</span>
             </Group>
-            <span>{pull.state === 'MERGED' ? 'merged into' : 'wants to merge into'}</span>
-            <Code className="pr-branch">{pull.baseRef}</Code>
-            <span>from</span>
-            <Code className="pr-branch">{pull.headRef}</Code>
-            <span>· opened {relative(pull.createdAt)}</span>
           </Group>
         )}
+        {pull && <ActivityLine pull={pull} />}
         {pull && (
           <Box mt="lg">
             <PullStats pull={pull} />
@@ -458,9 +466,6 @@ export function Pull() {
                 <Timeline pull={data} />
                 <Box mt={44}>
                   <Reviewers pull={data} />
-                </Box>
-                <Box mt={44}>
-                  <Activity pull={data} />
                 </Box>
               </Grid.Col>
               {/* Checks are usually the longest list, so they get a column of their own. */}
