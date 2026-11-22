@@ -207,7 +207,7 @@ export interface ReviewerActivity {
    * How long they took, on average, to do anything (review or comment) after being asked; null
    * when no request was answered yet, or when not every comment could be read.
    */
-  answer: { hours: number; answered: number; waiting: number } | null;
+  answer: { hours: number; median: number; answered: number; waiting: number } | null;
   points: ReviewerPoint[];
 }
 
@@ -285,7 +285,11 @@ export function reviewerActivity(pull: PullDetail): { comments: boolean; people:
     for (const [key, w] of waits) {
       if (!w.hours.length) continue;
       const hours = w.hours.reduce((sum, h) => sum + h, 0) / w.hours.length;
-      people.get(key)!.answer = { hours, answered: w.hours.length, waiting: w.waiting };
+      // The middle wait, or the mean of the two middle ones: one slow answer doesn't move it.
+      const sorted = [...w.hours].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+      people.get(key)!.answer = { hours, median, answered: w.hours.length, waiting: w.waiting };
     }
   }
   return {

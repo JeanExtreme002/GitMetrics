@@ -83,7 +83,22 @@ describe("each reviewer's activity", () => {
     expect(bo.requests).toBe(2);
     expect(bo.points.map((p) => p.requests)).toEqual([1, 1, 0]);
     // 10:00 → 10:00 and 14:00 → 16:00: one hour on average.
-    expect(bo.answer).toEqual({ hours: 1, answered: 2, waiting: 0 });
+    expect(bo.answer).toEqual({ hours: 1, median: 1, answered: 2, waiting: 0 });
+    // The median is the middle wait, so one slow answer doesn't move it.
+    const slow = pull({
+      requestMarks: [
+        { hours: 0, login: 'cy', at: '2026-03-03T06:00:00Z' },
+        { hours: 0, login: 'cy', at: '2026-03-03T08:00:00Z' },
+        { hours: 0, login: 'cy', at: '2026-03-01T09:00:00Z' },
+      ],
+    });
+    // cy acts at 03-03 09:00 (changes requested) and 03-09 09:00 (a comment): waits of 3h, 1h and 48h.
+    expect(reviewerActivity(slow)!.people.find((p) => p.login === 'cy')!.answer).toEqual({
+      hours: (3 + 1 + 48) / 3,
+      median: 3,
+      answered: 3,
+      waiting: 0,
+    });
     // Asked only: listed, with no actions and no average.
     const eve = people.find((p) => p.login === 'eve')!;
     expect(eve).toMatchObject({ total: 0, requests: 1, answer: null });

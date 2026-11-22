@@ -485,6 +485,14 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
               hint={`From each request to the next thing they did (a review or a comment), over ${num(person.answer.answered)} ${person.answer.answered === 1 ? 'request' : 'requests'}${person.answer.waiting ? `; ${num(person.answer.waiting)} not answered` : ''}`}
             />
           )}
+          {person.answer && (
+            <Counter
+              icon={IconHourglass}
+              value={span(person.answer.median)}
+              label="Median answer"
+              hint={`Half of their answers came faster than this, half slower, over ${num(person.answer.answered)} ${person.answer.answered === 1 ? 'request' : 'requests'}`}
+            />
+          )}
           <Counter icon={IconCircleCheck} value={num(sum('APPROVED'))} label="Approvals" />
           <Counter icon={IconPencil} value={num(sum('CHANGES_REQUESTED'))} label="Changes requested" />
           <Counter
@@ -506,7 +514,8 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
         series={series}
         gridAxis="y"
         withLegend
-        legendProps={{ verticalAlign: 'top', height: 40 }}
+        // No fixed height: on a phone the legend takes as many lines as it needs, above the bars.
+        legendProps={{ verticalAlign: 'top', wrapperStyle: { paddingBottom: 12 } }}
         xAxisProps={{ tickFormatter: dayLabel, minTickGap: 24 }}
         yAxisProps={{ allowDecimals: false }}
         barProps={{ radius: [3, 3, 0, 0], maxBarSize: 22 }}
