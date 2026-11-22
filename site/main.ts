@@ -51,6 +51,33 @@ function markCurrentPage() {
   });
 }
 
+/** Tabs: one panel at a time, switched by click or the arrow keys. */
+function setUpTabs() {
+  document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((tabs) => {
+    const buttons = [...tabs.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const select = (chosen: HTMLButtonElement) => {
+      for (const button of buttons) {
+        const on = button === chosen;
+        button.setAttribute('aria-selected', String(on));
+        button.tabIndex = on ? 0 : -1;
+        const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
+        if (panel) panel.hidden = !on;
+      }
+    };
+    buttons.forEach((button, index) => {
+      button.addEventListener('click', () => select(button));
+      button.addEventListener('keydown', (event) => {
+        const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        const next = buttons[(index + step + buttons.length) % buttons.length]!;
+        select(next);
+        next.focus();
+      });
+    });
+  });
+}
+
 setUpCopy();
+setUpTabs();
 setUpMenu();
 markCurrentPage();

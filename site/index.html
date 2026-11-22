@@ -23,6 +23,22 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://gitmetrics.pro/social-preview.png" />
 
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "GitMetrics",
+        "url": "https://gitmetrics.pro/",
+        "description": "A local dashboard for your GitHub repositories: stars, traffic, commits, pull requests and CI health.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "softwareVersion": "%VERSION%",
+        "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+        "codeRepository": "https://github.com/JeanExtreme002/GitMetrics",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+
     <script type="module" src="./main.ts"></script>
   </head>
   <body>
@@ -32,13 +48,33 @@
       <section class="hero">
         <div class="glow" aria-hidden="true"></div>
         <div class="container hero-inner">
-          <p class="eyebrow">Free, open source and local</p>
+          <a
+            class="release"
+            href="https://github.com/JeanExtreme002/GitMetrics/releases/latest"
+            target="_blank"
+            rel="noopener"
+          >
+            <span class="release-version">v%VERSION%</span>
+            <span class="release-divider" aria-hidden="true"></span>
+            <span>See what's new</span>
+            <svg class="release-arrow" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+              <path
+                d="M6 3.5 10.5 8 6 12.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </a>
           <h1>Every number behind your <span class="accent">GitHub repositories.</span></h1>
           <p class="lead">
             Stars, traffic, commits, pull requests and CI health in one fast dashboard that runs on your own
             machine. No account, no backend, nothing to configure.
           </p>
 
+          <!-- One block: the command, the two buttons sharing its width, and the note under them. -->
           <div class="install">
             <div class="command" data-command="npx @gitmetrics/app">
               <span class="prompt" aria-hidden="true">$</span>
@@ -46,25 +82,25 @@
               <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
             </div>
 
-            <p class="hint">Needs Node.js 20.19 or newer. Runs on Windows, Linux and macOS.</p>
-          </div>
+            <div class="actions">
+              <a class="button primary" href="/get-started/">Get started</a>
+              <a
+                class="button ghost"
+                href="https://github.com/JeanExtreme002/GitMetrics"
+                target="_blank"
+                rel="noopener"
+              >
+                <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
+                  />
+                </svg>
+                View on GitHub
+              </a>
+            </div>
 
-          <div class="actions">
-            <a
-              class="button primary"
-              href="https://github.com/JeanExtreme002/GitMetrics"
-              target="_blank"
-              rel="noopener"
-            >
-              <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
-                />
-              </svg>
-              View on GitHub
-            </a>
-            <a class="button ghost" href="/get-started/">Get started</a>
+            <p class="hint">Needs Node.js 20.19+. Runs on Windows, macOS and Linux.</p>
           </div>
         </div>
 
@@ -93,14 +129,11 @@
       <section class="features" id="features">
         <div class="container">
           <h2>What GitHub leaves out, in one place.</h2>
-          <p class="section-lead">
-            GitHub shows bits of your projects in scattered places and forgets older traffic. GitMetrics fills
-            those gaps.
-          </p>
+          <p class="section-lead">GitHub scatters it across pages and forgets traffic after two weeks.</p>
 
-          <div class="grid">
-            <article class="card">
-              <span class="card-icon" aria-hidden="true"
+          <div class="highlights">
+            <div>
+              <span class="highlight-icon" aria-hidden="true"
                 ><svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -116,13 +149,10 @@
                   <path d="M12 7v5l3 2" /></svg
               ></span>
               <h3>Traffic that never expires</h3>
-              <p>
-                GitHub keeps two weeks of views and clones. GitMetrics saves every window on your machine, so
-                the history keeps growing for as long as you use it.
-              </p>
-            </article>
-            <article class="card">
-              <span class="card-icon" aria-hidden="true"
+              <p>Views and clones saved every day, long after GitHub's 14 days.</p>
+            </div>
+            <div>
+              <span class="highlight-icon" aria-hidden="true"
                 ><svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -137,14 +167,11 @@
                   <path d="m3 12 9 4.5 9-4.5" />
                   <path d="m3 16.5 9 4.5 9-4.5" /></svg
               ></span>
-              <h3>The full story of each repository</h3>
-              <p>
-                Star history, pull requests, issues, contributors, hotspots, Actions, releases and
-                deployments, each on its own focused page.
-              </p>
-            </article>
-            <article class="card">
-              <span class="card-icon" aria-hidden="true"
+              <h3>Every repository in depth</h3>
+              <p>Stars, commits, pull requests, issues, Actions, releases and deployments.</p>
+            </div>
+            <div>
+              <span class="highlight-icon" aria-hidden="true"
                 ><svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -160,14 +187,11 @@
                   <path d="M12 16V6" />
                   <path d="M17 16v-8" /></svg
               ></span>
-              <h3>Exact numbers, even on busy repos</h3>
-              <p>
-                Monthly pull requests and issues, daily workflow runs and deployment totals come from GitHub's
-                own counts, not from a small sample.
-              </p>
-            </article>
-            <article class="card">
-              <span class="card-icon" aria-hidden="true"
+              <h3>Exact, not sampled</h3>
+              <p>Counts come straight from GitHub, even on the busiest repositories.</p>
+            </div>
+            <div>
+              <span class="highlight-icon" aria-hidden="true"
                 ><svg
                   viewBox="0 0 24 24"
                   width="20"
@@ -183,56 +207,54 @@
                   <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
                   <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" /></svg
               ></span>
-              <h3>Everything you own, side by side</h3>
+              <h3>All your projects at once</h3>
+              <p>Every repository and organization side by side, a keystroke away.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="pulls" id="pull-requests">
+        <div class="container">
+          <h2>Every pull request, and what it needs.</h2>
+          <p class="section-lead">
+            One list of every pull request that involves you, across all your repositories, and a page for
+            each one that shows how its time was spent.
+          </p>
+          <picture>
+            <source
+              type="image/webp"
+              srcset="
+                /img/pull-request-640.webp   640w,
+                /img/pull-request-1040.webp 1040w,
+                /img/pull-request-1600.webp 1600w,
+                /img/pull-request-2080.webp 2080w
+              "
+              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
+            />
+            <img
+              src="/pull-request.png"
+              alt="A pull request in GitMetrics: its stretches, commits, review requests, reviews and comments over time, and one reviewer's activity"
+              width="1584"
+              height="1196"
+              loading="lazy"
+            />
+          </picture>
+          <div class="points">
+            <div>
+              <h3>What it waits on</h3>
+              <p>A review, the author, failing checks or conflicts, said in one line, with how long.</p>
+            </div>
+            <div>
+              <h3>Where the time went</h3>
               <p>
-                A home page across all your repositories and organizations, rankings by stars, activity or
-                traffic, and Ctrl + K to jump anywhere.
+                Draft, waiting for a review, in review and approved, with every commit, review and comment.
               </p>
-            </article>
-            <article class="card">
-              <span class="card-icon" aria-hidden="true"
-                ><svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="5" y="10.5" width="14" height="10" rx="1.5" />
-                  <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
-                  <path d="M12 14.5v2" /></svg
-              ></span>
-              <h3>Private by design</h3>
-              <p>
-                It runs on 127.0.0.1 and talks only to api.github.com, plus npm to check for updates. Your
-                token and data never leave your computer.
-              </p>
-            </article>
-            <article class="card">
-              <span class="card-icon" aria-hidden="true"
-                ><svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="3" y="4.5" width="18" height="15" rx="1.5" />
-                  <path d="m7 9.5 3 2.5-3 2.5" />
-                  <path d="M12.5 15h4.5" /></svg
-              ></span>
-              <h3>One command away</h3>
-              <p>
-                No signup and no setup. Run it with npx, sign in with the GitHub CLI or a token, and start
-                exploring.
-              </p>
-            </article>
+            </div>
+            <div>
+              <h3>Each reviewer's pace</h3>
+              <p>When they were asked, what they did each day, and how fast they answered.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -265,22 +287,130 @@
         </div>
       </section>
 
+      <section class="privacy" id="privacy">
+        <div class="container privacy-inner">
+          <div>
+            <h2>Your data stays on your machine.</h2>
+            <p>
+              GitMetrics runs on your computer and reads GitHub with your own sign-in. No account, no server
+              of ours.
+            </p>
+            <ul class="promises">
+              <li>
+                Only talks to <code>api.github.com</code> and, for updates, <code>registry.npmjs.org</code>.
+              </li>
+              <li>Keeps your token and history in <code>~/.gitmetrics</code>, readable only by you.</li>
+              <li>Never writes to GitHub, and never sends analytics.</li>
+            </ul>
+            <a
+              class="text-link"
+              href="https://github.com/JeanExtreme002/GitMetrics"
+              target="_blank"
+              rel="noopener"
+              >Read the source code <span class="text-link-arrow" aria-hidden="true">→</span></a
+            >
+          </div>
+          <figure class="terminal" aria-label="What you see when GitMetrics starts">
+            <div class="terminal-bar" aria-hidden="true">
+              <span></span><span></span><span></span>
+              <p>Terminal</p>
+            </div>
+            <pre><code><span class="t-prompt">$</span> npx @gitmetrics/app
+
+  GitMetrics %VERSION% is running at <span class="t-link">http://localhost:4280</span>
+  Data folder: ~/.gitmetrics
+  Press Ctrl+C to stop.
+</code></pre>
+          </figure>
+        </div>
+      </section>
+
+      <section class="faq" id="faq">
+        <div class="container faq-inner">
+          <div class="faq-intro">
+            <h2>Questions, answered.</h2>
+            <p>What people ask before trying GitMetrics.</p>
+            <a
+              class="text-link"
+              href="https://github.com/JeanExtreme002/GitMetrics/issues"
+              target="_blank"
+              rel="noopener"
+              >Ask something else <span class="text-link-arrow" aria-hidden="true">→</span></a
+            >
+          </div>
+          <div class="faq-list">
+            <details>
+              <summary>Is GitMetrics free?</summary>
+              <p>
+                Yes. It's free and open source under the GNU AGPL-3.0, with no paid plan and no account to
+                create.
+              </p>
+            </details>
+            <details>
+              <summary>Is it made by GitHub?</summary>
+              <p>
+                No. GitMetrics is an independent open source project. It uses GitHub's public API with your
+                own sign-in, the same way the GitHub CLI does.
+              </p>
+            </details>
+            <details>
+              <summary>Where does my GitHub token go?</summary>
+              <p>
+                Only to <code>api.github.com</code>. It's saved in <code>~/.gitmetrics/config.json</code>, a
+                file only your user can read, and signing out deletes it.
+              </p>
+            </details>
+            <details>
+              <summary>Which permissions does it ask for?</summary>
+              <p>
+                <code>repo</code>, <code>read:user</code> and <code>read:org</code>, so it can read your
+                private repositories and organizations. GitHub has no narrower scope for private repositories,
+                but GitMetrics only ever reads.
+              </p>
+            </details>
+            <details>
+              <summary>Does it work with private repositories and organizations?</summary>
+              <p>
+                Yes. It shows everything your account can see, including traffic where you have push access.
+              </p>
+            </details>
+            <details>
+              <summary>How is traffic kept beyond GitHub's 14 days?</summary>
+              <p>
+                Each day GitMetrics runs, it saves the views and clones of your repositories on your computer.
+                Open it at least every two weeks and the history never has a gap.
+              </p>
+            </details>
+            <details>
+              <summary>How do I update it?</summary>
+              <p>
+                You don't have to: started with <code>npx</code>, it restarts into the newest version on its
+                own. Installed with <code>npm install -g</code>, it shows the command that updates it.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
       <section class="cta">
         <div class="glow" aria-hidden="true"></div>
         <div class="container cta-inner">
-          <h2>Install once, run it anytime.</h2>
-          <div class="command multi" data-command="npm install -g @gitmetrics/app&#10;gitmetrics">
-            <div class="lines">
-              <div>
-                <span class="prompt" aria-hidden="true">$</span> <code>npm install -g @gitmetrics/app</code>
+          <h2><span class="accent">Install once, run it anytime.</span></h2>
+          <!-- The command takes the width of the sentence under it. -->
+          <div class="cta-block">
+            <div class="command multi" data-command="npm install -g @gitmetrics/app&#10;gitmetrics">
+              <div class="lines">
+                <div>
+                  <span class="prompt" aria-hidden="true">$</span> <code>npm install -g @gitmetrics/app</code>
+                </div>
+                <div><span class="prompt" aria-hidden="true">$</span> <code>gitmetrics</code></div>
               </div>
-              <div><span class="prompt" aria-hidden="true">$</span> <code>gitmetrics</code></div>
+              <button type="button" class="copy" data-copy aria-label="Copy the commands">Copy</button>
             </div>
-            <button type="button" class="copy" data-copy aria-label="Copy the commands">Copy</button>
+            <p class="cta-text">
+              <strong>Built in the open.</strong> Follow the project, share ideas or contribute on GitHub.
+            </p>
           </div>
-          <p class="cta-text">
-            <strong>Built in the open.</strong> Follow the project, share ideas or contribute on GitHub.
-          </p>
           <a
             class="button dark large"
             href="https://github.com/JeanExtreme002/GitMetrics"
