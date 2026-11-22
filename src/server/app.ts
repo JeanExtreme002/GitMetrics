@@ -45,6 +45,11 @@ export interface AppOptions {
   ghToken?: () => Promise<string | null>;
   /** Set to false to leave the traffic history alone (tests that count requests). */
   collectTraffic?: boolean;
+  /**
+   * How often the server itself checks that today's traffic was collected, in ms. The CLI sets it,
+   * so a GitMetrics left open for days collects every day even with nobody on the page.
+   */
+  collectEvery?: number;
   /** What the CLI found out about updates when it started. */
   update?: UpdateInfo;
 }
@@ -74,11 +79,22 @@ export function createApp(options: AppOptions = {}) {
   const ownRepos = (gh: GitHubClient) =>
     memory.wrap(`${config.auth!.login}:repos`, 10 * MINUTE, () => listRepos(gh));
   const collector = new TrafficCollector(traffic, collection, ownRepos);
+  const collect = () => {
+    const gh = github();
+    if (gh && options.collectTraffic !== false) collector.poke(gh, config.auth!.login);
+  };
+  if (options.collectEvery) {
+    // Right away when it starts (if signed in), then on a clock: once a day is all it collects.
+    setTimeout(collect, 0).unref();
+    setInterval(collect, options.collectEvery).unref();
+  }
 
   const signIn = async (token: string, source: 'device' | 'token' | 'gh') => {
     const { viewer, scopes } = await validateToken(token, fetchImpl);
     config.setAuth({ token, source, login: viewer.login, scopes, createdAt: new Date().toISOString() });
     memory.clear();
+    // Signed in: the day's collection starts now, without waiting for a page.
+    collect();
     return viewer;
   };
 
@@ -169,7 +185,7 @@ export function createApp(options: AppOptions = {}) {
     const gh = github();
     if (!gh) return c.json({ error: 'You are not signed in.', status: 401 }, 401);
     // Keeps the traffic history growing: once a day, in the background, never in the way.
-    if (options.collectTraffic !== false) collector.poke(gh, config.auth!.login);
+    collect();
     await next();
   });
 

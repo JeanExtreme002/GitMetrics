@@ -483,6 +483,46 @@ describe('repository pages, end to end', () => {
     expect(calls.filter((c) => c.includes('/traffic/')).length).toBe(asked);
   });
 
+  it('collects every day while it stays open, with nobody on the page', async () => {
+    vi.useFakeTimers({
+      now: new Date('2026-11-22T10:00:00Z'),
+      toFake: ['Date', 'setTimeout', 'setInterval'],
+    });
+    try {
+      const traffic = (kind: string) => () =>
+        json({ count: 1, uniques: 1, [kind]: [{ timestamp: '2026-11-21T00:00:00Z', count: 1, uniques: 1 }] });
+      const github = fakeGitHub({
+        '/user/repos': () => json([REPO]),
+        '/repos/octo/app/traffic/views': traffic('views'),
+        '/repos/octo/app/traffic/clones': traffic('clones'),
+      });
+      const app = createApp({
+        dataDir: dir,
+        fetchImpl: github.fetchImpl,
+        ghToken: async () => 'gho_cli',
+        collectEvery: 60 * 60_000,
+      });
+      const send = (url: string, init: RequestInit = {}) =>
+        app.request(url, {
+          ...init,
+          headers: { host: 'localhost:4280', 'x-gitmetrics': '1', ...init.headers },
+        });
+      const collections = () => github.calls.filter((c) => c.endsWith('/traffic/views')).length;
+
+      // Signing in starts the day's collection; no page is opened afterwards.
+      expect((await send('/api/auth/gh', { method: 'POST' })).status).toBe(200);
+      await vi.waitFor(() => expect(collections()).toBe(1));
+      // The same day, the clock finds it done.
+      await vi.advanceTimersByTimeAsync(5 * 60 * 60_000);
+      expect(collections()).toBe(1);
+      // Past midnight (UTC), the next check collects again.
+      await vi.advanceTimersByTimeAsync(10 * 60 * 60_000);
+      await vi.waitFor(() => expect(collections()).toBe(2));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('stars: history, recent stargazers and totals', async () => {
     const { page } = await signedIn();
     const stars = await page<{

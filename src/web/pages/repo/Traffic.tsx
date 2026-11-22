@@ -14,6 +14,7 @@ import {
 } from '../../components/ui';
 import { compact, date, dayLabel, num, percent } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
+import { type TrafficGap, withGaps } from '../../lib/traffic';
 import { semantic } from '../../theme';
 
 type Kind = 'views' | 'clones';
@@ -116,6 +117,9 @@ function TrafficRanking({ items, empty }: { items: RankItem[]; empty: string }) 
   );
 }
 
+/** The longest of the gaps. */
+const longest = (gaps: TrafficGap[]) => gaps.reduce((a, b) => (b.days > a.days ? b : a));
+
 export function Traffic() {
   const query = useSection<TrafficResponse>('traffic');
   const { fullName } = useRepoParams();
@@ -143,9 +147,12 @@ export function Traffic() {
               />
             );
           }
-          const daily = data[kind].daily;
+          // Days GitMetrics wasn't opened in time to save are a break in the chart, not zeros.
+          const { days: daily, gaps } = withGaps(data[kind].daily);
           const hasHistory = daily.length > WINDOW_DAYS;
-          const series = window === 'all' && hasHistory ? daily : daily.slice(-WINDOW_DAYS);
+          const all = window === 'all' && hasHistory;
+          const series = all ? daily : daily.slice(-WINDOW_DAYS);
+          const missing = all ? gaps : [];
           const repoPath = `/${fullName}`;
 
           return (
@@ -204,10 +211,19 @@ export function Traffic() {
                     withLegend
                     legendProps={{ verticalAlign: 'top', height: 40 }}
                     xAxisProps={{ tickFormatter: dayLabel, minTickGap: 32 }}
-                    valueFormatter={num}
+                    valueFormatter={(value) => (value == null ? 'Not saved' : num(value))}
+                    connectNulls={false}
                   />
                 ) : (
                   <NoData>No {kind} in the last 14 days.</NoData>
+                )}
+                {missing.length > 0 && (
+                  <Text size="xs" c="dimmed" mt="xs">
+                    {missing.length === 1
+                      ? `No data from ${date(missing[0]!.from)} to ${date(missing[0]!.to)}`
+                      : `No data for ${num(missing.reduce((sum, g) => sum + g.days, 0))} days in ${missing.length} gaps, the longest from ${date(longest(missing).from)} to ${date(longest(missing).to)}`}
+                    : GitMetrics wasn't opened within GitHub's 14 days to save it.
+                  </Text>
                 )}
               </Box>
 
