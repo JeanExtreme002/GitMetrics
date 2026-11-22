@@ -1,22 +1,27 @@
 import {
   ActionIcon,
+  Affix,
   AppShell,
   Avatar,
   Box,
   Burger,
+  CloseButton,
+  CopyButton,
   Group,
   Kbd,
   Menu,
+  Paper,
   Progress,
   NavLink as MantineNavLink,
   ScrollArea,
   Text,
   Tooltip,
+  Transition,
   UnstyledButton,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { Spotlight, spotlight, type SpotlightActionData } from '@mantine/spotlight';
 import {
   IconArrowLeft,
@@ -48,8 +53,9 @@ import { api, post } from '../lib/api';
 import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { useRecentRepos } from '../lib/recent';
+import { snoozed, type Dismissed } from '../lib/update';
 import { sectionQuery, useAuth, useOwners, useRateLimit, useRepos } from '../lib/queries';
-import type { OverviewResponse, SearchResponse } from '../../shared/types';
+import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
 
@@ -300,6 +306,69 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * A newer GitMetrics is on npm: a small card in the bottom right corner with the command that
+ * updates it. Started through npx GitMetrics updates itself, so this mostly shows for a global
+ * install. Closing it hides it for a week, or until an even newer version comes out.
+ */
+function UpdatePopup() {
+  const { data } = useQuery({
+    queryKey: ['update'],
+    queryFn: () => api<UpdateInfo>('/update'),
+    staleTime: Infinity,
+  });
+  const [dismissed, setDismissed] = useLocalStorage<Dismissed | null>({
+    key: 'gitmetrics:update-dismissed',
+    defaultValue: null,
+    getInitialValueInEffect: false,
+  });
+  const show = Boolean(data?.available && data.command && !snoozed(dismissed, data.latest));
+
+  return (
+    <Affix position={{ bottom: 20, right: 20 }} zIndex={150}>
+      <Transition mounted={show} transition="slide-up" duration={220}>
+        {(style) => (
+          <Paper style={style} className="update-popup" shadow="lg" withBorder role="status">
+            <Group justify="space-between" wrap="nowrap" align="center" gap="sm">
+              <Group gap={12} wrap="nowrap" align="center">
+                <Logo size={36} />
+                <Text fw={700}>Your GitMetrics is out of date!</Text>
+              </Group>
+              <CloseButton
+                size="sm"
+                aria-label="Dismiss"
+                onClick={() => setDismissed({ version: data?.latest ?? '', at: Date.now() })}
+              />
+            </Group>
+            <Text size="sm" mt="md" lh={1.5}>
+              You are missing the latest features and fixes. Update now, then start GitMetrics again:
+            </Text>
+            <Group gap={8} wrap="nowrap" mt={10} className="update-command">
+              <Text component="code" size="xs" truncate>
+                <span className="update-prompt" aria-hidden>
+                  ${' '}
+                </span>
+                {data?.command}
+              </Text>
+              <CopyButton value={data?.command ?? ''}>
+                {({ copied, copy }) => (
+                  <UnstyledButton
+                    onClick={copy}
+                    className="group-action"
+                    aria-label="Copy the update command"
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </UnstyledButton>
+                )}
+              </CopyButton>
+            </Group>
+          </Paper>
+        )}
+      </Transition>
+    </Affix>
   );
 }
 
@@ -653,6 +722,7 @@ export function Layout() {
         </Box>
       </AppShell.Main>
       <RepoSpotlight />
+      <UpdatePopup />
     </AppShell>
   );
 }

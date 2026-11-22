@@ -65,6 +65,16 @@ export interface ReposResponse {
   favorites: string[];
 }
 
+/** Whether a newer GitMetrics is published, and how to get it. */
+export interface UpdateInfo {
+  current: string;
+  /** The newest version on npm, or null when it couldn't be checked. */
+  latest: string | null;
+  available: boolean;
+  /** The command that brings the update in, or null when running from a checkout. */
+  command: string | null;
+}
+
 /** Repositories anywhere on GitHub that match a quick search. */
 export interface SearchResponse {
   repos: RepoSummary[];

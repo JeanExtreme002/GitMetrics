@@ -791,3 +791,28 @@
   height: 8px;
   border-radius: 99px;
 }
+
+/* A newer version is on npm: a small card in the bottom right corner. */
+.update-popup {
+  width: min(380px, calc(100vw - 40px));
+  padding: 16px;
+  border-radius: var(--mantine-radius-md);
+}
+
+.update-command {
+  padding: 7px 10px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-default-hover);
+  font-family: var(--mantine-font-family-monospace);
+}
+
+.update-command code {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A shell prompt in front of the command, for looks only: it is not part of what Copy copies. */
+.update-prompt {
+  color: var(--mantine-color-dimmed);
+  user-select: none;
+}
