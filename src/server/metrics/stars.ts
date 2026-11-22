@@ -1,5 +1,5 @@
 import type { Stargazer as StargazerInfo, StarPoint, StarsResponse } from '../../shared/types.js';
-import { type GitHubClient, optional } from '../github.js';
+import { type GitHubClient, GitHubError, optional } from '../github.js';
 import { lastMonths, mapLimit, monthsBetween, toDay, toMonth } from '../util.js';
 
 const STAR_ACCEPT = 'application/vnd.github.star+json';
@@ -113,6 +113,7 @@ export function buildStars(
       bestMonth: best && best.stars > 0 ? best : null,
     },
     recent,
+    historyHidden: false,
   };
 }
 
@@ -148,6 +149,13 @@ export async function getRecentStargazers(
     .reverse();
 }
 
+/** Only the total: no points, no monthly chart and no rates, since none of them can be known. */
+export const hiddenHistory = (total: number): StarsResponse => ({
+  ...buildStars([], total, false),
+  stats: { last7Days: 0, last30Days: 0, avgPerMonth: 0, bestMonth: null },
+  historyHidden: true,
+});
+
 export async function getStars(
   gh: GitHubClient,
   owner: string,
@@ -157,10 +165,18 @@ export async function getStars(
   if (total === 0) return buildStars([], 0, false);
 
   const path = `/repos/${owner}/${repo}/stargazers`;
-  const first = await gh.request<Stargazer[]>(path, {
-    query: { per_page: 100, page: 1 },
-    accept: STAR_ACCEPT,
-  });
+  let first;
+  try {
+    first = await gh.request<Stargazer[]>(path, {
+      query: { per_page: 100, page: 1 },
+      accept: STAR_ACCEPT,
+    });
+  } catch (error) {
+    // GitHub answers 404 for the stargazers of very popular repositories (the list is hidden on
+    // github.com too), even though the repository exists. Keep the exact total.
+    if (error instanceof GitHubError && error.status === 404) return hiddenHistory(total);
+    throw error;
+  }
   const pages = Math.min(first.lastPage, MAX_PAGES);
   const sampled = pages > FULL_FETCH_PAGES;
   const wanted = (sampled ? samplePages(pages) : samplePages(pages, pages)).filter((p) => p > 1);

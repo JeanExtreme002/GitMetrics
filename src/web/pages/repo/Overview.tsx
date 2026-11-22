@@ -151,7 +151,7 @@ function GrowthChart() {
   if (view === 'stars') {
     const data = stars.data;
     chart =
-      data && data.points.length ? (
+      data && !data.historyHidden && data.points.length ? (
         <AreaChart
           h={260}
           data={resampleCumulative(data.points, 'stars', undefined, 120)}
@@ -167,7 +167,15 @@ function GrowthChart() {
           valueFormatter={num}
         />
       ) : (
-        <NoData>{data ? 'No stars yet.' : 'Loading…'}</NoData>
+        <NoData>
+          {data?.historyHidden
+            ? "GitHub doesn't share the star history of very popular repositories."
+            : data
+              ? 'No stars yet.'
+              : stars.isError
+                ? "Couldn't load the star history."
+                : 'Loading…'}
+        </NoData>
       );
   } else {
     const data = commits.data;
@@ -183,7 +191,13 @@ function GrowthChart() {
           barProps={{ radius: [3, 3, 0, 0] }}
         />
       ) : (
-        <NoData>{data ? 'GitHub is still computing commit statistics.' : 'Loading…'}</NoData>
+        <NoData>
+          {data
+            ? 'GitHub is still computing commit statistics.'
+            : commits.isError
+              ? "Couldn't load the commit activity."
+              : 'Loading…'}
+        </NoData>
       );
   }
 

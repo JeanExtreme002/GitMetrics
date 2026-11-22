@@ -363,6 +363,17 @@ describe('repository pages, end to end', () => {
     expect(stars.stats.last7Days).toBe(1);
   });
 
+  it('stars: keeps the exact total when GitHub hides the stargazers of a popular repository', async () => {
+    const { page } = await signedIn({ '/repos/octo/app/stargazers': notFound });
+    const stars = await page<{
+      total: number;
+      historyHidden: boolean;
+      points: unknown[];
+      monthly: unknown[];
+    }>('stars');
+    expect(stars).toMatchObject({ total: 3, historyHidden: true, points: [], monthly: [] });
+  });
+
   it('commits: weekly activity, code frequency and the latest commits', async () => {
     const { page } = await signedIn();
     const commits = await page<{
