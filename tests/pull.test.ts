@@ -138,6 +138,26 @@ describe('where the time went', () => {
     expect(finalApproval([r(1, 'bo', 'APPROVED'), r(2, 'cy', 'DISMISSED')])).toBe(at(1));
   });
 
+  it('puts every request for changes and every standing approval on the timeline, with who gave it', () => {
+    const pull = buildPull(
+      raw({
+        reviews: [
+          review(2, 'bo', 'CHANGES_REQUESTED'),
+          review(3, 'cy', 'APPROVED'),
+          review(5, 'bo', 'APPROVED'),
+          review(6, 'di', 'DISMISSED'),
+        ],
+      }),
+      'octo/app',
+      now,
+    );
+    expect(pull.stages.filter((s) => s.login).map((s) => [s.kind, s.login, s.at])).toEqual([
+      ['changes', 'bo', at(2)],
+      ['approved', 'cy', at(3)],
+      ['approved', 'bo', at(5)],
+    ]);
+  });
+
   it("keeps each person's last approval, unless they asked for changes after it", () => {
     const r = (h: number, login: string, state: string) => ({ submittedAt: at(h), state, author: { login } });
     expect(

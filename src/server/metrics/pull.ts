@@ -377,6 +377,11 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
   const stages: Omit<PullStage, 'hours'>[] = [{ kind: 'opened', at: raw.createdAt }];
   if (ready) stages.push({ kind: 'ready', at: ready });
   if (firstReview) stages.push({ kind: 'first-review', at: firstReview });
+  // Every request for changes (a dismissed one is kept as dismissed, so it isn't here).
+  for (const r of reviews) {
+    if (r.state === 'CHANGES_REQUESTED')
+      stages.push({ kind: 'changes', at: r.submittedAt!, login: r.author!.login });
+  }
   // Every approval that still stands, each with who gave it.
   for (const a of keptApprovals(reviews)) stages.push({ kind: 'approved', at: a.at, login: a.login });
   if (raw.mergedAt) stages.push({ kind: 'merged', at: raw.mergedAt });

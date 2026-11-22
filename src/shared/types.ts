@@ -488,9 +488,9 @@ export interface MyPullsResponse {
 // A single pull request ---------------------------------------------------
 
 export interface PullStage {
-  kind: 'opened' | 'ready' | 'first-review' | 'approved' | 'merged' | 'closed';
+  kind: 'opened' | 'ready' | 'first-review' | 'changes' | 'approved' | 'merged' | 'closed';
   at: string;
-  /** For an approval: who gave it. */
+  /** For a request for changes or an approval: who gave it. */
   login?: string;
   /** Hours since the previous stage. */
   hours: number | null;

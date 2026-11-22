@@ -60,10 +60,16 @@ const STATE: Record<string, { label: string; color: string; icon: ReactNode }> =
   DRAFT: { label: 'Draft', color: 'gray.6', icon: <IconGitPullRequestDraft size={14} stroke={2.2} /> },
 };
 
+const STAGE_COLOR: Partial<Record<PullStage['kind'], string>> = {
+  changes: 'orange.6',
+  approved: 'green.6',
+};
+
 const STAGE: Record<PullStage['kind'], string> = {
   opened: 'Opened',
   ready: 'Ready for review',
   'first-review': 'First review',
+  changes: 'Changes requested',
   approved: 'Final approval',
   merged: 'Merged',
   closed: 'Closed',
@@ -543,7 +549,11 @@ function Timeline({ pull }: { pull: PullDetail }) {
         {pull.stages.map((s, i) => (
           // A kind can come more than once: one approval per person.
           <div key={`${s.kind}-${i}`} className="pr-stage">
-            <span className="pr-stage-dot" />
+            {/* Reviews in the review lanes' colors, so the back and forth reads at a glance. */}
+            <span
+              className="pr-stage-dot"
+              style={STAGE_COLOR[s.kind] ? { background: cssColor(STAGE_COLOR[s.kind]!) } : undefined}
+            />
             <Box miw={0}>
               <Text size="sm" fw={500}>
                 {STAGE[s.kind]}
