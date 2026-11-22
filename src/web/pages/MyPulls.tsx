@@ -15,7 +15,7 @@ import type { MyPull, MyPullsResponse, PullFilter } from '../../shared/types';
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
 import { api } from '../lib/api';
 import { num, relative } from '../lib/format';
-import { hasStatus, inFilter, listCount, pullSignals, STATUSES, type PullStatus } from '../lib/pulls';
+import { hasStatus, inFilter, pullSignals, STATUSES, type PullStatus } from '../lib/pulls';
 import { myPullsPath, useBaseline, useMyPulls, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
@@ -137,15 +137,13 @@ function AccountSelect({
   );
 }
 
-/** Approved, failing, unreviewed or idle, with how many of the listed ones are in each. */
+/** Approved, failing, unreviewed or idle. */
 function StatusSelect({
   value,
   onChange,
-  pulls,
 }: {
   value: PullStatus | '';
   onChange: (status: PullStatus | '') => void;
-  pulls: MyPull[];
 }) {
   return (
     <Select
@@ -156,10 +154,7 @@ function StatusSelect({
       clearable
       value={value || null}
       onChange={(v) => onChange((v as PullStatus | null) ?? '')}
-      data={STATUSES.map((s) => ({
-        value: s.value,
-        label: `${s.label} (${num(pulls.filter((p) => hasStatus(p, s.value)).length)})`,
-      }))}
+      data={STATUSES}
       leftSection={<IconFilter size={14} />}
       comboboxProps={{ withinPortal: true }}
     />
@@ -262,11 +257,7 @@ export function MyPulls() {
             size="xs"
             value={filter}
             onChange={(v) => setFilter(v as PullFilter)}
-            data={FILTERS.map((f) => {
-              // How many the list shows in each tab, with the draft and status filters applied.
-              const n = query.data ? listCount(f.value, query.data.pulls, narrowed) : null;
-              return { value: f.value, label: n === null ? f.label : `${f.label} ${num(n)}` };
-            })}
+            data={FILTERS}
           />
         </Box>
         <Group gap="sm" wrap="nowrap">
@@ -278,13 +269,7 @@ export function MyPulls() {
               onChange={(e) => setDrafts(e.currentTarget.checked)}
             />
           )}
-          {state === 'open' && (
-            <StatusSelect
-              value={status}
-              onChange={setStatus}
-              pulls={query.data?.pulls.filter((p) => inFilter(p, filter) && (drafts || !p.isDraft)) ?? []}
-            />
-          )}
+          {state === 'open' && <StatusSelect value={status} onChange={setStatus} />}
           <AccountSelect accounts={accounts} value={owner} onChange={setOwner} />
           <SegmentedControl
             size="xs"

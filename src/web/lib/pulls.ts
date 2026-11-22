@@ -110,7 +110,3 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
  * review requests nobody acted on yet, exactly like GitHub's involves:@me; "All" holds everything.
  */
 export const inFilter = (p: MyPull, filter: PullFilter) => filter === 'all' || p.roles.includes(filter);
-
-/** How many pull requests a tab shows, once the draft and status filters (if any) are applied. */
-export const listCount = (filter: PullFilter, pulls: MyPull[], passes: ((p: MyPull) => boolean) | null) =>
-  pulls.filter((p) => inFilter(p, filter) && (!passes || passes(p))).length;

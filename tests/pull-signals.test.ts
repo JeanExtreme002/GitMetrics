@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { hasStatus, pullSignals, slower, span, STATUSES, listCount } from '../src/web/lib/pulls';
+import { hasStatus, pullSignals, slower, span, STATUSES } from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -122,24 +122,5 @@ describe('filtering by status', () => {
   it('never puts a merged or closed pull request in any of them', () => {
     expect(states(pull({ state: 'MERGED', isDraft: true }))).toEqual([]);
     expect(states(pull({ state: 'CLOSED' }))).toEqual([]);
-  });
-});
-
-describe('the numbers on the tabs', () => {
-  const pulls = [
-    pull({ roles: ['authored'], isDraft: true }),
-    pull({ roles: ['authored'] }),
-    pull({ roles: ['review'] }),
-  ];
-  const noDrafts = (p: MyPull) => !p.isDraft;
-
-  it('count what each tab lists, with the draft and status filters applied', () => {
-    expect(listCount('authored', pulls, null)).toBe(2);
-    expect(listCount('authored', pulls, noDrafts)).toBe(1);
-    expect(listCount('review', pulls, noDrafts)).toBe(1);
-    expect(listCount('assigned', pulls, null)).toBe(0);
-    expect(listCount('all', pulls, noDrafts)).toBe(2);
-    // Involved is what GitHub's involves:@me found, not everything listed.
-    expect(listCount('involved', [pull({ roles: ['review'] }), pull({ roles: ['involved'] })], null)).toBe(1);
   });
 });
