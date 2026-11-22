@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Code,
+  CopyButton,
   Grid,
   Group,
   SegmentedControl,
@@ -21,7 +22,9 @@ import {
   IconCircleCheck,
   IconCircleDashed,
   IconCircleX,
+  IconCheck,
   IconClockHour4,
+  IconCopy,
   IconEye,
   IconFileDiff,
   IconFiles,
@@ -862,7 +865,27 @@ export function Pull() {
               </span>
               <Code className="pr-branch">{pull.baseRef}</Code>
               <span>from</span>
-              <Code className="pr-branch">{pull.headRef}</Code>
+              <Group gap={2} wrap="nowrap" miw={0}>
+                <Code className="pr-branch" title={pull.headRef}>
+                  {pull.headRef}
+                </Code>
+                {/* One click copies the branch, to check it out or point at it. */}
+                <CopyButton value={pull.headRef} timeout={1500}>
+                  {({ copied, copy }) => (
+                    <Tooltip label={copied ? 'Copied' : 'Copy branch name'} withArrow>
+                      <ActionIcon
+                        variant="subtle"
+                        color={copied ? 'teal' : 'gray'}
+                        size="sm"
+                        onClick={copy}
+                        aria-label="Copy branch name"
+                      >
+                        {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </CopyButton>
+              </Group>
               <span>· opened {relative(pull.createdAt)}</span>
             </Group>
           </Group>
