@@ -195,20 +195,33 @@ export function keptApprovals(
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
-export function finalApproval(reviews: { submittedAt: string | null; state: string }[]): string | null {
-  const dated = reviews.filter((r) => r.submittedAt);
-  const lastChanges = dated
-    .filter((r) => r.state === 'CHANGES_REQUESTED')
-    .map((r) => r.submittedAt!)
-    .sort()
-    .at(-1);
-  return (
-    dated
-      .filter((r) => r.state === 'APPROVED' && (!lastChanges || r.submittedAt! > lastChanges))
-      .map((r) => r.submittedAt!)
-      .sort()[0] ?? null
-  );
+/**
+ * When the pull request became approved and stayed so to the end. Each reviewer stands where their
+ * last approval or request for changes left them (comments and dismissed reviews change nothing);
+ * it is approved while someone approves and nobody asks for changes, as GitHub blocks a merge on a
+ * request for changes until that same person approves or it is dismissed. Null when it isn't
+ * approved at the end.
+ */
+export function finalApproval(
+  reviews: { submittedAt: string | null; state: string; author?: { login: string } | null }[],
+): string | null {
+  const stand = new Map<string, string>();
+  let since: string | null = null;
+  const decisive = reviews
+    .filter((r) => r.submittedAt && (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED'))
+    .sort((a, b) => a.submittedAt!.localeCompare(b.submittedAt!));
+  for (const r of decisive) {
+    const was = isApproved(stand);
+    stand.set((r.author?.login ?? '').toLowerCase(), r.state);
+    const now = isApproved(stand);
+    if (now && !was) since = r.submittedAt;
+    if (!now) since = null;
+  }
+  return since;
 }
+
+const isApproved = (stand: Map<string, string>) =>
+  [...stand.values()].includes('APPROVED') && ![...stand.values()].includes('CHANGES_REQUESTED');
 
 /**
  * The whole life of the pull request, in order, as stretches of one kind each: as a draft (every

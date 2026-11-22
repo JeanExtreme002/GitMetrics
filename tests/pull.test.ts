@@ -108,16 +108,34 @@ describe('where the time went', () => {
     ]);
   });
 
-  it('takes the first approval after the last request for changes, and ignores later extra ones', () => {
-    const r = (h: number, state: string) => ({ submittedAt: at(h), state });
+  it('starts the approval when it became approved and stayed so: nobody still asking for changes', () => {
+    const r = (h: number, login: string, state: string) => ({ submittedAt: at(h), state, author: { login } });
+    // Approved from the first approval after the last request for changes, when it's the same person.
     expect(
-      finalApproval([r(1, 'APPROVED'), r(2, 'CHANGES_REQUESTED'), r(5, 'APPROVED'), r(6, 'COMMENTED')]),
+      finalApproval([
+        r(1, 'bo', 'APPROVED'),
+        r(2, 'bo', 'CHANGES_REQUESTED'),
+        r(5, 'bo', 'APPROVED'),
+        r(6, 'bo', 'COMMENTED'),
+      ]),
     ).toBe(at(5));
-    expect(finalApproval([r(1, 'APPROVED'), r(3, 'CHANGES_REQUESTED')])).toBeNull();
     // More approvals after it don't move it: it stayed approved since the first one.
-    expect(finalApproval([r(1, 'CHANGES_REQUESTED'), r(4, 'APPROVED'), r(9, 'APPROVED')])).toBe(at(4));
-    // A dismissed approval doesn't count.
-    expect(finalApproval([r(1, 'DISMISSED')])).toBeNull();
+    expect(
+      finalApproval([r(1, 'cy', 'CHANGES_REQUESTED'), r(4, 'cy', 'APPROVED'), r(9, 'bo', 'APPROVED')]),
+    ).toBe(at(4));
+    // Someone else approving doesn't clear a request for changes: only that person does.
+    expect(
+      finalApproval([r(1, 'cy', 'CHANGES_REQUESTED'), r(4, 'bo', 'APPROVED'), r(7, 'cy', 'APPROVED')]),
+    ).toBe(at(7));
+    // Approved, then not, then again: it starts at the last time.
+    expect(
+      finalApproval([r(1, 'bo', 'APPROVED'), r(2, 'cy', 'CHANGES_REQUESTED'), r(3, 'cy', 'APPROVED')]),
+    ).toBe(at(3));
+    // Still asked for changes at the end, or no approval at all: not approved.
+    expect(finalApproval([r(1, 'bo', 'APPROVED'), r(3, 'cy', 'CHANGES_REQUESTED')])).toBeNull();
+    // A dismissed review changes nothing.
+    expect(finalApproval([r(1, 'bo', 'DISMISSED')])).toBeNull();
+    expect(finalApproval([r(1, 'bo', 'APPROVED'), r(2, 'cy', 'DISMISSED')])).toBe(at(1));
   });
 
   it("keeps each person's last approval, unless they asked for changes after it", () => {
