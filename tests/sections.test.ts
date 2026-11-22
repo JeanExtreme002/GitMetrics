@@ -681,7 +681,13 @@ describe('repository pages, end to end', () => {
     expect(list.counts).toMatchObject({ all: 1, review: 1, authored: 0 });
 
     const baseline = (await (await send('/api/repos/octo/app/baseline')).json()) as Record<string, unknown>;
-    expect(baseline).toEqual({ firstReviewHours: null, mergeHours: 24, size: 50, sample: 1 });
+    // Its dates are made from "now" a moment apart, so the hours can be off by a hair.
+    expect(baseline).toEqual({
+      firstReviewHours: null,
+      mergeHours: expect.closeTo(24, 3),
+      size: 50,
+      sample: 1,
+    });
   });
 
   it('your pull requests from one account only, and nothing but an account name in the search', async () => {
