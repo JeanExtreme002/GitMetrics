@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { hasStatus, pullSignals, slower, span, type PullStatus } from '../src/web/lib/pulls';
+import { hasStatus, pullSignals, slower, span, STATUSES } from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -108,13 +108,11 @@ describe('what a pull request needs', () => {
 });
 
 describe('filtering by status', () => {
-  const states = (p: MyPull) =>
-    (['draft', 'approved', 'failing', 'unreviewed', 'idle'] as PullStatus[]).filter((s) =>
-      hasStatus(p, s, NOW),
-    );
+  const states = (p: MyPull) => STATUSES.map((s) => s.value).filter((s) => hasStatus(p, s, NOW));
 
   it('matches each open pull request by the same rules as its signals', () => {
-    expect(states(pull({ isDraft: true }))).toEqual(['draft']);
+    // A draft isn't waiting for a review yet.
+    expect(states(pull({ isDraft: true }))).toEqual([]);
     expect(states(pull({ reviewDecision: 'APPROVED', firstReviewAt: hoursAgo(5) }))).toEqual(['approved']);
     expect(states(pull({ checks: 'failure', firstReviewAt: hoursAgo(5) }))).toEqual(['failing']);
     expect(states(pull())).toEqual(['unreviewed']);

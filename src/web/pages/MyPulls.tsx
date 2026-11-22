@@ -1,4 +1,4 @@
-import { Avatar, Badge, Box, Group, SegmentedControl, Select, Text, Tooltip } from '@mantine/core';
+import { Avatar, Badge, Box, Group, SegmentedControl, Select, Switch, Text, Tooltip } from '@mantine/core';
 import { useLocalStorage } from '@mantine/hooks';
 import {
   IconClockHour4,
@@ -141,7 +141,7 @@ function AccountSelect({
   );
 }
 
-/** Draft, approved, failing, unreviewed or idle, with how many of the listed ones are in each. */
+/** Approved, failing, unreviewed or idle, with how many of the listed ones are in each. */
 function StatusSelect({
   value,
   onChange,
@@ -224,6 +224,11 @@ export function MyPulls() {
     defaultValue: '',
     getInitialValueInEffect: false,
   });
+  const [drafts, setDrafts] = useLocalStorage<boolean>({
+    key: 'gitmetrics:my-pulls-drafts',
+    defaultValue: true,
+    getInitialValueInEffect: false,
+  });
   const query = useMyPulls(state, owner);
   const accounts = useAccounts(state, owner, query.data);
   const client = useQueryClient();
@@ -274,10 +279,18 @@ export function MyPulls() {
         </Box>
         <Group gap="sm" wrap="nowrap">
           {state === 'open' && (
+            <Switch
+              size="xs"
+              label="Drafts"
+              checked={drafts}
+              onChange={(e) => setDrafts(e.currentTarget.checked)}
+            />
+          )}
+          {state === 'open' && (
             <StatusSelect
               value={status}
               onChange={setStatus}
-              pulls={query.data?.pulls.filter((p) => inFilter(p, filter)) ?? []}
+              pulls={query.data?.pulls.filter((p) => inFilter(p, filter) && (drafts || !p.isDraft)) ?? []}
             />
           )}
           <AccountSelect accounts={accounts} value={owner} onChange={setOwner} />
@@ -297,7 +310,9 @@ export function MyPulls() {
         {(data) => {
           // Statuses only apply to open pull requests.
           const pulls = data.pulls.filter(
-            (p) => inFilter(p, filter) && (state !== 'open' || !status || hasStatus(p, status)),
+            (p) =>
+              inFilter(p, filter) &&
+              (state !== 'open' || ((drafts || !p.isDraft) && (!status || hasStatus(p, status)))),
           );
           const note =
             state === 'closed' ? (

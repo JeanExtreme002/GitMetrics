@@ -30,10 +30,9 @@ export interface Signal {
 /** Pull requests nobody touched for this long are called out as idle. */
 const IDLE_DAYS = 14;
 
-export type PullStatus = 'draft' | 'approved' | 'failing' | 'unreviewed' | 'idle';
+export type PullStatus = 'approved' | 'failing' | 'unreviewed' | 'idle';
 
 export const STATUSES: { value: PullStatus; label: string }[] = [
-  { value: 'draft', label: 'Draft' },
   { value: 'approved', label: 'Approved' },
   { value: 'failing', label: 'Checks failing' },
   { value: 'unreviewed', label: 'No review yet' },
@@ -44,8 +43,6 @@ export const STATUSES: { value: PullStatus; label: string }[] = [
 export function hasStatus(p: MyPull, status: PullStatus, now = Date.now()): boolean {
   if (p.state !== 'OPEN') return false;
   switch (status) {
-    case 'draft':
-      return p.isDraft;
     case 'approved':
       return p.reviewDecision === 'APPROVED';
     case 'failing':
