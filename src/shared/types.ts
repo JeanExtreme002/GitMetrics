@@ -573,6 +573,8 @@ export interface PullDetail {
   /** The whole life of the pull request, in order, split into stretches (a kind can come back). */
   phases: PullPhase[];
   reviewMarks: PullReviewMark[];
+  /** Every comment in the conversation and on the code, or null when some couldn't be read. */
+  commentMarks: { hours: number; login: string; at: string }[] | null;
   rounds: {
     changesRequested: number;
     forcePushes: number;

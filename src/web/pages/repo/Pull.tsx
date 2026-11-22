@@ -228,16 +228,16 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
 const LANES: { state: PullReviewMark['state']; label: string; verb: string; color: string }[] = [
   { state: 'APPROVED', label: 'Approvals', verb: 'approved', color: 'green.6' },
   { state: 'CHANGES_REQUESTED', label: 'Changes requested', verb: 'asked for changes', color: 'orange.6' },
-  { state: 'COMMENTED', label: 'Comments', verb: 'commented', color: 'gray.5' },
+  { state: 'COMMENTED', label: 'Commented reviews', verb: 'reviewed with comments', color: 'gray.5' },
   { state: 'DISMISSED', label: 'Dismissed', verb: 'reviewed (later dismissed)', color: 'gray.7' },
 ];
 
 /** Reviews this close together on the bar (in % of its width) share one dot, with their count. */
 const CLUSTER = 1.5;
 
-/** Reviews of one kind grouped into dots, each at the average place of the reviews in it. */
-function clusters(marks: PullReviewMark[], total: number) {
-  const groups: PullReviewMark[][] = [];
+/** Marks of one lane grouped into dots, each at the average place of the marks in it. */
+function clusters<T extends { hours: number }>(marks: T[], total: number) {
+  const groups: T[][] = [];
   for (const m of [...marks].sort((a, b) => a.hours - b.hours)) {
     const last = groups.at(-1);
     const pct = (m.hours / total) * 100;
@@ -286,15 +286,34 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
     hours: pull.phases.filter((p) => p.kind === kind).reduce((sum, p) => sum + p.hours, 0),
     ongoing: pull.phases.at(-1)!.ongoing && pull.phases.at(-1)!.kind === kind,
   }));
-  const lanes = LANES.map((lane) => ({
-    ...lane,
-    marks: pull.reviewMarks.filter((m) => m.state === lane.state),
-  })).filter((lane) => lane.marks.length > 0);
+  const lanes: {
+    key: string;
+    label: string;
+    verb: string;
+    color: string;
+    marks: { hours: number; login: string; at: string }[];
+  }[] = [
+    ...LANES.map((lane) => ({
+      key: lane.state,
+      label: lane.label,
+      verb: lane.verb,
+      color: lane.color,
+      marks: pull.reviewMarks.filter((m) => m.state === lane.state),
+    })),
+    // The discussion itself: every comment, in the conversation and on the code.
+    {
+      key: 'comments',
+      label: 'Comments',
+      verb: 'commented',
+      color: 'indigo.4',
+      marks: pull.commentMarks ?? [],
+    },
+  ].filter((lane) => lane.marks.length > 0);
   return (
     <Box mb={44}>
       <SectionHeader
         title="Where the time went"
-        caption={`${hours(total)} from opening to ${until}, in order, with every review on the way`}
+        caption={`${hours(total)} from opening to ${until}, in order, with every review and comment on the way`}
       />
       {/* One time scale for everything: the stretches on top, a lane per kind of review below. */}
       <div className="pr-time">
@@ -312,7 +331,7 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
           ))}
         </div>
         {lanes.map((lane) => (
-          <Fragment key={lane.state}>
+          <Fragment key={lane.key}>
             <Text size="xs" c="dimmed" lh={1.3}>
               {lane.label}{' '}
               <Text component="span" inherit fw={600} c="var(--mantine-color-text)" className="tabular">

@@ -64,7 +64,7 @@ const CONNECTIONS = {
   reviews:
     'reviews(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { submittedAt state body author { __typename login avatarUrl } } }',
   comments:
-    'comments(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { createdAt } }',
+    'comments(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { createdAt author { login } } }',
   commits:
     'commits(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { commit { committedDate } } }',
   threads:
@@ -146,7 +146,8 @@ export interface RawPull {
   author: Person | null;
   participants: { totalCount: number };
   reviews: RawReview[];
-  comments: { totalCount: number; createdAt: string[] };
+  /** Comments in the conversation: when, and by whom (same order). */
+  comments: { totalCount: number; createdAt: string[]; by?: (string | null)[] };
   commits: { totalCount: number; committedAt: string[] };
   threads: { totalCount: number; nodes: RawThread[] };
   requests: { requestedReviewer: Requested | null }[];
@@ -401,10 +402,10 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
   const threadDates = raw.threads.nodes.flatMap((t) => t.comments.nodes.map((c) => c.createdAt));
   const codeComments = raw.threads.nodes.reduce((sum, t) => sum + t.comments.totalCount, 0);
   const written = raw.reviews.filter((r) => (r.body ?? '').trim()).length;
-  const everyDate =
-    raw.commits.committedAt.length === raw.commits.totalCount &&
-    raw.comments.createdAt.length === raw.comments.totalCount &&
-    threadDates.length === codeComments;
+  // Comments can be placed on the timeline only when every one of them was read.
+  const everyComment =
+    raw.comments.createdAt.length === raw.comments.totalCount && threadDates.length === codeComments;
+  const everyDate = raw.commits.committedAt.length === raw.commits.totalCount && everyComment;
 
   return {
     repo,
@@ -455,6 +456,17 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     ),
     // Every review by a person, placed on the pull request's life, as GitHub keeps it now: an
     // approval or a request for changes that was later dismissed shows as dismissed.
+    // Every comment, in the conversation and on the code, placed on the pull request's life.
+    commentMarks: everyComment
+      ? [
+          ...raw.comments.createdAt.map((at, i) => ({ at, login: raw.comments.by?.[i] ?? 'ghost' })),
+          ...raw.threads.nodes.flatMap((t) =>
+            t.comments.nodes.map((c) => ({ at: c.createdAt, login: c.author?.login ?? 'ghost' })),
+          ),
+        ]
+          .sort((a, b) => a.at.localeCompare(b.at))
+          .map((c) => ({ ...c, hours: Math.max(0, hoursBetween(raw.createdAt, c.at)) }))
+      : null,
     reviewMarks: reviews.map((r) => ({
       hours: Math.max(0, hoursBetween(raw.createdAt, r.submittedAt!)),
       state: r.state as PullReviewMark['state'],
@@ -534,7 +546,7 @@ interface FirstPage {
   author: Person | null;
   participants: { totalCount: number };
   reviews: Page<RawReview>;
-  comments: Page<{ createdAt: string }>;
+  comments: Page<{ createdAt: string; author: { login: string } | null }>;
   commits: Page<{ commit: { committedDate: string } }>;
   threads: Page<RawThread>;
   requests: Page<{ requestedReviewer: Requested | null }>;
@@ -582,7 +594,7 @@ export async function getPull(
 
   const [reviews, comments, commits, threads, requests, files, events, checks] = await Promise.all([
     readAll(p.reviews, more<RawReview>('reviews')),
-    readAll(p.comments, more<{ createdAt: string }>('comments')),
+    readAll(p.comments, more<{ createdAt: string; author: { login: string } | null }>('comments')),
     readAll(p.commits, more<{ commit: { committedDate: string } }>('commits')),
     readAll(p.threads, more<RawThread>('threads')),
     readAll(p.requests, more<{ requestedReviewer: Requested | null }>('requests')),
@@ -604,6 +616,7 @@ export async function getPull(
       comments: {
         totalCount: p.comments.totalCount ?? comments.length,
         createdAt: comments.map((c) => c.createdAt),
+        by: comments.map((c) => c.author?.login ?? null),
       },
       commits: {
         totalCount: p.commits.totalCount ?? commits.length,

@@ -250,6 +250,30 @@ describe('a pull request in detail', () => {
     expect(pull.reviewThreads).toBe(2);
   });
 
+  it('places every comment, in the conversation and on the code, in order', () => {
+    const pull = buildPull(
+      raw({
+        comments: { totalCount: 2, createdAt: [at(3), at(1)], by: ['bo', null] },
+        threads: {
+          totalCount: 1,
+          nodes: [{ comments: { totalCount: 1, nodes: [{ createdAt: at(2), author: person('cy') }] } }],
+        },
+      }),
+      'octo/app',
+      now,
+    );
+    expect(pull.commentMarks).toEqual([
+      { at: at(1), login: 'ghost', hours: 1 },
+      { at: at(2), login: 'cy', hours: 2 },
+      { at: at(3), login: 'bo', hours: 3 },
+    ]);
+    // A thread longer than one page: the comments can't all be placed, so none are.
+    const long = { comments: { totalCount: 150, nodes: [{ createdAt: at(1), author: person('cy') }] } };
+    expect(
+      buildPull(raw({ threads: { totalCount: 1, nodes: [long] } }), 'octo/app', now).commentMarks,
+    ).toBeNull();
+  });
+
   it('leaves out what GitHub could not list in full instead of showing part of it', () => {
     const complete = buildPull(raw(), 'octo/app', now);
     expect(complete.folders).not.toBeNull();
