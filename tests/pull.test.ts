@@ -250,6 +250,17 @@ describe('a pull request in detail', () => {
     expect(pull.reviewThreads).toBe(2);
   });
 
+  it('says it has conflicts only when GitHub knows, and only while open', () => {
+    expect(buildPull(raw({ mergeable: 'CONFLICTING' }), 'octo/app', now).conflicts).toBe(true);
+    // Right after a push GitHub may still be working it out.
+    expect(buildPull(raw({ mergeable: 'UNKNOWN' }), 'octo/app', now).conflicts).toBe(false);
+    expect(buildPull(raw({ mergeable: 'MERGEABLE' }), 'octo/app', now).conflicts).toBe(false);
+    expect(
+      buildPull(raw({ state: 'MERGED', mergedAt: at(5), mergeable: 'CONFLICTING' }), 'octo/app', now)
+        .conflicts,
+    ).toBe(false);
+  });
+
   it('places every commit by the date written in it, and none when GitHub lists only some', () => {
     const pull = buildPull(
       raw({ commits: { totalCount: 3, committedAt: [at(4), at(-2), at(1)], by: ['bo', null, 'cy'] } }),

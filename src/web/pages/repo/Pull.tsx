@@ -167,8 +167,20 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
         : w.kind === 'checks'
           ? [IconCircleX, 'red', 'Checks are failing on the latest commit.', null]
           : w.kind === 'merge'
-            ? [IconGitMerge, 'green', `Approved and waiting to be merged${forHow}.`, null]
+            ? pull.conflicts
+              ? [
+                  IconGitMerge,
+                  'red',
+                  `Approved, but has conflicts with ${pull.baseRef} to resolve before merging.`,
+                  null,
+                ]
+              : [IconGitMerge, 'green', `Approved and waiting to be merged${forHow}.`, null]
             : [IconGitPullRequestDraft, 'gray', 'Still a draft, not ready for review yet.', null];
+
+  // Conflicts rarely hold a review back, so they're said after what the pull request waits on.
+  const also =
+    pull.conflicts && w.kind !== 'merge' && w.kind !== 'draft' ? `Has conflicts with ${pull.baseRef}.` : null;
+  const extra = [detail, also].filter(Boolean).join(' ') || null;
 
   return (
     <Group gap={8} wrap="nowrap" align="flex-start" mb={36}>
@@ -182,10 +194,10 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
         <Text component="span" inherit fw={600}>
           {text}
         </Text>
-        {detail && (
+        {extra && (
           <Text component="span" inherit c="dimmed">
             {' '}
-            {detail}
+            {extra}
           </Text>
         )}
       </Text>
@@ -744,6 +756,9 @@ export function Pull() {
             <Badge
               variant="filled"
               color={state.color}
+              // White on every state: the theme would pick dark text on this green.
+              autoContrast={false}
+              c="white"
               radius="xl"
               size="lg"
               tt="none"
@@ -753,6 +768,15 @@ export function Pull() {
             >
               {state.label}
             </Badge>
+            {pull.conflicts && (
+              <Tooltip
+                label={`Conflicts with ${pull.baseRef}, so it can't be merged until they are resolved.`}
+              >
+                <Badge variant="light" color="red" tt="none" radius="sm" size="lg" fw={600}>
+                  Conflicts
+                </Badge>
+              </Tooltip>
+            )}
             <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
               <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
               <Text component="span" inherit fw={600} c="var(--mantine-color-text)">

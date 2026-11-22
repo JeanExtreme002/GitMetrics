@@ -105,7 +105,7 @@ const PULL_QUERY = `
 query ($owner: String!, $name: String!, $number: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      id number title url state isDraft createdAt mergedAt closedAt reviewDecision
+      id number title url state isDraft createdAt mergedAt closedAt reviewDecision mergeable
       additions deletions changedFiles baseRefName headRefName
       author { login avatarUrl }
       participants { totalCount }
@@ -134,6 +134,8 @@ interface RawCommit {
 
 export interface RawPull {
   number: number;
+  /** Whether it merges cleanly; UNKNOWN while GitHub works it out, right after a push. */
+  mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
   title: string;
   url: string;
   state: PullDetail['state'];
@@ -513,6 +515,8 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
           comments: [...raw.comments.createdAt, ...threadDates],
         })
       : null,
+    // Only when GitHub knows: right after a push it may still be working it out.
+    conflicts: open && raw.mergeable === 'CONFLICTING',
     waitingOn: open
       ? waitingOn(raw, reviewers, checksState(list), reviewStart, author, changesRequested)
       : null,
@@ -559,6 +563,7 @@ interface FirstPage {
   mergedAt: string | null;
   closedAt: string | null;
   reviewDecision: RawPull['reviewDecision'];
+  mergeable?: RawPull['mergeable'];
   additions: number;
   deletions: number;
   changedFiles: number;

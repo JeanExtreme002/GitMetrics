@@ -614,6 +614,8 @@ export interface PullDetail {
   folders: PullFolder[] | null;
   /** Commits, reviews and comments over time, or null when any of them can't be listed in full. */
   activity: { unit: 'day' | 'week'; points: PullActivityPoint[] } | null;
+  /** Open and in conflict with its base branch, so it can't be merged as it is. */
+  conflicts: boolean;
   /** Who or what the pull request is waiting on, while it is open. */
   waitingOn: {
     kind: 'review' | 'author' | 'checks' | 'merge' | 'draft';
