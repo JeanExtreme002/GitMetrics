@@ -121,8 +121,8 @@ export interface StarsResponse {
   /** The latest people to star the repository, newest first. */
   recent: Stargazer[];
   /**
-   * GitHub no longer lists who starred very popular repositories, so there is no history to
-   * draw: only the total is known.
+   * GitHub lists who starred a repository only to people with write access to it, so for
+   * anyone else there is no history to draw: only the total is known.
    */
   historyHidden: boolean;
 }

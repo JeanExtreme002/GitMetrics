@@ -172,8 +172,9 @@ export async function getStars(
       accept: STAR_ACCEPT,
     });
   } catch (error) {
-    // GitHub answers 404 for the stargazers of very popular repositories (the list is hidden on
-    // github.com too), even though the repository exists. Keep the exact total.
+    // GitHub lists stargazers only to people with write access to the repository; anyone else
+    // gets a 404 (GraphQL returns no one either), even though the repository exists. Keep the
+    // exact total.
     if (error instanceof GitHubError && error.status === 404) return hiddenHistory(total);
     throw error;
   }

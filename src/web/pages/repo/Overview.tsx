@@ -35,7 +35,7 @@ import {
   IconWorld,
   type Icon,
 } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { CommitsResponse, OverviewResponse, StarsResponse } from '../../../shared/types';
 import { Counter, NoData, QueryView, RefreshButton } from '../../components/ui';
@@ -140,12 +140,22 @@ function Counters({
 
 /** Star growth and commit activity behind one switch, drawn straight on the page. */
 function GrowthChart() {
-  const [view, setView] = useLocalStorage<Growth>({
+  const [saved, setSaved] = useLocalStorage<Growth>({
     key: 'gitmetrics:overview-chart',
     defaultValue: 'stars',
   });
   const stars = useSection<StarsResponse>('stars');
   const commits = useSection<CommitsResponse>('commits');
+  const { fullName } = useRepoParams();
+  // A switch clicked on this repository wins. Otherwise the saved choice, except that a
+  // repository whose star history GitHub hides opens on commits, without changing the saved choice.
+  const [picked, setPicked] = useState<{ repo: string; view: Growth } | null>(null);
+  const view =
+    picked?.repo === fullName
+      ? picked.view
+      : saved === 'stars' && stars.data?.historyHidden
+        ? 'commits'
+        : saved;
 
   let chart: ReactNode;
   if (view === 'stars') {
@@ -169,7 +179,7 @@ function GrowthChart() {
       ) : (
         <NoData>
           {data?.historyHidden
-            ? "GitHub doesn't share the star history of very popular repositories."
+            ? 'GitHub only shares the star history with people who can push to this repository.'
             : data
               ? 'No stars yet.'
               : stars.isError
@@ -214,7 +224,10 @@ function GrowthChart() {
           <SegmentedControl
             size="xs"
             value={view}
-            onChange={(v) => setView(v as Growth)}
+            onChange={(v) => {
+              setPicked({ repo: fullName, view: v as Growth });
+              setSaved(v as Growth);
+            }}
             data={[
               { label: 'Stars', value: 'stars' },
               { label: 'Commits', value: 'commits' },

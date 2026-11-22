@@ -363,7 +363,7 @@ describe('repository pages, end to end', () => {
     expect(stars.stats.last7Days).toBe(1);
   });
 
-  it('stars: keeps the exact total when GitHub hides the stargazers of a popular repository', async () => {
+  it('stars: keeps the exact total when GitHub hides the stargazers from someone without write access', async () => {
     const { page } = await signedIn({ '/repos/octo/app/stargazers': notFound });
     const stars = await page<{
       total: number;

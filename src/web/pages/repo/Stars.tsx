@@ -235,7 +235,7 @@ export function Stars() {
               <EmptyState
                 icon={<IconStar size={28} stroke={1.5} />}
                 title="Star history not available"
-                description={`GitHub doesn't list who starred very popular repositories, not even on github.com, so the history, monthly chart and milestones can't be built. The total of ${num(data.total)} stars is exact.`}
+                description={`GitHub only shows who starred a repository to people who can push to it, so the history, monthly chart and milestones can't be built here. The total of ${num(data.total)} stars is exact.`}
               />
             );
           }
