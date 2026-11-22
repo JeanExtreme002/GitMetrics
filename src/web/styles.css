@@ -934,3 +934,26 @@ a.pull-row {
 .filter-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* A single pull request: branch names, activity tiles. */
+.pr-branch {
+  border: 1px solid var(--mantine-color-default-border);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.pr-tile {
+  padding: 12px 14px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}

@@ -1,32 +1,54 @@
-import { Avatar, Badge, Box, Button, Grid, Group, Paper, Text, ThemeIcon, Tooltip } from '@mantine/core';
+import {
+  ActionIcon,
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Code,
+  Grid,
+  Group,
+  Paper,
+  Progress,
+  SimpleGrid,
+  Text,
+  ThemeIcon,
+  Title,
+  Tooltip,
+} from '@mantine/core';
 import {
   IconAlertTriangle,
   IconArrowUpRight,
   IconCircleCheck,
   IconCircleDashed,
   IconCircleX,
+  IconFiles,
+  IconGitCommit,
   IconGitMerge,
   IconGitPullRequest,
+  IconGitPullRequestClosed,
   IconGitPullRequestDraft,
   IconHourglass,
+  IconMessageCircle,
+  IconMessages,
   IconPencil,
+  IconUsers,
 } from '@tabler/icons-react';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import type { PullCheck, PullDetail, PullReviewer, PullStage } from '../../../shared/types';
-import { NoData, PageHeader, QueryView, SectionHeader, StatCard, StatGrid } from '../../components/ui';
+import { NoData, QueryView, RefreshButton, SectionHeader, StatCard, StatGrid } from '../../components/ui';
 import { api } from '../../lib/api';
-import { date, hours, num, relative } from '../../lib/format';
+import { date, dateTime, hours, num, relative } from '../../lib/format';
 import { slower, span } from '../../lib/pulls';
 import { usePull } from '../../lib/queries';
 
-const STATE: Record<string, { label: string; color: string }> = {
-  OPEN: { label: 'Open', color: 'green' },
-  MERGED: { label: 'Merged', color: 'violet' },
-  CLOSED: { label: 'Closed', color: 'red' },
-  DRAFT: { label: 'Draft', color: 'gray' },
+const STATE: Record<string, { label: string; color: string; icon: ReactNode }> = {
+  OPEN: { label: 'Open', color: 'green', icon: <IconGitPullRequest size={14} stroke={2} /> },
+  MERGED: { label: 'Merged', color: 'violet', icon: <IconGitMerge size={14} stroke={2} /> },
+  CLOSED: { label: 'Closed', color: 'red', icon: <IconGitPullRequestClosed size={14} stroke={2} /> },
+  DRAFT: { label: 'Draft', color: 'gray', icon: <IconGitPullRequestDraft size={14} stroke={2} /> },
 };
 
 const STAGE: Record<PullStage['kind'], string> = {
@@ -76,6 +98,11 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
   const late = firstWait && waited !== null && slower(waited, usual);
   const reviewed = pull.reviewers.filter((r) => r.state !== 'PENDING').length;
 
+  const color = late
+    ? 'red'
+    : { review: 'yellow', author: 'orange', checks: 'red', merge: 'green', draft: 'gray' }[w.kind];
+  const faces = pull.reviewers.filter((r) => w.who.includes(r.login));
+
   const [icon, text, detail]: [ReactNode, string, string | null] =
     w.kind === 'review'
       ? [
@@ -106,19 +133,38 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
               ];
 
   return (
-    <Paper withBorder p="md" mb={36} className={late ? 'waiting-on late' : 'waiting-on'}>
-      <Group gap="sm" wrap="nowrap" align="flex-start">
-        <ThemeIcon variant="light" color={late ? 'red' : 'gray'} size={32} radius="md">
-          {late ? <IconAlertTriangle size={18} /> : icon}
-        </ThemeIcon>
-        <Box>
-          <Text fw={600}>{text}</Text>
-          {detail && (
-            <Text size="sm" c="dimmed" mt={2}>
-              {detail}
-            </Text>
-          )}
-        </Box>
+    <Paper
+      withBorder
+      p="md"
+      mb={32}
+      className="waiting-on"
+      style={{ borderLeft: `3px solid var(--mantine-color-${color}-6)` }}
+    >
+      <Group gap="sm" wrap="nowrap" align="center" justify="space-between">
+        <Group gap="sm" wrap="nowrap" align="center" miw={0}>
+          <ThemeIcon variant="light" color={color} size={36} radius="md">
+            {late ? <IconAlertTriangle size={19} /> : icon}
+          </ThemeIcon>
+          <Box miw={0}>
+            <Text fw={600}>{text}</Text>
+            {detail && (
+              <Text size="sm" c="dimmed" mt={2}>
+                {detail}
+              </Text>
+            )}
+          </Box>
+        </Group>
+        {faces.length > 0 && (
+          <Avatar.Group spacing="sm" visibleFrom="sm">
+            {faces.slice(0, 4).map((r) => (
+              <Tooltip key={r.login} label={r.login}>
+                <Avatar src={r.avatarUrl} size={30} radius="xl">
+                  <IconUsers size={16} />
+                </Avatar>
+              </Tooltip>
+            ))}
+          </Avatar.Group>
+        )}
       </Group>
     </Paper>
   );
@@ -139,7 +185,7 @@ function Timeline({ pull }: { pull: PullDetail }) {
                 {STAGE[s.kind]}
               </Text>
               <Text size="xs" c="dimmed">
-                {date(s.at)}
+                {dateTime(s.at)}
               </Text>
             </Box>
             {s.hours !== null && (
@@ -179,7 +225,8 @@ function Reviewers({ pull }: { pull: PullDetail }) {
           {pull.reviewers.map((r) => (
             <div key={r.login} className="pr-person">
               <Avatar src={r.avatarUrl} size={24} radius="xl">
-                {r.login.slice(0, 1).toUpperCase()}
+                {/* Teams have no picture. */}
+                <IconUsers size={14} />
               </Avatar>
               <Box miw={0}>
                 <Text size="sm" fw={500} truncate>
@@ -234,9 +281,37 @@ function Checks({ pull }: { pull: PullDetail }) {
     'cancelled',
   ];
   const list = [...c.list].sort((a, b) => order.indexOf(a.conclusion) - order.indexOf(b.conclusion));
+  // How the checks on the latest commit ended, at a glance.
+  const parts = [
+    { key: 'passed', color: 'green', n: c.list.filter((x) => x.conclusion === 'success').length },
+    { key: 'failed', color: 'red', n: failed },
+    { key: 'running', color: 'yellow', n: c.list.filter((x) => x.conclusion === 'pending').length },
+    {
+      key: 'skipped',
+      color: 'gray',
+      n: c.list.filter((x) => ['skipped', 'cancelled', 'neutral'].includes(x.conclusion)).length,
+    },
+  ].filter((part) => part.n > 0);
   return (
     <Box>
       <SectionHeader title="Checks" caption={caption} />
+      <Progress.Root size={8} radius="xl" mb={8}>
+        {parts.map((part) => (
+          <Tooltip key={part.key} label={`${num(part.n)} ${part.key}`}>
+            <Progress.Section value={(part.n / c.list.length) * 100} color={part.color} />
+          </Tooltip>
+        ))}
+      </Progress.Root>
+      <Group gap="md" mb="sm">
+        {parts.map((part) => (
+          <Group key={part.key} gap={6} wrap="nowrap">
+            <span className="legend-dot" style={{ background: `var(--mantine-color-${part.color}-6)` }} />
+            <Text size="xs" c="dimmed">
+              {num(part.n)} {part.key}
+            </Text>
+          </Group>
+        ))}
+      </Group>
       <div className="rank-list">
         {list.map((x) => (
           <div key={x.name} className="pr-check">
@@ -318,26 +393,31 @@ function Numbers({ pull }: { pull: PullDetail }) {
 }
 
 function Activity({ pull }: { pull: PullDetail }) {
-  const rows: [string, number][] = [
-    ['Commits', pull.commits],
-    ['Files changed', pull.changedFiles],
-    ['Comments', pull.comments],
-    ['Review threads', pull.reviewThreads],
-    ['People involved', pull.participants],
+  const tiles: [string, number, ReactNode][] = [
+    ['Commits', pull.commits, <IconGitCommit key="i" size={16} stroke={1.7} />],
+    ['Files changed', pull.changedFiles, <IconFiles key="i" size={16} stroke={1.7} />],
+    ['Comments', pull.comments, <IconMessageCircle key="i" size={16} stroke={1.7} />],
+    ['Review threads', pull.reviewThreads, <IconMessages key="i" size={16} stroke={1.7} />],
+    ['People involved', pull.participants, <IconUsers key="i" size={16} stroke={1.7} />],
   ];
   return (
     <Box mt={44}>
       <SectionHeader title="Activity" />
-      <div className="rank-list">
-        {rows.map(([label, value]) => (
-          <Group key={label} justify="space-between" className="pr-fact">
-            <Text size="sm">{label}</Text>
-            <Text size="sm" fw={600} className="tabular">
+      <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
+        {tiles.map(([label, value, icon]) => (
+          <div key={label} className="pr-tile">
+            <Group gap={6} wrap="nowrap" c="dimmed">
+              {icon}
+              <Text size="xs" c="dimmed" truncate>
+                {label}
+              </Text>
+            </Group>
+            <Text fw={650} fz={22} mt={4} className="tabular">
               {num(value)}
             </Text>
-          </Group>
+          </div>
         ))}
-      </div>
+      </SimpleGrid>
     </Box>
   );
 }
@@ -362,43 +442,80 @@ export function Pull() {
 
   return (
     <>
-      <PageHeader
-        title={pull?.title ?? `Pull request #${number}`}
-        icon={<IconGitPullRequest size={26} stroke={1.6} />}
-        description={
-          pull &&
-          state && (
-            <Group gap={8} component="span" wrap="wrap">
-              <Badge variant="light" color={state.color} tt="none" radius="sm">
+      <Box mb={32}>
+        <Group justify="space-between" wrap="nowrap" mb={10}>
+          <Group gap={8} wrap="nowrap" miw={0}>
+            {state && (
+              <Badge
+                size="lg"
+                variant="light"
+                color={state.color}
+                leftSection={state.icon}
+                tt="none"
+                radius="sm"
+              >
                 {state.label}
               </Badge>
-              <span>
-                #{pull.number}
-                {pull.author ? ` by ${pull.author}` : ''} · {pull.headRef} → {pull.baseRef} · opened{' '}
-                {relative(pull.createdAt)}
-              </span>
-            </Group>
-          )
-        }
-        actions={
-          pull && (
-            <Tooltip label="See the code and the conversation on GitHub">
-              <Button
-                component="a"
-                href={pull.url}
-                target="_blank"
-                variant="default"
-                leftSection={<MarkGithubIcon size={16} />}
-                rightSection={<IconArrowUpRight size={14} />}
-              >
-                Open on GitHub
-              </Button>
-            </Tooltip>
-          )
-        }
-        onRefresh={refresh}
-        refreshing={refreshing}
-      />
+            )}
+            <Text c="dimmed" fw={500} className="tabular">
+              #{number}
+            </Text>
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            {pull && (
+              <>
+                <Button
+                  component="a"
+                  href={pull.url}
+                  target="_blank"
+                  variant="default"
+                  leftSection={<MarkGithubIcon size={16} />}
+                  rightSection={<IconArrowUpRight size={14} />}
+                  visibleFrom="sm"
+                >
+                  Open on GitHub
+                </Button>
+                <Tooltip label="Open on GitHub">
+                  <ActionIcon
+                    component="a"
+                    href={pull.url}
+                    target="_blank"
+                    variant="default"
+                    size={36}
+                    aria-label="Open on GitHub"
+                    hiddenFrom="sm"
+                  >
+                    <MarkGithubIcon size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </>
+            )}
+            <RefreshButton onRefresh={refresh} refreshing={refreshing} />
+          </Group>
+        </Group>
+        <Title order={2} fz={{ base: 21, sm: 26 }} lh={1.3} style={{ overflowWrap: 'anywhere' }}>
+          {pull?.title ?? `Pull request #${number}`}
+        </Title>
+        {pull && (
+          <Group gap={8} mt={12} wrap="wrap" align="center">
+            <Avatar src={pull.authorAvatarUrl} size={22} radius="xl" />
+            <Text size="sm" fw={600}>
+              {pull.author ?? 'ghost'}
+            </Text>
+            <Text size="sm" c="dimmed">
+              {pull.state === 'MERGED' ? 'merged' : 'wants to merge'} into
+            </Text>
+            <Code className="pr-branch">{pull.baseRef}</Code>
+            <Text size="sm" c="dimmed">
+              from
+            </Text>
+            <Code className="pr-branch">{pull.headRef}</Code>
+            <Text size="sm" c="dimmed">
+              · opened {relative(pull.createdAt)}
+            </Text>
+          </Group>
+        )}
+      </Box>
       <QueryView query={query}>
         {(data) => (
           <>
