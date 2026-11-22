@@ -34,6 +34,7 @@ import {
   IconMessageCircle,
   IconMessages,
   IconPencil,
+  IconUserPlus,
   IconUsers,
   type Icon,
 } from '@tabler/icons-react';
@@ -406,11 +407,16 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
   if (!activity || activity.people.length === 0) return null;
   const person = activity.people.find((p) => p.login === picked) ?? activity.people[0]!;
   const used = (key: keyof Omit<ReviewerPoint, 'day'>) => person.points.some((p) => p[key] > 0);
+  // How long they took to answer: from when they were asked (or it was ready for review) to their
+  // first review or comment on the code.
+  const asked = pull.reviewers.find((r) => r.login.toLowerCase() === person.login.toLowerCase());
   const sum = (...keys: (keyof Omit<ReviewerPoint, 'day'>)[]) =>
     person.points.reduce((total, p) => total + keys.reduce((n, k) => n + p[k], 0), 0);
   const series = [
     ...LANES.filter((l) => used(l.state)).map((l) => ({ name: l.state, label: l.label, color: l.color })),
     ...(used('comments') ? [{ name: 'comments', label: 'Comments', color: COMMENTS_COLOR }] : []),
+    // When they were asked for a review, in the "waiting for a review" color.
+    ...(used('requests') ? [{ name: 'requests', label: 'Review requests', color: 'yellow.5' }] : []),
   ];
   const until = pull.state === 'MERGED' ? 'merge' : pull.state === 'CLOSED' ? 'closing' : 'today';
   return (
@@ -449,6 +455,25 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
       {/* What the picked reviewer did over the whole pull request, before the chart spreads it out. */}
       <Box mb="lg">
         <Counters>
+          {asked?.responseHours != null && (
+            <Counter
+              icon={IconClockHour4}
+              value={span(asked.responseHours)}
+              label="First answer"
+              hint={`From when ${asked.requestedAt ? 'they were asked' : 'it was ready for review'} to their first review`}
+            />
+          )}
+          {person.requests > 0 && (
+            <Counter icon={IconUserPlus} value={num(person.requests)} label="Review requests" />
+          )}
+          {person.answer && (
+            <Counter
+              icon={IconHourglass}
+              value={span(person.answer.hours)}
+              label="Average answer"
+              hint={`From each request to the next thing they did (a review or a comment), over ${num(person.answer.answered)} ${person.answer.answered === 1 ? 'request' : 'requests'}${person.answer.waiting ? `; ${num(person.answer.waiting)} not answered` : ''}`}
+            />
+          )}
           <Counter icon={IconCircleCheck} value={num(sum('APPROVED'))} label="Approvals" />
           <Counter icon={IconPencil} value={num(sum('CHANGES_REQUESTED'))} label="Changes requested" />
           <Counter
@@ -632,7 +657,13 @@ function Recurring({ owner, repo, number }: { owner: string; repo: string; numbe
             const name = by === 'files' ? r.path.slice(slash + 1) : within(r.path) || '(this folder)';
             const folder = by === 'files' && slash > 0 ? within(r.path.slice(0, slash)) : '';
             return (
-              <div key={r.path} className="pr-recurring">
+              <Box
+                key={r.path}
+                className={r.url ? 'pr-recurring pr-link' : 'pr-recurring'}
+                {...(r.url
+                  ? { component: 'a' as const, href: r.url, target: '_blank', rel: 'noreferrer' }
+                  : {})}
+              >
                 <Tooltip label={`${r.path} · +${num(r.additions)} −${num(r.deletions)} over these commits`}>
                   <Box miw={0}>
                     <Text size="sm" fw={500} truncate>
@@ -657,7 +688,7 @@ function Recurring({ owner, repo, number }: { owner: string; repo: string; numbe
                   </Text>{' '}
                   of {num(churn.commits)}
                 </Text>
-              </div>
+              </Box>
             );
           })}
       </div>
@@ -704,7 +735,12 @@ function Checks({ pull }: { pull: PullDetail }) {
       <SectionHeader title="Checks" caption={`On the latest commit: ${caption}`} />
       <div className="rank-list">
         {list.map((x) => (
-          <div key={x.name} className="pr-check">
+          // A check with a page opens it, where its log is: what you look for when one fails.
+          <Box
+            key={x.name}
+            className={x.url ? 'pr-check pr-link' : 'pr-check'}
+            {...(x.url ? { component: 'a' as const, href: x.url, target: '_blank', rel: 'noreferrer' } : {})}
+          >
             {CHECK_ICON[x.conclusion]}
             <Text size="sm" truncate>
               {x.name}
@@ -712,7 +748,7 @@ function Checks({ pull }: { pull: PullDetail }) {
             <Text size="xs" c="dimmed" className="tabular">
               {x.minutes === null ? '' : minutes(x.minutes)}
             </Text>
-          </div>
+          </Box>
         ))}
       </div>
     </Box>

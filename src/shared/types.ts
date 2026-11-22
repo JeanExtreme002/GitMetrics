@@ -508,6 +508,8 @@ export interface PullCheck {
   name: string;
   conclusion: 'success' | 'failure' | 'pending' | 'skipped' | 'cancelled' | 'neutral';
   minutes: number | null;
+  /** The run (or the status) on GitHub or the service that set it, when there is one. */
+  url: string | null;
 }
 
 /** One stretch of a pull request's life, for "where the time went". */
@@ -538,6 +540,8 @@ export interface PullFolder {
 /** A file or folder, and how many of a pull request's commits touched it. */
 export interface ChurnEntry {
   path: string;
+  /** For a file: where it is in the pull request's "Files changed" tab. */
+  url?: string;
   commits: number;
   additions: number;
   deletions: number;
@@ -595,6 +599,8 @@ export interface PullDetail {
   /** The whole life of the pull request, in order, split into stretches (a kind can come back). */
   phases: PullPhase[];
   reviewMarks: PullReviewMark[];
+  /** Every time a person (not a team) was asked for a review, in order. */
+  requestMarks: { hours: number; login: string; at: string }[];
   /** Every commit by the date written in it, or null when GitHub can't list them all. */
   commitMarks: { hours: number; login: string; at: string }[] | null;
   /**

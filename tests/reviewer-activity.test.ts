@@ -15,6 +15,7 @@ const pull = (over: Partial<PullDetail> = {}) =>
       })),
     },
     reviewers: [{ login: 'Bo', avatarUrl: 'https://avatars/bo' }],
+    requestMarks: [],
     reviewMarks: [
       { hours: 1, state: 'COMMENTED', login: 'Bo', at: '2026-03-01T10:00:00Z' },
       { hours: 30, state: 'APPROVED', login: 'Bo', at: '2026-03-02T16:00:00Z' },
@@ -63,5 +64,32 @@ describe("each reviewer's activity", () => {
     expect(partial.comments).toBe(false);
     expect(partial.people.map((p) => p.total)).toEqual([2, 1]);
     expect(reviewerActivity(pull({ activity: null }))).toBeNull();
+  });
+
+  it('maps each review request, and how long they took on average to do anything after it', () => {
+    const asked = pull({
+      requestMarks: [
+        // Bo answers the first with a review at once, the second with an approval two hours later.
+        { hours: 0, login: 'bo', at: '2026-03-01T10:00:00Z' },
+        { hours: 26, login: 'Bo', at: '2026-03-02T14:00:00Z' },
+        // Asked and never answered.
+        { hours: 30, login: 'eve', at: '2026-03-02T16:00:00Z' },
+        // The author asking themselves doesn't count.
+        { hours: 1, login: 'ana', at: '2026-03-01T11:00:00Z' },
+      ],
+    });
+    const { people } = reviewerActivity(asked)!;
+    const bo = people.find((p) => p.login === 'Bo')!;
+    expect(bo.requests).toBe(2);
+    expect(bo.points.map((p) => p.requests)).toEqual([1, 1, 0]);
+    // 10:00 → 10:00 and 14:00 → 16:00: one hour on average.
+    expect(bo.answer).toEqual({ hours: 1, answered: 2, waiting: 0 });
+    // Asked only: listed, with no actions and no average.
+    const eve = people.find((p) => p.login === 'eve')!;
+    expect(eve).toMatchObject({ total: 0, requests: 1, answer: null });
+    expect(people.at(-1)!.login).toBe('eve');
+    expect(people.some((p) => p.login === 'ana')).toBe(false);
+    // Without every comment, an answer could be missed: no average.
+    expect(reviewerActivity({ ...asked, commentMarks: null })!.people[0]!.answer).toBeNull();
   });
 });

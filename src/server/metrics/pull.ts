@@ -98,8 +98,8 @@ const CHECKS = `contexts(first: 100, after: $after) {
   pageInfo { hasNextPage endCursor }
   nodes {
     __typename
-    ... on CheckRun { name conclusion status startedAt completedAt }
-    ... on StatusContext { context state }
+    ... on CheckRun { name conclusion status startedAt completedAt detailsUrl }
+    ... on StatusContext { context state targetUrl }
   }
 }`;
 
@@ -467,6 +467,19 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     ),
     // Every review by a person, placed on the pull request's life, as GitHub keeps it now: an
     // approval or a request for changes that was later dismissed shows as dismissed.
+    // Every time a person was asked for a review, read to the end of the timeline. Teams are left
+    // out: who in the team answers isn't known.
+    requestMarks: raw.events
+      .flatMap((e) =>
+        e.__typename === 'ReviewRequestedEvent' &&
+        e.createdAt &&
+        e.requestedReviewer?.__typename === 'User' &&
+        e.requestedReviewer.login
+          ? [{ at: e.createdAt, login: e.requestedReviewer.login }]
+          : [],
+      )
+      .sort((a, b) => a.at.localeCompare(b.at))
+      .map((r) => ({ ...r, hours: Math.max(0, hoursBetween(raw.createdAt, r.at)) })),
     // Every commit, placed on the pull request's life by the date written in it (not when it was
     // pushed); commits dated before the opening go at its start.
     commitMarks:

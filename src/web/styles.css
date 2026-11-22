@@ -1050,3 +1050,15 @@ a.pull-row {
   padding: 10px 4px;
   border-bottom: 1px solid var(--mantine-color-default-border);
 }
+
+/* A row that opens a page (a check's run, a file in the pull request): quiet until hovered. */
+.pr-link {
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--mantine-radius-sm);
+  transition: background-color 120ms ease;
+}
+
+.pr-link:hover {
+  background: var(--mantine-color-default-hover);
+}

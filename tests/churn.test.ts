@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { GitHubClient } from '../src/server/github';
-import { buildChurn, getPullChurn } from '../src/server/metrics/churn';
+import { buildChurn, fileUrl, getPullChurn } from '../src/server/metrics/churn';
 import { DiskCache } from '../src/server/store';
 
 const file = (filename: string, additions = 1, deletions = 0) => ({ filename, additions, deletions });
@@ -30,6 +30,13 @@ describe('what the commits keep coming back to', () => {
       { path: 'src', commits: 3, additions: 17, deletions: 1 },
       { path: '(root)', commits: 1, additions: 1, deletions: 0 },
     ]);
+  });
+
+  it('links a file to its place in the pull request, named as GitHub names it', () => {
+    // The SHA-256 of the path, as on GitHub's own page.
+    expect(fileUrl('octo', 'app', 32, 'src/web/pages/MyPulls.tsx')).toBe(
+      'https://github.com/octo/app/pull/32/files#diff-866e1c5ab5b73b01474375632e95fde5a260674920d4170e545ab30644cb8245',
+    );
   });
 
   it('lists the twelve most touched', () => {
@@ -96,6 +103,8 @@ describe('reading every commit of a pull request', () => {
       ['x.ts', 2],
       ['y.ts', 1],
     ]);
+    // Each file links to its place in the pull request's "Files changed" tab.
+    expect(churn!.files[0]!.url).toBe(fileUrl('octo', 'app', 7, 'x.ts'));
     // Commits are read side by side, so only what was asked matters, not the order.
     expect(asked.sort()).toEqual([
       '/repos/octo/app/commits/a',

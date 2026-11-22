@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { ChurnEntry, PullChurn } from '../../shared/types.js';
 import type { GitHubClient } from '../github.js';
 import type { DiskCache } from '../store.js';
@@ -135,5 +136,12 @@ export async function getPullChurn(
     return files;
   });
   if (perCommit.some((files) => files === null)) return null;
-  return buildChurn(perCommit as CommitFile[][], commits.length - own.length);
+  const churn = buildChurn(perCommit as CommitFile[][], commits.length - own.length);
+  return { ...churn, files: churn.files.map((f) => ({ ...f, url: fileUrl(owner, name, number, f.path) })) };
+}
+
+/** Where a file is in the pull request's "Files changed" tab: GitHub names it by its path's SHA-256. */
+export function fileUrl(owner: string, name: string, number: number, path: string): string {
+  const anchor = createHash('sha256').update(path).digest('hex');
+  return `https://github.com/${owner}/${name}/pull/${number}/files#diff-${anchor}`;
 }

@@ -288,6 +288,31 @@ describe('a pull request in detail', () => {
     ).toBeNull();
   });
 
+  it('maps every time a person was asked for a review, leaving teams out', () => {
+    const events = [
+      {
+        __typename: 'ReviewRequestedEvent',
+        createdAt: at(5),
+        requestedReviewer: { __typename: 'User', login: 'cy' },
+      },
+      {
+        __typename: 'ReviewRequestedEvent',
+        createdAt: at(2),
+        requestedReviewer: { __typename: 'User', login: 'bo' },
+      },
+      {
+        __typename: 'ReviewRequestedEvent',
+        createdAt: at(3),
+        requestedReviewer: { __typename: 'Team', name: 'core' },
+      },
+      { __typename: 'ReadyForReviewEvent', createdAt: at(1) },
+    ];
+    expect(buildPull(raw({ events }), 'octo/app', now).requestMarks).toEqual([
+      { at: at(2), login: 'bo', hours: 2 },
+      { at: at(5), login: 'cy', hours: 5 },
+    ]);
+  });
+
   it('says it has conflicts only when GitHub knows, and only while open', () => {
     expect(buildPull(raw({ mergeable: 'CONFLICTING' }), 'octo/app', now).conflicts).toBe(true);
     // Right after a push GitHub may still be working it out.

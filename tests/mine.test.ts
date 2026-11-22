@@ -43,14 +43,34 @@ describe('checks', () => {
   it('counts a run that was cancelled and started again by its latest run only', () => {
     const checks = readChecks([
       { name: 'title', conclusion: 'CANCELLED', startedAt: at(0), completedAt: at(0.01) },
-      { name: 'title', conclusion: 'SUCCESS', startedAt: at(1), completedAt: at(1.01) },
+      {
+        name: 'title',
+        conclusion: 'SUCCESS',
+        startedAt: at(1),
+        completedAt: at(1.01),
+        detailsUrl: 'https://github.com/octo/app/runs/2',
+      },
       { name: 'tests', conclusion: 'SUCCESS', startedAt: at(1), completedAt: at(1.5) },
     ]);
     expect(checks).toEqual([
-      { name: 'title', conclusion: 'success', minutes: expect.closeTo(0.6, 5) },
-      { name: 'tests', conclusion: 'success', minutes: 30 },
+      {
+        name: 'title',
+        conclusion: 'success',
+        minutes: expect.closeTo(0.6, 5),
+        url: 'https://github.com/octo/app/runs/2',
+      },
+      { name: 'tests', conclusion: 'success', minutes: 30, url: null },
     ]);
     expect(checksState(checks)).toBe('success');
+  });
+
+  it("links a status to its page, and only when that's a web page", () => {
+    const [ok, odd] = readChecks([
+      { context: 'ci/legacy', state: 'SUCCESS', targetUrl: 'https://ci.example/build/7' },
+      { context: 'ci/odd', state: 'SUCCESS', targetUrl: 'javascript:alert(1)' },
+    ]);
+    expect(ok!.url).toBe('https://ci.example/build/7');
+    expect(odd!.url).toBeNull();
   });
 
   it('fails on any failure, waits while anything runs, and reads commit statuses too', () => {

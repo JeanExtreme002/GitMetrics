@@ -55,6 +55,7 @@ import { languageColor } from '../lib/languages';
 import { useRecentRepos } from '../lib/recent';
 import { snoozed, type Dismissed } from '../lib/update';
 import { sectionQuery, useAuth, useMyPulls, useOwners, useRateLimit, useRepos } from '../lib/queries';
+import { parsePullQuery } from '../lib/pulls';
 import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
@@ -544,7 +545,9 @@ function RepoSpotlight() {
   const [query, setQuery] = useState('');
   const text = parseRepoQuery(query);
   const [debounced] = useDebouncedValue(text, 300);
-  const searchable = debounced.length >= 2 && debounced.length <= 100 && SEARCHABLE.test(debounced);
+  // A pull request opens its own page, before anything else, with no search.
+  const pull = parsePullQuery(query);
+  const searchable = !pull && debounced.length >= 2 && debounced.length <= 100 && SEARCHABLE.test(debounced);
 
   // GitHub is searched only once you type, and only below your own repositories.
   const search = useQuery({
@@ -591,7 +594,16 @@ function RepoSpotlight() {
   const local = matchActions(text, [...pages, ...mine]).slice(0, 8);
 
   const elsewhere: SpotlightActionData[] = [];
-  if (text) {
+  if (pull) {
+    const path = `${pull.owner}/${pull.name}`;
+    elsewhere.push({
+      id: `pull:${path}#${pull.number}`,
+      label: `${path} #${pull.number}`,
+      description: 'Open this pull request',
+      leftSection: <IconGitPullRequest size={20} stroke={1.5} />,
+      onClick: () => navigate(`/r/${path}/pull/${pull.number}`),
+    });
+  } else if (text) {
     const results = searchable && debounced === text ? (search.data?.repos ?? []) : [];
     // An exact owner/name opens directly, even before (or without) a search result for it.
     if (FULL_NAME.test(text) && !ownNames.has(text.toLowerCase())) {
@@ -624,9 +636,11 @@ function RepoSpotlight() {
     }
   }
 
-  const actions = elsewhere.length
-    ? [...local, { group: 'On GitHub', actions: elsewhere.slice(0, 6) }]
-    : local;
+  const actions = pull
+    ? elsewhere
+    : elsewhere.length
+      ? [...local, { group: 'On GitHub', actions: elsewhere.slice(0, 6) }]
+      : local;
   const searching = searchable && (search.isFetching || debounced !== text);
 
   return (
@@ -640,7 +654,7 @@ function RepoSpotlight() {
       shortcut={['mod + K', '/']}
       searchProps={{
         leftSection: <IconSearch size={18} stroke={1.5} />,
-        placeholder: 'Jump to a repository, or search GitHub…',
+        placeholder: 'Jump to a repository, search GitHub, or paste a pull request link…',
       }}
     />
   );

@@ -191,13 +191,23 @@ export function sharedFolder(paths: string[]): string {
 }
 
 /** What one reviewer did in one day (or week): their reviews, by outcome, and their comments. */
-export type ReviewerPoint = { day: string; comments: number } & Record<PullReviewMark['state'], number>;
+export type ReviewerPoint = { day: string; comments: number; requests: number } & Record<
+  PullReviewMark['state'],
+  number
+>;
 
 export interface ReviewerActivity {
   login: string;
   avatarUrl: string | null;
   /** Reviews and comments, all added up. */
   total: number;
+  /** Times they were asked for a review. */
+  requests: number;
+  /**
+   * How long they took, on average, to do anything (review or comment) after being asked; null
+   * when no request was answered yet, or when not every comment could be read.
+   */
+  answer: { hours: number; answered: number; waiting: number } | null;
   points: ReviewerPoint[];
 }
 
@@ -218,7 +228,9 @@ export function reviewerActivity(pull: PullDetail): { comments: boolean; people:
   const author = pull.author?.toLowerCase();
   const avatars = new Map(pull.reviewers.map((r) => [r.login.toLowerCase(), r.avatarUrl]));
   const people = new Map<string, ReviewerActivity>();
-  const person = (login: string) => {
+  // When each person did something, to see how long they took after each request.
+  const doneAt = new Map<string, string[]>();
+  const person = (login: string, action = true) => {
     const key = login.toLowerCase();
     let p = people.get(key);
     if (!p) {
@@ -226,6 +238,8 @@ export function reviewerActivity(pull: PullDetail): { comments: boolean; people:
         login,
         avatarUrl: avatars.get(key) ?? null,
         total: 0,
+        requests: 0,
+        answer: null,
         points: activity.points.map((a) => ({
           day: a.day,
           APPROVED: 0,
@@ -233,20 +247,62 @@ export function reviewerActivity(pull: PullDetail): { comments: boolean; people:
           COMMENTED: 0,
           DISMISSED: 0,
           comments: 0,
+          requests: 0,
         })),
       };
       people.set(key, p);
     }
-    p.total++;
+    if (action) p.total++;
     return p;
   };
-  for (const r of pull.reviewMarks) person(r.login).points[slot(r.at)]![r.state]++;
+  const did = (login: string, at: string) =>
+    doneAt.set(login.toLowerCase(), [...(doneAt.get(login.toLowerCase()) ?? []), at]);
+  for (const r of pull.reviewMarks) {
+    person(r.login).points[slot(r.at)]![r.state]++;
+    did(r.login, r.at);
+  }
   for (const c of pull.commentMarks ?? []) {
     if (c.bot || c.login === 'ghost' || c.login.toLowerCase() === author) continue;
     person(c.login).points[slot(c.at)]!.comments++;
+    did(c.login, c.at);
+  }
+  // Each request, and the first thing the person did after it. A request answered by the same
+  // action as an earlier one counts for each, as each waited that long.
+  const waits = new Map<string, { hours: number[]; waiting: number }>();
+  for (const q of pull.requestMarks) {
+    if (q.login.toLowerCase() === author) continue;
+    const p = person(q.login, false);
+    p.requests++;
+    p.points[slot(q.at)]!.requests++;
+    const next = (doneAt.get(q.login.toLowerCase()) ?? []).filter((at) => at >= q.at).sort()[0];
+    const w = waits.get(q.login.toLowerCase()) ?? { hours: [], waiting: 0 };
+    if (next) w.hours.push((new Date(next).getTime() - new Date(q.at).getTime()) / 3_600_000);
+    else w.waiting++;
+    waits.set(q.login.toLowerCase(), w);
+  }
+  // Without every comment, an answer by comment could be missed, so there is no average.
+  if (pull.commentMarks !== null) {
+    for (const [key, w] of waits) {
+      if (!w.hours.length) continue;
+      const hours = w.hours.reduce((sum, h) => sum + h, 0) / w.hours.length;
+      people.get(key)!.answer = { hours, answered: w.hours.length, waiting: w.waiting };
+    }
   }
   return {
     comments: pull.commentMarks !== null,
     people: [...people.values()].sort((a, b) => b.total - a.total || a.login.localeCompare(b.login)),
   };
+}
+
+/**
+ * A pasted pull request link (github.com/owner/name/pull/123, any tab of it) or owner/name#123,
+ * as the pull request it points to.
+ */
+export function parsePullQuery(text: string): { owner: string; name: string; number: number } | null {
+  const trimmed = text.trim();
+  const match =
+    /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d{1,9})(?:[/?#].*)?$/i.exec(
+      trimmed,
+    ) ?? /^([a-z\d-]+)\/([\w.-]+)#(\d{1,9})$/i.exec(trimmed);
+  return match ? { owner: match[1]!, name: match[2]!, number: Number(match[3]) } : null;
 }

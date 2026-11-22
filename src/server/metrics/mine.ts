@@ -20,6 +20,9 @@ export interface RawCheck {
   completedAt?: string | null;
   context?: string;
   state?: string;
+  /** Where the run (or the status) can be seen; only the pull request page asks for it. */
+  detailsUrl?: string | null;
+  targetUrl?: string | null;
 }
 
 const CONCLUSIONS: Record<string, PullCheck['conclusion']> = {
@@ -52,6 +55,11 @@ export function latestRuns(raw: RawCheck[]): Map<string, RawCheck> {
   return latest;
 }
 
+/** A link only when it's a web page: a status can point anywhere, or nowhere. */
+function safeUrl(url: string | null | undefined): string | null {
+  return url && /^https?:\/\//i.test(url) ? url : null;
+}
+
 export function readChecks(raw: RawCheck[]): PullCheck[] {
   return [...latestRuns(raw).entries()].map(([name, check]) => {
     const value = check.conclusion ?? check.state ?? null;
@@ -59,7 +67,12 @@ export function readChecks(raw: RawCheck[]): PullCheck[] {
       check.startedAt && check.completedAt
         ? Math.max(0, hoursBetween(check.startedAt, check.completedAt) * 60)
         : null;
-    return { name, conclusion: value ? (CONCLUSIONS[value] ?? 'neutral') : 'pending', minutes };
+    return {
+      name,
+      conclusion: value ? (CONCLUSIONS[value] ?? 'neutral') : 'pending',
+      minutes,
+      url: safeUrl(check.detailsUrl ?? check.targetUrl),
+    };
   });
 }
 
