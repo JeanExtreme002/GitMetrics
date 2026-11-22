@@ -532,7 +532,12 @@ function Timeline({ pull }: { pull: PullDetail }) {
   const open = pull.state === 'OPEN';
   return (
     <Box>
-      <SectionHeader title="Timeline" caption="Each step, and how long it took after the one before" />
+      <SectionHeader
+        title="Timeline"
+        caption={`Its key moments at a glance, from opening to ${
+          pull.state === 'MERGED' ? 'merge' : pull.state === 'CLOSED' ? 'closing' : 'now'
+        }`}
+      />
       <div className="pr-timeline">
         {pull.stages.map((s, i) => (
           // A kind can come more than once: one approval per person.
@@ -729,8 +734,12 @@ function Recurring({ owner, repo, number }: { owner: string; repo: string; numbe
   );
 }
 
+/** How many checks show at first, and how many more each "Show more" adds. */
+const CHECKS_PAGE = 6;
+
 function Checks({ pull }: { pull: PullDetail }) {
   const c = pull.checks;
+  const [shown, setShown] = useState(CHECKS_PAGE);
   if (!c.list.length) {
     return (
       <Box>
@@ -767,7 +776,7 @@ function Checks({ pull }: { pull: PullDetail }) {
     <Box>
       <SectionHeader title="Checks" caption={`On the latest commit: ${caption}`} />
       <div className="rank-list">
-        {list.map((x) => (
+        {list.slice(0, shown).map((x) => (
           // A check with a page opens it, where its log is: what you look for when one fails.
           <Box
             key={x.name}
@@ -784,6 +793,19 @@ function Checks({ pull }: { pull: PullDetail }) {
           </Box>
         ))}
       </div>
+      {/* Failing checks come first, so what shows at first is what matters. */}
+      {list.length > shown && (
+        <Group justify="center" mt="sm">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            onClick={() => setShown((n) => n + CHECKS_PAGE)}
+          >
+            Show more ({num(list.length - shown)} left)
+          </Button>
+        </Group>
+      )}
     </Box>
   );
 }

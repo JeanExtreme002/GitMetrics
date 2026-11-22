@@ -175,27 +175,24 @@ const reviewerKey = (r: Requested) => (r.login ?? r.name ?? '').toLowerCase();
  * from then on nothing took the approval back until it was merged (or closed, or now).
  */
 /**
- * The approvals that still stand: given after the last request for changes, one per person, when
- * they first approved since then. The earliest is the final approval. A dismissed approval isn't
- * among them: GitHub keeps it as dismissed.
+ * The approvals that still stand, one per person: their last approval, unless they asked for
+ * changes after it. A dismissed approval isn't among them: GitHub keeps it as dismissed.
  */
 export function keptApprovals(
   reviews: { submittedAt: string | null; state: string; author?: { login: string } | null }[],
 ): { login: string; at: string }[] {
-  const lastChanges = reviews
-    .filter((r) => r.submittedAt && r.state === 'CHANGES_REQUESTED')
-    .map((r) => r.submittedAt!)
-    .sort()
-    .at(-1);
-  const first = new Map<string, { login: string; at: string }>();
+  const last = new Map<string, { login: string; at: string; state: string }>();
   for (const r of reviews) {
-    if (r.state !== 'APPROVED' || !r.submittedAt || !r.author) continue;
-    if (lastChanges && r.submittedAt <= lastChanges) continue;
+    if (!r.submittedAt || !r.author || (r.state !== 'APPROVED' && r.state !== 'CHANGES_REQUESTED')) continue;
     const key = r.author.login.toLowerCase();
-    const known = first.get(key);
-    if (!known || r.submittedAt < known.at) first.set(key, { login: r.author.login, at: r.submittedAt });
+    const known = last.get(key);
+    if (!known || r.submittedAt > known.at)
+      last.set(key, { login: r.author.login, at: r.submittedAt, state: r.state });
   }
-  return [...first.values()].sort((a, b) => a.at.localeCompare(b.at));
+  return [...last.values()]
+    .filter((r) => r.state === 'APPROVED')
+    .map(({ login, at }) => ({ login, at }))
+    .sort((a, b) => a.at.localeCompare(b.at));
 }
 
 export function finalApproval(reviews: { submittedAt: string | null; state: string }[]): string | null {

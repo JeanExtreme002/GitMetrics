@@ -120,24 +120,24 @@ describe('where the time went', () => {
     expect(finalApproval([r(1, 'DISMISSED')])).toBeNull();
   });
 
-  it('keeps every approval that still stands, one per person, the first since the last request for changes', () => {
+  it("keeps each person's last approval, unless they asked for changes after it", () => {
     const r = (h: number, login: string, state: string) => ({ submittedAt: at(h), state, author: { login } });
     expect(
       keptApprovals([
-        r(1, 'bo', 'APPROVED'), // before the request for changes: no longer stands
+        r(1, 'bo', 'APPROVED'),
         r(2, 'cy', 'CHANGES_REQUESTED'),
-        r(6, 'Bo', 'APPROVED'),
         r(4, 'cy', 'APPROVED'),
-        r(8, 'bo', 'APPROVED'), // Bo again: still the one at 6
+        r(6, 'Bo', 'APPROVED'), // Bo approved again: this one is the last
+        r(7, 'bo', 'COMMENTED'), // a comment doesn't take an approval back
+        r(3, 'ed', 'APPROVED'),
+        r(5, 'ed', 'CHANGES_REQUESTED'), // Ed asked for changes after approving
         r(9, 'di', 'DISMISSED'),
       ]),
     ).toEqual([
       { login: 'cy', at: at(4) },
       { login: 'Bo', at: at(6) },
     ]);
-    // Its first one is the final approval.
-    expect(keptApprovals([r(3, 'bo', 'APPROVED')])[0]!.at).toBe(finalApproval([r(3, 'bo', 'APPROVED')]));
-    expect(keptApprovals([r(1, 'bo', 'APPROVED'), r(2, 'cy', 'CHANGES_REQUESTED')])).toEqual([]);
+    expect(keptApprovals([r(1, 'bo', 'CHANGES_REQUESTED')])).toEqual([]);
   });
 });
 
