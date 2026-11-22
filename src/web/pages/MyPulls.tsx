@@ -303,6 +303,9 @@ export function MyPulls() {
           }
           return (
             <>
+              <Text size="xs" c="dimmed" mb={8}>
+                Showing {num(pulls.length)} {pulls.length === 1 ? 'pull request' : 'pull requests'}
+              </Text>
               <div className="rank-list">
                 {pulls.map((p) => (
                   <PullRow key={`${p.repo}#${p.number}`} pull={p} />
