@@ -31,10 +31,7 @@ export const KEEP_FOR_PAGES = 1000;
 
 /** Per account: the day of each repository's last visit, and how the collection went. */
 interface Saved {
-  /**
-   * Keyed in lowercase; each keeps the name as the page was opened with, which is the name the
-   * Traffic page saves its history under, so both always write the same file.
-   */
+  /** Keyed in lowercase; each keeps the name as the page was opened with. */
   visits: Record<string, { name: string; on: string }>;
   /** The UTC day the last collection finished. */
   collectedOn?: string;

@@ -105,6 +105,15 @@ describe('collecting', () => {
     expect(store.get('me')).toMatchObject({ collectedOn: day(0), refused: { 'acme/secret': day(0) } });
   });
 
+  it('keeps one history per repository, however its name is typed', () => {
+    const traffic = new TrafficStore(path.join(dir, 'traffic'));
+    traffic.merge('Acme/API', 'views', { [day(2)]: [1, 1] });
+    expect(traffic.merge('acme/api', 'views', { [day(1)]: [2, 2] })).toEqual({
+      [day(2)]: [1, 1],
+      [day(1)]: [2, 2],
+    });
+  });
+
   it("keeps the history it had: a day's newest count replaces the older one", async () => {
     const traffic = new TrafficStore(path.join(dir, 'traffic'));
     traffic.merge('me/app', 'views', { [day(30)]: [9, 9], [day(1)]: [1, 1] });

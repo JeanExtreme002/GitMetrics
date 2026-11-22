@@ -133,8 +133,9 @@ export class MemoryCache {
 export class TrafficStore {
   constructor(private readonly dir: string) {}
 
+  /** GitHub names are case-insensitive, so are these files: one per repository, however it's typed. */
   private fileFor(fullName: string) {
-    return path.join(this.dir, `${fullName.replace('/', '__')}.json`);
+    return path.join(this.dir, `${fullName.toLowerCase().replace('/', '__')}.json`);
   }
 
   merge(fullName: string, kind: 'views' | 'clones', days: Record<string, [number, number]>) {
