@@ -856,10 +856,6 @@
 }
 
 /* A single pull request. */
-.waiting-on.late {
-  border-color: var(--mantine-color-red-filled);
-}
-
 .pr-timeline {
   position: relative;
 }
@@ -935,7 +931,7 @@ a.pull-row {
   display: none;
 }
 
-/* A single pull request: branch names, activity tiles. */
+/* A single pull request: branch names. */
 .pr-branch {
   border: 1px solid var(--mantine-color-default-border);
   max-width: 240px;
@@ -945,15 +941,9 @@ a.pull-row {
   font-size: 12px;
 }
 
-.pr-tile {
-  padding: 12px 14px;
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: var(--mantine-radius-md);
-}
-
-.legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
+.pr-fact {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
 }

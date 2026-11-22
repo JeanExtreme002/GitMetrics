@@ -7,20 +7,20 @@ import {
   Code,
   Grid,
   Group,
-  Paper,
-  Progress,
-  SimpleGrid,
   Text,
-  ThemeIcon,
   Title,
   Tooltip,
 } from '@mantine/core';
+import { MarkGithubIcon } from '@primer/octicons-react';
 import {
   IconAlertTriangle,
   IconArrowUpRight,
   IconCircleCheck,
   IconCircleDashed,
   IconCircleX,
+  IconClockHour4,
+  IconEye,
+  IconFileDiff,
   IconFiles,
   IconGitCommit,
   IconGitMerge,
@@ -32,23 +32,23 @@ import {
   IconMessages,
   IconPencil,
   IconUsers,
+  type Icon,
 } from '@tabler/icons-react';
-import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import type { PullCheck, PullDetail, PullReviewer, PullStage } from '../../../shared/types';
-import { NoData, QueryView, RefreshButton, SectionHeader, StatCard, StatGrid } from '../../components/ui';
+import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } from '../../components/ui';
 import { api } from '../../lib/api';
 import { date, dateTime, hours, num, relative } from '../../lib/format';
 import { slower, span } from '../../lib/pulls';
 import { usePull } from '../../lib/queries';
 
 const STATE: Record<string, { label: string; color: string; icon: ReactNode }> = {
-  OPEN: { label: 'Open', color: 'green', icon: <IconGitPullRequest size={14} stroke={2} /> },
-  MERGED: { label: 'Merged', color: 'violet', icon: <IconGitMerge size={14} stroke={2} /> },
-  CLOSED: { label: 'Closed', color: 'red', icon: <IconGitPullRequestClosed size={14} stroke={2} /> },
-  DRAFT: { label: 'Draft', color: 'gray', icon: <IconGitPullRequestDraft size={14} stroke={2} /> },
+  OPEN: { label: 'Open', color: 'green', icon: <IconGitPullRequest size={13} stroke={2} /> },
+  MERGED: { label: 'Merged', color: 'violet', icon: <IconGitMerge size={13} stroke={2} /> },
+  CLOSED: { label: 'Closed', color: 'red', icon: <IconGitPullRequestClosed size={13} stroke={2} /> },
+  DRAFT: { label: 'Draft', color: 'gray', icon: <IconGitPullRequestDraft size={13} stroke={2} /> },
 };
 
 const STAGE: Record<PullStage['kind'], string> = {
@@ -80,13 +80,76 @@ const CHECK_ICON: Record<PullCheck['conclusion'], ReactNode> = {
 const people = (who: string[]) =>
   who.length <= 2 ? who.join(' and ') : `${who.slice(0, -1).join(', ')} and ${who.at(-1)}`;
 
-/** "Usually 4h here", and whether this one is far slower than that. */
-function compared(value: number | null, usual: number | null): { hint: string; slow: boolean } {
-  if (usual === null) return { hint: 'Not enough merged pull requests here to compare', slow: false };
-  return { hint: `Usually ${span(usual)} in this repository`, slow: value !== null && slower(value, usual) };
+/** A value in red when it is far slower than the repository usually is. */
+const paced = (text: string, slow: boolean) =>
+  slow ? (
+    <Text component="span" inherit c="red">
+      {text}
+    </Text>
+  ) : (
+    text
+  );
+
+/** The pull request's numbers, as counters like every page's header, each with its context. */
+function PullStats({ pull }: { pull: PullDetail }) {
+  const open = pull.state === 'OPEN';
+  const usual = (value: number | null) =>
+    value === null ? '' : ` Usually ${span(value)} in this repository.`;
+  const size = pull.additions + pull.deletions;
+  const pct = pull.sizePercentile;
+  return (
+    <Counters>
+      <Counter
+        icon={IconEye}
+        value={paced(
+          pull.firstReviewHours !== null ? span(pull.firstReviewHours) : open ? 'Not yet' : 'None',
+          pull.firstReviewHours !== null && slower(pull.firstReviewHours, pull.baseline.firstReviewHours),
+        )}
+        label="First review"
+        hint={
+          pull.firstReviewHours !== null
+            ? `First reviewed ${hours(pull.firstReviewHours)} after it was ready.${usual(pull.baseline.firstReviewHours)}`
+            : open
+              ? `Nobody has reviewed it yet.${usual(pull.baseline.firstReviewHours)}`
+              : `${pull.state === 'MERGED' ? 'Merged' : 'Closed'} without a review.`
+        }
+      />
+      <Counter
+        icon={IconClockHour4}
+        value={paced(
+          pull.ageHours !== null ? span(pull.ageHours) : date(pull.closedAt),
+          pull.ageHours !== null && slower(pull.ageHours, pull.baseline.mergeHours),
+        )}
+        label={pull.state === 'MERGED' ? 'Merged after' : open ? 'Open for' : 'Closed'}
+        hint={
+          pull.state === 'CLOSED'
+            ? 'Closed without being merged.'
+            : `${pull.state === 'MERGED' ? 'Merged' : 'Open for'} ${hours(pull.ageHours)}${pull.state === 'MERGED' ? ' after it was opened' : ''}.${usual(pull.baseline.mergeHours)}`
+        }
+      />
+      <Counter
+        icon={IconFileDiff}
+        value={num(size)}
+        label="Lines changed"
+        hint={`+${num(pull.additions)} −${num(pull.deletions)} in ${num(pull.changedFiles)} files.${
+          pct === null
+            ? ''
+            : pct >= 0.5
+              ? ` Bigger than ${Math.round(pct * 100)}% of the recent merged ones here.`
+              : ` Smaller than ${Math.round((1 - pct) * 100)}% of the recent merged ones here.`
+        }`}
+      />
+      <Counter
+        icon={IconPencil}
+        value={num(pull.rounds.changesRequested)}
+        label="Changes requested"
+        hint={`${num(pull.rounds.commitsAfterFirstReview)} commits after the first review, ${num(pull.rounds.forcePushes)} force pushes.`}
+      />
+    </Counters>
+  );
 }
 
-/** What the pull request needs next, in one sentence, with how long it has been waiting. */
+/** What the pull request needs next, as one quiet line under the header. */
 function WaitingOn({ pull }: { pull: PullDetail }) {
   const w = pull.waitingOn;
   if (!w) return null;
@@ -98,15 +161,11 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
   const late = firstWait && waited !== null && slower(waited, usual);
   const reviewed = pull.reviewers.filter((r) => r.state !== 'PENDING').length;
 
-  const color = late
-    ? 'red'
-    : { review: 'yellow', author: 'orange', checks: 'red', merge: 'green', draft: 'gray' }[w.kind];
-  const faces = pull.reviewers.filter((r) => w.who.includes(r.login));
-
-  const [icon, text, detail]: [ReactNode, string, string | null] =
+  const [IconFor, color, text, detail]: [Icon, string, string, string | null] =
     w.kind === 'review'
       ? [
-          <IconHourglass key="i" size={18} />,
+          late ? IconAlertTriangle : IconHourglass,
+          late ? 'red' : 'yellow',
           w.who.length
             ? `Waiting for a review from ${people(w.who)}${forHow}.`
             : `Waiting for a first review${forHow}.`,
@@ -118,55 +177,37 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
         ]
       : w.kind === 'author'
         ? [
-            <IconPencil key="i" size={18} />,
+            IconPencil,
+            'orange',
             `Waiting for ${people(w.who) || 'the author'} to address the requested changes${forHow}.`,
             null,
           ]
         : w.kind === 'checks'
-          ? [<IconCircleX key="i" size={18} />, 'Checks are failing on the latest commit.', null]
+          ? [IconCircleX, 'red', 'Checks are failing on the latest commit.', null]
           : w.kind === 'merge'
-            ? [<IconGitMerge key="i" size={18} />, `Approved and waiting to be merged${forHow}.`, null]
-            : [
-                <IconGitPullRequestDraft key="i" size={18} />,
-                'Still a draft, not ready for review yet.',
-                null,
-              ];
+            ? [IconGitMerge, 'green', `Approved and waiting to be merged${forHow}.`, null]
+            : [IconGitPullRequestDraft, 'gray', 'Still a draft, not ready for review yet.', null];
 
   return (
-    <Paper
-      withBorder
-      p="md"
-      mb={32}
-      className="waiting-on"
-      style={{ borderLeft: `3px solid var(--mantine-color-${color}-6)` }}
-    >
-      <Group gap="sm" wrap="nowrap" align="center" justify="space-between">
-        <Group gap="sm" wrap="nowrap" align="center" miw={0}>
-          <ThemeIcon variant="light" color={color} size={36} radius="md">
-            {late ? <IconAlertTriangle size={19} /> : icon}
-          </ThemeIcon>
-          <Box miw={0}>
-            <Text fw={600}>{text}</Text>
-            {detail && (
-              <Text size="sm" c="dimmed" mt={2}>
-                {detail}
-              </Text>
-            )}
-          </Box>
-        </Group>
-        {faces.length > 0 && (
-          <Avatar.Group spacing="sm" visibleFrom="sm">
-            {faces.slice(0, 4).map((r) => (
-              <Tooltip key={r.login} label={r.login}>
-                <Avatar src={r.avatarUrl} size={30} radius="xl">
-                  <IconUsers size={16} />
-                </Avatar>
-              </Tooltip>
-            ))}
-          </Avatar.Group>
+    <Group gap={8} wrap="nowrap" align="flex-start" mb={36}>
+      <IconFor
+        size={18}
+        stroke={1.8}
+        color={`var(--mantine-color-${color}-6)`}
+        style={{ flex: 'none', marginTop: 1 }}
+      />
+      <Text size="sm">
+        <Text component="span" inherit fw={600}>
+          {text}
+        </Text>
+        {detail && (
+          <Text component="span" inherit c="dimmed">
+            {' '}
+            {detail}
+          </Text>
         )}
-      </Group>
-    </Paper>
+      </Text>
+    </Group>
   );
 }
 
@@ -189,9 +230,9 @@ function Timeline({ pull }: { pull: PullDetail }) {
               </Text>
             </Box>
             {s.hours !== null && (
-              <Badge variant="default" tt="none" radius="sm" className="tabular">
+              <Text size="xs" c="dimmed" className="tabular">
                 +{span(s.hours)}
-              </Badge>
+              </Text>
             )}
           </div>
         ))}
@@ -206,9 +247,9 @@ function Timeline({ pull }: { pull: PullDetail }) {
                 Still open
               </Text>
             </Box>
-            <Badge variant="light" color="yellow" tt="none" radius="sm" className="tabular">
+            <Text size="xs" c="yellow" className="tabular">
               +{span((Date.now() - new Date(last.at).getTime()) / 3_600_000)}
-            </Badge>
+            </Text>
           </div>
         )}
       </div>
@@ -263,15 +304,21 @@ function Checks({ pull }: { pull: PullDetail }) {
       </Box>
     );
   }
-  const failed = c.list.filter((x) => x.conclusion === 'failure').length;
+  const count = (...kinds: PullCheck['conclusion'][]) =>
+    c.list.filter((x) => kinds.includes(x.conclusion)).length;
   const caption = [
-    `${num(c.list.length)} on the latest commit${failed ? `, ${num(failed)} failing` : ''}`,
+    `${num(count('success'))} passed`,
+    count('failure') ? `${num(count('failure'))} failing` : null,
+    count('pending') ? `${num(count('pending'))} running` : null,
+    count('skipped', 'cancelled', 'neutral')
+      ? `${num(count('skipped', 'cancelled', 'neutral'))} skipped`
+      : null,
     c.minutes !== null ? `longest took ${Math.max(1, Math.round(c.minutes))} min` : null,
     c.pushesWithChecks > 1 ? `failed on ${num(c.failedPushes)} of ${num(c.pushesWithChecks)} commits` : null,
   ]
     .filter(Boolean)
     .join(' · ');
-  // Failures first, then whatever still runs, then the rest by name.
+  // Failures first, then whatever still runs, then the rest.
   const order: PullCheck['conclusion'][] = [
     'failure',
     'pending',
@@ -281,37 +328,9 @@ function Checks({ pull }: { pull: PullDetail }) {
     'cancelled',
   ];
   const list = [...c.list].sort((a, b) => order.indexOf(a.conclusion) - order.indexOf(b.conclusion));
-  // How the checks on the latest commit ended, at a glance.
-  const parts = [
-    { key: 'passed', color: 'green', n: c.list.filter((x) => x.conclusion === 'success').length },
-    { key: 'failed', color: 'red', n: failed },
-    { key: 'running', color: 'yellow', n: c.list.filter((x) => x.conclusion === 'pending').length },
-    {
-      key: 'skipped',
-      color: 'gray',
-      n: c.list.filter((x) => ['skipped', 'cancelled', 'neutral'].includes(x.conclusion)).length,
-    },
-  ].filter((part) => part.n > 0);
   return (
     <Box>
-      <SectionHeader title="Checks" caption={caption} />
-      <Progress.Root size={8} radius="xl" mb={8}>
-        {parts.map((part) => (
-          <Tooltip key={part.key} label={`${num(part.n)} ${part.key}`}>
-            <Progress.Section value={(part.n / c.list.length) * 100} color={part.color} />
-          </Tooltip>
-        ))}
-      </Progress.Root>
-      <Group gap="md" mb="sm">
-        {parts.map((part) => (
-          <Group key={part.key} gap={6} wrap="nowrap">
-            <span className="legend-dot" style={{ background: `var(--mantine-color-${part.color}-6)` }} />
-            <Text size="xs" c="dimmed">
-              {num(part.n)} {part.key}
-            </Text>
-          </Group>
-        ))}
-      </Group>
+      <SectionHeader title="Checks" caption={`On the latest commit: ${caption}`} />
       <div className="rank-list">
         {list.map((x) => (
           <div key={x.name} className="pr-check">
@@ -329,95 +348,28 @@ function Checks({ pull }: { pull: PullDetail }) {
   );
 }
 
-function Numbers({ pull }: { pull: PullDetail }) {
-  const open = pull.state === 'OPEN';
-  const review = compared(pull.firstReviewHours, pull.baseline.firstReviewHours);
-  const age = compared(pull.ageHours, pull.baseline.mergeHours);
-  const size = pull.additions + pull.deletions;
-  const pct = pull.sizePercentile;
-  const sizeHint =
-    pct === null
-      ? `${num(pull.changedFiles)} files changed`
-      : pct >= 0.5
-        ? `Bigger than ${Math.round(pct * 100)}% of the recent merged ones here`
-        : `Smaller than ${Math.round((1 - pct) * 100)}% of the recent merged ones here`;
-  const slow = (text: string, isSlow: boolean) =>
-    isSlow ? (
-      <Text component="span" inherit c="red">
-        {text}
-      </Text>
-    ) : (
-      text
-    );
-  return (
-    <StatGrid>
-      <StatCard
-        label="First review after"
-        value={slow(
-          pull.firstReviewHours !== null ? hours(pull.firstReviewHours) : open ? 'Not yet' : '—',
-          review.slow,
-        )}
-        hint={
-          pull.firstReviewHours === null && !open
-            ? `${pull.state === 'MERGED' ? 'Merged' : 'Closed'} without a review`
-            : review.hint
-        }
-      />
-      <StatCard
-        label={pull.state === 'MERGED' ? 'Merged after' : open ? 'Open for' : 'Closed'}
-        value={slow(pull.ageHours !== null ? hours(pull.ageHours) : date(pull.closedAt), age.slow)}
-        hint={pull.state === 'CLOSED' ? 'Closed without being merged' : age.hint}
-      />
-      <StatCard
-        label="Size"
-        value={
-          <Group component="span" gap={8} wrap="nowrap" className="tabular" display="inline-flex">
-            <span>{num(size)}</span>
-            <Text component="span" size="sm" c="green">
-              +{num(pull.additions)}
-            </Text>
-            <Text component="span" size="sm" c="red">
-              −{num(pull.deletions)}
-            </Text>
-          </Group>
-        }
-        hint={sizeHint}
-      />
-      <StatCard
-        label="Changes requested"
-        value={num(pull.rounds.changesRequested)}
-        hint={`${num(pull.rounds.commitsAfterFirstReview)} commits after the first review · ${num(pull.rounds.forcePushes)} force pushes`}
-      />
-    </StatGrid>
-  );
-}
-
 function Activity({ pull }: { pull: PullDetail }) {
-  const tiles: [string, number, ReactNode][] = [
-    ['Commits', pull.commits, <IconGitCommit key="i" size={16} stroke={1.7} />],
-    ['Files changed', pull.changedFiles, <IconFiles key="i" size={16} stroke={1.7} />],
-    ['Comments', pull.comments, <IconMessageCircle key="i" size={16} stroke={1.7} />],
-    ['Review threads', pull.reviewThreads, <IconMessages key="i" size={16} stroke={1.7} />],
-    ['People involved', pull.participants, <IconUsers key="i" size={16} stroke={1.7} />],
+  const rows: [string, number, Icon][] = [
+    ['Commits', pull.commits, IconGitCommit],
+    ['Files changed', pull.changedFiles, IconFiles],
+    ['Comments', pull.comments, IconMessageCircle],
+    ['Review threads', pull.reviewThreads, IconMessages],
+    ['People involved', pull.participants, IconUsers],
   ];
   return (
-    <Box mt={44}>
-      <SectionHeader title="Activity" />
-      <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm">
-        {tiles.map(([label, value, icon]) => (
-          <div key={label} className="pr-tile">
-            <Group gap={6} wrap="nowrap" c="dimmed">
-              {icon}
-              <Text size="xs" c="dimmed" truncate>
-                {label}
-              </Text>
-            </Group>
-            <Text fw={650} fz={22} mt={4} className="tabular">
+    <Box>
+      <SectionHeader title="Activity" caption="How much went into it" />
+      <div className="rank-list">
+        {rows.map(([label, value, RowIcon]) => (
+          <div key={label} className="pr-fact">
+            <RowIcon size={16} stroke={1.7} color="var(--mantine-color-dimmed)" />
+            <Text size="sm">{label}</Text>
+            <Text size="sm" fw={600} className="tabular">
               {num(value)}
             </Text>
           </div>
         ))}
-      </SimpleGrid>
+      </div>
     </Box>
   );
 }
@@ -442,99 +394,97 @@ export function Pull() {
 
   return (
     <>
-      <Box mb={32}>
-        <Group justify="space-between" wrap="nowrap" mb={10}>
-          <Group gap={8} wrap="nowrap" miw={0}>
-            {state && (
-              <Badge
-                size="lg"
-                variant="light"
-                color={state.color}
-                leftSection={state.icon}
-                tt="none"
-                radius="sm"
-              >
-                {state.label}
-              </Badge>
-            )}
-            <Text c="dimmed" fw={500} className="tabular">
-              #{number}
-            </Text>
+      {/* The same header as every page: title and actions, a description, then the counters. */}
+      <Box mb={36}>
+        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
+          <Group gap={10} wrap="nowrap" align="flex-start" miw={0}>
+            <span className="page-icon">
+              <IconGitPullRequest size={26} stroke={1.6} />
+            </span>
+            <Title order={2} fz={{ base: 21, sm: 26 }} style={{ overflowWrap: 'anywhere' }}>
+              {pull?.title ?? `Pull request #${number}`}
+            </Title>
           </Group>
-          <Group gap="xs" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap" style={{ flex: 'none' }}>
             {pull && (
-              <>
-                <Button
+              <Tooltip label="Open on GitHub">
+                <ActionIcon
                   component="a"
                   href={pull.url}
                   target="_blank"
                   variant="default"
-                  leftSection={<MarkGithubIcon size={16} />}
-                  rightSection={<IconArrowUpRight size={14} />}
-                  visibleFrom="sm"
+                  size={36}
+                  aria-label="Open on GitHub"
                 >
-                  Open on GitHub
-                </Button>
-                <Tooltip label="Open on GitHub">
-                  <ActionIcon
-                    component="a"
-                    href={pull.url}
-                    target="_blank"
-                    variant="default"
-                    size={36}
-                    aria-label="Open on GitHub"
-                    hiddenFrom="sm"
-                  >
-                    <MarkGithubIcon size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              </>
+                  <MarkGithubIcon size={18} />
+                </ActionIcon>
+              </Tooltip>
             )}
             <RefreshButton onRefresh={refresh} refreshing={refreshing} />
           </Group>
         </Group>
-        <Title order={2} fz={{ base: 21, sm: 26 }} lh={1.3} style={{ overflowWrap: 'anywhere' }}>
-          {pull?.title ?? `Pull request #${number}`}
-        </Title>
-        {pull && (
-          <Group gap={8} mt={12} wrap="wrap" align="center">
-            <Avatar src={pull.authorAvatarUrl} size={22} radius="xl" />
-            <Text size="sm" fw={600}>
-              {pull.author ?? 'ghost'}
-            </Text>
-            <Text size="sm" c="dimmed">
-              {pull.state === 'MERGED' ? 'merged' : 'wants to merge'} into
-            </Text>
+        {pull && state && (
+          <Group gap={8} mt={8} wrap="wrap" c="dimmed" fz={14}>
+            <Badge variant="light" color={state.color} leftSection={state.icon} tt="none" radius="sm">
+              {state.label}
+            </Badge>
+            <span>#{pull.number}</span>
+            <span>·</span>
+            <Group gap={6} wrap="nowrap">
+              <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
+              <span>{pull.author ?? 'ghost'}</span>
+            </Group>
+            <span>{pull.state === 'MERGED' ? 'merged into' : 'wants to merge into'}</span>
             <Code className="pr-branch">{pull.baseRef}</Code>
-            <Text size="sm" c="dimmed">
-              from
-            </Text>
+            <span>from</span>
             <Code className="pr-branch">{pull.headRef}</Code>
-            <Text size="sm" c="dimmed">
-              · opened {relative(pull.createdAt)}
-            </Text>
+            <span>· opened {relative(pull.createdAt)}</span>
           </Group>
         )}
+        {pull && (
+          <Box mt="lg">
+            <PullStats pull={pull} />
+          </Box>
+        )}
       </Box>
+
       <QueryView query={query}>
         {(data) => (
           <>
             <WaitingOn pull={data} />
-            <Numbers pull={data} />
-            <Grid gap={40} mt={44}>
+            {/* Two independent columns, so a longer list never leaves a gap on the other side. */}
+            <Grid gap={48}>
               <Grid.Col span={{ base: 12, lg: 6 }}>
                 <Timeline pull={data} />
-                <Activity pull={data} />
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, lg: 6 }}>
-                <Reviewers pull={data} />
                 <Box mt={44}>
-                  <Checks pull={data} />
+                  <Reviewers pull={data} />
+                </Box>
+                <Box mt={44}>
+                  <Activity pull={data} />
                 </Box>
               </Grid.Col>
+              {/* Checks are usually the longest list, so they get a column of their own. */}
+              <Grid.Col span={{ base: 12, lg: 6 }}>
+                <Checks pull={data} />
+              </Grid.Col>
             </Grid>
+
+            <Group justify="center" mt="xl">
+              <Button
+                component="a"
+                href={data.url}
+                target="_blank"
+                variant="subtle"
+                color="gray"
+                size="compact-sm"
+                leftSection={<MarkGithubIcon size={14} />}
+                rightSection={<IconArrowUpRight size={14} />}
+              >
+                See the code and the conversation on GitHub
+              </Button>
+            </Group>
             {data.baseline.sample > 0 && (
-              <Text size="xs" c="dimmed" mt={44} ta="center">
+              <Text size="xs" c="dimmed" mt="xs" ta="center">
                 Compared with the last {num(data.baseline.sample)} merged pull requests in this repository.
               </Text>
             )}
