@@ -533,8 +533,9 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
 const FACES = 7;
 
 /**
- * The people most involved, most active first: commits, reviews and comments each count one, and
- * opening it counts one for the author. Only when every one of those was read, so the order is right.
+ * The people most involved: those who approved it first, then the rest, each most active first.
+ * Commits, reviews and comments each count one, and opening it counts one for the author. Only when
+ * every one of those was read, so the order is right. An approval later dismissed doesn't count.
  */
 export function involved(raw: RawPull, everyComment: boolean): PullDetail['involved'] {
   if (!raw.people || !everyComment || raw.commits.committedAt.length !== raw.commits.totalCount) return null;
@@ -547,13 +548,20 @@ export function involved(raw: RawPull, everyComment: boolean): PullDetail['invol
   raw.reviews.forEach((r) => add(r.author?.login));
   raw.comments.by?.forEach(add);
   raw.threads.nodes.forEach((t) => t.comments.nodes.forEach((c) => add(c.author?.login)));
+  const approvers = new Set(
+    raw.reviews.flatMap((r) => (r.state === 'APPROVED' && r.author ? [r.author.login.toLowerCase()] : [])),
+  );
   return raw.people
     .map((p) => ({
       login: p.login,
       avatarUrl: p.avatarUrl,
       actions: actions.get(p.login.toLowerCase()) ?? 0,
+      approved: approvers.has(p.login.toLowerCase()),
     }))
-    .sort((a, b) => b.actions - a.actions || a.login.localeCompare(b.login))
+    .sort(
+      (a, b) =>
+        Number(b.approved) - Number(a.approved) || b.actions - a.actions || a.login.localeCompare(b.login),
+    )
     .slice(0, FACES);
 }
 

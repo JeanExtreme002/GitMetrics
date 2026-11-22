@@ -582,8 +582,11 @@ export interface PullDetail {
   comments: number;
   reviewThreads: number;
   participants: number;
-  /** The most involved people, most active first, or null when not everything could be counted. */
-  involved: { login: string; avatarUrl: string; actions: number }[] | null;
+  /**
+   * The most involved people, those who approved first, then most active first, or null when not
+   * everything could be counted.
+   */
+  involved: { login: string; avatarUrl: string; actions: number; approved: boolean }[] | null;
   stages: PullStage[];
   /** Hours from ready for review to the first review by a person, if any. */
   firstReviewHours: number | null;

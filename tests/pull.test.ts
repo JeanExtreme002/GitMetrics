@@ -264,10 +264,18 @@ describe('a pull request in detail', () => {
     });
     // Opening counts one for the author; logins match whatever their case.
     expect(buildPull(base, 'octo/app', now).involved).toEqual([
-      { login: 'bo', avatarUrl: 'https://avatars/bo', actions: 4 },
-      { login: 'ana', avatarUrl: 'https://avatars/ana', actions: 3 },
-      { login: 'cy', avatarUrl: 'https://avatars/cy', actions: 1 },
-      { login: 'di', avatarUrl: 'https://avatars/di', actions: 0 },
+      { login: 'bo', avatarUrl: 'https://avatars/bo', actions: 4, approved: true },
+      { login: 'ana', avatarUrl: 'https://avatars/ana', actions: 3, approved: false },
+      { login: 'cy', avatarUrl: 'https://avatars/cy', actions: 1, approved: false },
+      { login: 'di', avatarUrl: 'https://avatars/di', actions: 0, approved: false },
+    ]);
+    // Who approved comes first, however little they did.
+    const approvedByDi = raw({ ...base, reviews: [...base.reviews, review(6, 'di', 'APPROVED')] });
+    expect(buildPull(approvedByDi, 'octo/app', now).involved!.map((p) => p.login)).toEqual([
+      'bo',
+      'di',
+      'ana',
+      'cy',
     ]);
     // Seven at most.
     const many = Array.from({ length: 10 }, (_, i) => ({ login: `p${i}`, avatarUrl: '' }));
