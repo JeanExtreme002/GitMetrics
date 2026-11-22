@@ -80,7 +80,7 @@ function PullRow({ pull }: { pull: MyPull }) {
           </Tooltip>
         ))}
       </Group>
-      <Tooltip label="Comments in the conversation and on the code">
+      <Tooltip label="Comments in the conversation and on the code, plus written reviews">
         <Group gap={4} wrap="nowrap" className="tabular my-pull-comments" justify="flex-end">
           <IconMessageCircle size={14} stroke={1.7} color="var(--mantine-color-dimmed)" />
           <Text size="xs" c={pull.comments ? undefined : 'dimmed'}>

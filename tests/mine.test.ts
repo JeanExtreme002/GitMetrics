@@ -186,19 +186,22 @@ describe('your pull requests', () => {
     }
   });
 
-  it('counts comments in the conversation and on the code', async () => {
+  it("counts what was said like GitHub's Conversation tab: comments, code comments, written reviews", async () => {
+    // Many reviews, few threads: counting by thread doesn't depend on how many reviews there are.
     const commented = pull({
       comments: { totalCount: 2 },
       reviews: {
-        nodes: [
-          { submittedAt: at(1), author: { login: 'bo' }, comments: { totalCount: 3 } },
-          { submittedAt: at(2), author: { login: 'cy' } },
-        ],
+        nodes: Array.from({ length: 40 }, (_, i) => ({ submittedAt: at(i), author: { login: 'bo' } })),
+      },
+      reviewThreads: { nodes: [{ comments: { totalCount: 3 } }, { comments: { totalCount: 1 } }] },
+      // Two reviews say something; an empty or blank summary doesn't count.
+      written: {
+        nodes: [{ body: 'Looks good' }, { body: '' }, { body: '  ' }, { body: 'One nit' }, { body: null }],
       },
     });
     const { gh } = github({ involved: [commented, pull({ number: 2 })] });
     const result = await getMyPulls(gh, 'me', 'open');
-    expect(result.pulls.map((p) => p.comments)).toEqual([5, 0]);
+    expect(result.pulls.map((p) => p.comments)).toEqual([8, 0]);
   });
 
   it('only searches with GitHub qualifiers for you, and reads reviewed ones once closed', () => {

@@ -80,7 +80,9 @@ fragment pull on PullRequest {
   author { login avatarUrl }
   repository { nameWithOwner name owner { login avatarUrl } }
   comments { totalCount }
-  reviews(first: 20) { nodes { submittedAt author { __typename login } comments { totalCount } } }
+  reviewThreads(first: 100) { nodes { comments { totalCount } } }
+  written: reviews(first: 100) { nodes { body } }
+  reviews(first: 20) { nodes { submittedAt author { __typename login } } }
   reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login } } } }
   timelineItems(last: 20, itemTypes: [REVIEW_REQUESTED_EVENT]) {
     nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { __typename ... on User { login } } } }
@@ -108,7 +110,8 @@ query ($q: String!) {
     author { login avatarUrl }
     repository { nameWithOwner name owner { login avatarUrl } }
     comments { totalCount }
-    reviews(first: 20) { nodes { comments { totalCount } } }
+    reviewThreads(first: 100) { nodes { comments { totalCount } } }
+    written: reviews(first: 100) { nodes { body } }
   } } }
 }`;
 
@@ -142,11 +145,14 @@ export interface RawListPull {
   author: (Login & { avatarUrl: string }) | null;
   repository: { nameWithOwner: string; name: string; owner: { login: string; avatarUrl: string } };
   comments?: { totalCount: number };
+  /** Discussions on the code; their comments are what GitHub calls review comments. */
+  reviewThreads?: { nodes: { comments: { totalCount: number } }[] };
+  /** Every review's summary text, to count the ones that say something. */
+  written?: { nodes: { body: string | null }[] };
   reviews: {
     nodes: {
       submittedAt?: string | null;
       author?: (Login & { __typename?: string }) | null;
-      comments?: { totalCount: number };
     }[];
   };
   reviewRequests: { nodes: { requestedReviewer: Reviewer | null }[] };
@@ -191,6 +197,17 @@ export function reviewRequestedAt(pull: RawListPull, login: string, requested: b
   return latest(events.filter((e) => askedOf(e.requestedReviewer, login))) ?? pull.createdAt;
 }
 
+/**
+ * Everything said on a pull request, like the counter on GitHub's Conversation tab: comments in
+ * the conversation, comments on the code (counted by thread, since a pull request has far fewer
+ * threads than reviews), and reviews whose summary has text.
+ */
+export function commentCount(raw: Pick<RawListPull, 'comments' | 'reviewThreads' | 'written'>): number {
+  const onCode = (raw.reviewThreads?.nodes ?? []).reduce((sum, t) => sum + t.comments.totalCount, 0);
+  const written = (raw.written?.nodes ?? []).filter((r) => (r.body ?? '').trim()).length;
+  return (raw.comments?.totalCount ?? 0) + onCode + written;
+}
+
 export function toMyPull(raw: RawListPull, login: string, roles: Role[]): MyPull {
   const contexts = raw.commits?.nodes[0]?.commit.statusCheckRollup?.contexts.nodes ?? [];
   return {
@@ -212,10 +229,7 @@ export function toMyPull(raw: RawListPull, login: string, roles: Role[]): MyPull
     additions: raw.additions,
     deletions: raw.deletions,
     reviewDecision: raw.reviewDecision ?? null,
-    // The conversation, plus comments left on the code while reviewing.
-    comments:
-      (raw.comments?.totalCount ?? 0) +
-      (raw.reviews?.nodes ?? []).reduce((sum, r) => sum + (r.comments?.totalCount ?? 0), 0),
+    comments: commentCount(raw),
     checks: checksState(readChecks(contexts)),
     reviewRequestedAt:
       raw.state === 'OPEN' && roles.includes('review') ? reviewRequestedAt(raw, login, true) : null,
