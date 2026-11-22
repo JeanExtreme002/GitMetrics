@@ -225,7 +225,7 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   // Recently viewed, minus what is already pinned: those are one click away anyway.
   const { recent, clear } = useRecentRepos();
   const pinnedNames = new Set(data?.favorites.map((f) => f.toLowerCase()));
-  const recentShown = recent.filter((r) => !pinnedNames.has(r.fullName.toLowerCase())).slice(0, 5);
+  const recentShown = recent.filter((r) => !pinnedNames.has(r.fullName.toLowerCase())).slice(0, 4);
 
   return (
     <>
@@ -257,6 +257,23 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         </Text>
       )}
 
+      {owners.length > 1 && (
+        <>
+          <GroupLabel>Accounts</GroupLabel>
+          {owners.map((o) => (
+            <NavItemLink
+              key={o.login}
+              to={`/repositories?owner=${encodeURIComponent(o.login)}`}
+              label={o.login}
+              icon={<Avatar src={o.avatarUrl} size={18} radius="sm" />}
+              active={onRepositories && params.get('owner') === o.login}
+              right={<Count>{o.count}</Count>}
+              onClick={onNavigate}
+            />
+          ))}
+        </>
+      )}
+
       {recentShown.length > 0 && (
         <>
           <GroupLabel
@@ -281,23 +298,6 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
               />
             );
           })}
-        </>
-      )}
-
-      {owners.length > 1 && (
-        <>
-          <GroupLabel>Accounts</GroupLabel>
-          {owners.map((o) => (
-            <NavItemLink
-              key={o.login}
-              to={`/repositories?owner=${encodeURIComponent(o.login)}`}
-              label={o.login}
-              icon={<Avatar src={o.avatarUrl} size={18} radius="sm" />}
-              active={onRepositories && params.get('owner') === o.login}
-              right={<Count>{o.count}</Count>}
-              onClick={onNavigate}
-            />
-          ))}
         </>
       )}
     </>
