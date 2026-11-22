@@ -466,6 +466,7 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
       {/* What the picked reviewer did over the whole pull request, before the chart spreads it out. */}
       <Box mb="lg">
         <Counters>
+          <Counter icon={IconCircleCheck} value={num(sum('APPROVED'))} label="Approvals" />
           {asked?.responseHours != null && (
             <Counter
               icon={IconClockHour4}
@@ -493,7 +494,6 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
               hint={`Half of their answers came faster than this, half slower, over ${num(person.answer.answered)} ${person.answer.answered === 1 ? 'request' : 'requests'}`}
             />
           )}
-          <Counter icon={IconCircleCheck} value={num(sum('APPROVED'))} label="Approvals" />
           <Counter icon={IconPencil} value={num(sum('CHANGES_REQUESTED'))} label="Changes requested" />
           <Counter
             icon={IconEye}
