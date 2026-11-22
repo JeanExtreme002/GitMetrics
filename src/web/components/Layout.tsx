@@ -47,6 +47,7 @@ import { NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-route
 import { api, post } from '../lib/api';
 import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
+import { useRecentRepos } from '../lib/recent';
 import { sectionQuery, useAuth, useOwners, useRateLimit, useRepos } from '../lib/queries';
 import type { OverviewResponse, SearchResponse } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
@@ -96,10 +97,23 @@ function NavItemLink({
   end,
   right,
   active,
+  title,
   onClick,
-}: NavItem & { end?: boolean; right?: ReactNode; active?: boolean; onClick?: () => void }) {
+}: NavItem & {
+  end?: boolean;
+  right?: ReactNode;
+  active?: boolean;
+  title?: string;
+  onClick?: () => void;
+}) {
   return (
-    <NavLink to={to} end={end} style={{ textDecoration: 'none', color: 'inherit' }} onClick={onClick}>
+    <NavLink
+      to={to}
+      end={end}
+      title={title}
+      style={{ textDecoration: 'none', color: 'inherit' }}
+      onClick={onClick}
+    >
       {({ isActive }) => (
         <MantineNavLink
           component="span"
@@ -114,11 +128,20 @@ function NavItemLink({
   );
 }
 
-function GroupLabel({ children }: { children: ReactNode }) {
-  return (
+function GroupLabel({ children, right }: { children: ReactNode; right?: ReactNode }) {
+  const label = (
     <Text size="xs" fw={600} c="dimmed" tt="uppercase" px="sm" mt="lg" mb={6} style={{ letterSpacing: 0.6 }}>
       {children}
     </Text>
+  );
+  if (!right) return label;
+  return (
+    <Group justify="space-between" wrap="nowrap" pr="sm">
+      {label}
+      <Box mt="lg" mb={6}>
+        {right}
+      </Box>
+    </Group>
   );
 }
 
@@ -138,6 +161,14 @@ function RepoNavigation({
     ...sectionQuery<OverviewResponse>(owner, repo, 'overview'),
     staleTime: 5 * 60_000,
   });
+  // Remember the repository once it has actually loaded, under GitHub's own spelling of its name,
+  // so a mistyped or moved address never lands in the list.
+  const { visit } = useRecentRepos();
+  const loaded = overview.data?.repo;
+  useEffect(() => {
+    if (loaded) visit({ fullName: loaded.fullName, ownerAvatarUrl: loaded.ownerAvatarUrl });
+  }, [loaded, visit]);
+
   // Counts shown next to the sections they open, like the repository count on the home sidebar.
   const counts: Record<string, number | null | undefined> = {
     stars: overview.data?.repo.stars ?? summary?.stars,
@@ -191,6 +222,10 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   const params = new URLSearchParams(location.search);
   const onRepositories = location.pathname === '/repositories';
   const pinned = (data?.repos ?? []).filter((r) => data?.favorites.includes(r.fullName));
+  // Recently viewed, minus what is already pinned: those are one click away anyway.
+  const { recent, clear } = useRecentRepos();
+  const pinnedNames = new Set(data?.favorites.map((f) => f.toLowerCase()));
+  const recentShown = recent.filter((r) => !pinnedNames.has(r.fullName.toLowerCase())).slice(0, 5);
 
   return (
     <>
@@ -220,6 +255,33 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         <Text size="xs" c="dimmed" px="sm" lh={1.5}>
           Use the pin on any repository to keep it one click away.
         </Text>
+      )}
+
+      {recentShown.length > 0 && (
+        <>
+          <GroupLabel
+            right={
+              <UnstyledButton onClick={clear} className="group-action" aria-label="Clear recent repositories">
+                Clear
+              </UnstyledButton>
+            }
+          >
+            Recent
+          </GroupLabel>
+          {recentShown.map((r) => {
+            const [owner, name] = r.fullName.split('/') as [string, string];
+            return (
+              <NavItemLink
+                key={r.fullName}
+                to={repoPath({ owner, name })}
+                label={name}
+                title={r.fullName}
+                icon={<Avatar src={r.ownerAvatarUrl} size={18} radius="sm" />}
+                onClick={onNavigate}
+              />
+            );
+          })}
+        </>
       )}
 
       {owners.length > 1 && (
