@@ -1,5 +1,19 @@
-import { Avatar, Badge, Box, Group, SegmentedControl, Select, Switch, Text, Tooltip } from '@mantine/core';
 import {
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Group,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  Text,
+  Tooltip,
+} from '@mantine/core';
+import { MarkGithubIcon } from '@primer/octicons-react';
+import {
+  IconArrowUpRight,
   IconClockHour4,
   IconEye,
   IconFilter,
@@ -14,7 +28,7 @@ import type { MyPull, MyPullsResponse, PullFilter } from '../../shared/types';
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
 import { api } from '../lib/api';
 import { num, relative } from '../lib/format';
-import { hasStatus, inFilter, pullSignals, STATUSES, type PullStatus } from '../lib/pulls';
+import { githubPullsUrl, hasStatus, inFilter, pullSignals, STATUSES, type PullStatus } from '../lib/pulls';
 import { myPullsPath, useBaseline, useMyPulls, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
@@ -272,9 +286,23 @@ export function MyPulls() {
           const pulls = data.pulls.filter((p) => inFilter(p, filter) && (!narrowed || narrowed(p)));
           const note =
             state === 'closed' ? (
-              <Text size="xs" c="dimmed" mt="md" ta="center">
-                The most recently updated ones, up to 30 for each filter.
-              </Text>
+              <Stack align="center" gap={8} mt="md">
+                <Text size="xs" c="dimmed" ta="center">
+                  The most recently updated ones, up to 30 for each filter.
+                </Text>
+                <Button
+                  component="a"
+                  href={githubPullsUrl(state, filter, owner)}
+                  target="_blank"
+                  variant="subtle"
+                  color="gray"
+                  size="compact-sm"
+                  leftSection={<MarkGithubIcon size={14} />}
+                  rightSection={<IconArrowUpRight size={14} />}
+                >
+                  See all on GitHub
+                </Button>
+              </Stack>
             ) : null;
           if (!pulls.length) {
             return (

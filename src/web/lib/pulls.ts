@@ -110,3 +110,19 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
  * review requests nobody acted on yet, exactly like GitHub's involves:@me; "All" holds everything.
  */
 export const inFilter = (p: MyPull, filter: PullFilter) => filter === 'all' || p.roles.includes(filter);
+
+/**
+ * The same list on github.com/pulls, which lists everything, not just the latest. "All" opens
+ * involves:@me, the closest single GitHub search to it.
+ */
+export function githubPullsUrl(state: 'open' | 'closed', filter: PullFilter, owner = ''): string {
+  const who: Record<PullFilter, string> = {
+    all: 'involves:@me',
+    authored: 'author:@me',
+    assigned: 'assignee:@me',
+    involved: 'involves:@me',
+    review: state === 'open' ? 'review-requested:@me' : 'reviewed-by:@me',
+  };
+  const q = `is:pr is:${state} ${who[filter]}${owner ? ` user:${owner}` : ''} sort:updated-desc`;
+  return `https://github.com/pulls?q=${encodeURIComponent(q)}`;
+}

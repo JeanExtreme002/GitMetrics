@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
-import { hasStatus, pullSignals, slower, span, STATUSES } from '../src/web/lib/pulls';
+import { githubPullsUrl, hasStatus, pullSignals, slower, span, STATUSES } from '../src/web/lib/pulls';
 
 const NOW = Date.UTC(2026, 10, 22, 12);
 const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
@@ -122,5 +122,23 @@ describe('filtering by status', () => {
   it('never puts a merged or closed pull request in any of them', () => {
     expect(states(pull({ state: 'MERGED', isDraft: true }))).toEqual([]);
     expect(states(pull({ state: 'CLOSED' }))).toEqual([]);
+  });
+});
+
+describe('the same list on GitHub', () => {
+  const query = (url: string) => decodeURIComponent(url.split('?q=')[1]!);
+
+  it('opens github.com/pulls with the tab, state and account you are looking at', () => {
+    expect(githubPullsUrl('closed', 'authored')).toMatch(/^https:\/\/github\.com\/pulls\?q=/);
+    expect(query(githubPullsUrl('closed', 'authored', 'octo-org'))).toBe(
+      'is:pr is:closed author:@me user:octo-org sort:updated-desc',
+    );
+    expect(query(githubPullsUrl('closed', 'review'))).toBe(
+      'is:pr is:closed reviewed-by:@me sort:updated-desc',
+    );
+    expect(query(githubPullsUrl('open', 'review'))).toBe(
+      'is:pr is:open review-requested:@me sort:updated-desc',
+    );
+    expect(query(githubPullsUrl('closed', 'all'))).toBe('is:pr is:closed involves:@me sort:updated-desc');
   });
 });
