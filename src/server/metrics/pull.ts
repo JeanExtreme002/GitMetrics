@@ -64,7 +64,7 @@ const CONNECTIONS = {
   reviews:
     'reviews(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { submittedAt state body author { __typename login avatarUrl } } }',
   comments:
-    'comments(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { createdAt author { login } } }',
+    'comments(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { createdAt author { __typename login } } }',
   commits:
     'commits(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { commit { committedDate } } }',
   threads:
@@ -147,7 +147,7 @@ export interface RawPull {
   participants: { totalCount: number };
   reviews: RawReview[];
   /** Comments in the conversation: when, and by whom (same order). */
-  comments: { totalCount: number; createdAt: string[]; by?: (string | null)[] };
+  comments: { totalCount: number; createdAt: string[]; by?: (string | null)[]; bot?: boolean[] };
   commits: { totalCount: number; committedAt: string[] };
   threads: { totalCount: number; nodes: RawThread[] };
   requests: { requestedReviewer: Requested | null }[];
@@ -459,9 +459,17 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     // Every comment, in the conversation and on the code, placed on the pull request's life.
     commentMarks: everyComment
       ? [
-          ...raw.comments.createdAt.map((at, i) => ({ at, login: raw.comments.by?.[i] ?? 'ghost' })),
+          ...raw.comments.createdAt.map((at, i) => ({
+            at,
+            login: raw.comments.by?.[i] ?? 'ghost',
+            ...(raw.comments.bot?.[i] ? { bot: true as const } : {}),
+          })),
           ...raw.threads.nodes.flatMap((t) =>
-            t.comments.nodes.map((c) => ({ at: c.createdAt, login: c.author?.login ?? 'ghost' })),
+            t.comments.nodes.map((c) => ({
+              at: c.createdAt,
+              login: c.author?.login ?? 'ghost',
+              ...(isBot(c.author) ? { bot: true as const } : {}),
+            })),
           ),
         ]
           .sort((a, b) => a.at.localeCompare(b.at))
@@ -546,7 +554,7 @@ interface FirstPage {
   author: Person | null;
   participants: { totalCount: number };
   reviews: Page<RawReview>;
-  comments: Page<{ createdAt: string; author: { login: string } | null }>;
+  comments: Page<{ createdAt: string; author: { __typename?: string; login: string } | null }>;
   commits: Page<{ commit: { committedDate: string } }>;
   threads: Page<RawThread>;
   requests: Page<{ requestedReviewer: Requested | null }>;
@@ -594,7 +602,10 @@ export async function getPull(
 
   const [reviews, comments, commits, threads, requests, files, events, checks] = await Promise.all([
     readAll(p.reviews, more<RawReview>('reviews')),
-    readAll(p.comments, more<{ createdAt: string; author: { login: string } | null }>('comments')),
+    readAll(
+      p.comments,
+      more<{ createdAt: string; author: { __typename?: string; login: string } | null }>('comments'),
+    ),
     readAll(p.commits, more<{ commit: { committedDate: string } }>('commits')),
     readAll(p.threads, more<RawThread>('threads')),
     readAll(p.requests, more<{ requestedReviewer: Requested | null }>('requests')),
@@ -617,6 +628,7 @@ export async function getPull(
         totalCount: p.comments.totalCount ?? comments.length,
         createdAt: comments.map((c) => c.createdAt),
         by: comments.map((c) => c.author?.login ?? null),
+        bot: comments.map((c) => isBot(c.author)),
       },
       commits: {
         totalCount: p.commits.totalCount ?? commits.length,

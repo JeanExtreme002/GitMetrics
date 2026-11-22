@@ -253,10 +253,25 @@ describe('a pull request in detail', () => {
   it('places every comment, in the conversation and on the code, in order', () => {
     const pull = buildPull(
       raw({
-        comments: { totalCount: 2, createdAt: [at(3), at(1)], by: ['bo', null] },
+        comments: {
+          totalCount: 3,
+          createdAt: [at(3), at(1), at(4)],
+          by: ['bo', null, 'ci'],
+          bot: [false, false, true],
+        },
         threads: {
           totalCount: 1,
-          nodes: [{ comments: { totalCount: 1, nodes: [{ createdAt: at(2), author: person('cy') }] } }],
+          nodes: [
+            {
+              comments: {
+                totalCount: 2,
+                nodes: [
+                  { createdAt: at(2), author: person('cy') },
+                  { createdAt: at(5), author: { __typename: 'Bot', login: 'lint', avatarUrl: '' } },
+                ],
+              },
+            },
+          ],
         },
       }),
       'octo/app',
@@ -266,6 +281,9 @@ describe('a pull request in detail', () => {
       { at: at(1), login: 'ghost', hours: 1 },
       { at: at(2), login: 'cy', hours: 2 },
       { at: at(3), login: 'bo', hours: 3 },
+      // Comments by apps are marked, so the reviewer chart can leave them out.
+      { at: at(4), login: 'ci', hours: 4, bot: true },
+      { at: at(5), login: 'lint', hours: 5, bot: true },
     ]);
     // A thread longer than one page: the comments can't all be placed, so none are.
     const long = { comments: { totalCount: 150, nodes: [{ createdAt: at(1), author: person('cy') }] } };

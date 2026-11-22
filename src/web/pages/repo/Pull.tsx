@@ -9,6 +9,7 @@ import {
   Grid,
   Group,
   SegmentedControl,
+  Select,
   Skeleton,
   Text,
   Title,
@@ -49,7 +50,7 @@ import type {
 import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } from '../../components/ui';
 import { api } from '../../lib/api';
 import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../lib/format';
-import { sharedFolder, span } from '../../lib/pulls';
+import { reviewerActivity, sharedFolder, span, type ReviewerPoint } from '../../lib/pulls';
 import { usePull, usePullChurn } from '../../lib/queries';
 import { semantic } from '../../theme';
 
@@ -215,6 +216,9 @@ const LANES: { state: PullReviewMark['state']; label: string; verb: string; colo
   { state: 'DISMISSED', label: 'Dismissed', verb: 'reviewed (later dismissed)', color: 'gray.7' },
 ];
 
+/** The comments lane's color, also used for comments in the reviewer chart. */
+const COMMENTS_COLOR = 'indigo.4';
+
 /** Reviews this close together on the bar (in % of its width) share one dot, with their count. */
 const CLUSTER = 1.5;
 
@@ -288,7 +292,7 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
       key: 'comments',
       label: 'Comments',
       verb: 'commented',
-      color: 'indigo.4',
+      color: COMMENTS_COLOR,
       marks: pull.commentMarks ?? [],
     },
   ].filter((lane) => lane.marks.length > 0);
@@ -396,6 +400,68 @@ function ActivityChart({ pull }: { pull: PullDetail }) {
           { name: 'reviews', label: 'Reviews', color: 'violet.5' },
           { name: 'comments', label: 'Comments', color: 'gray.5' },
         ]}
+        gridAxis="y"
+        withLegend
+        legendProps={{ verticalAlign: 'top', height: 40 }}
+        xAxisProps={{ tickFormatter: dayLabel, minTickGap: 24 }}
+        yAxisProps={{ allowDecimals: false }}
+        barProps={{ radius: [3, 3, 0, 0], maxBarSize: 22 }}
+      />
+    </Box>
+  );
+}
+
+/** One reviewer at a time: what they did each day (or week), in the review lanes' colors. */
+function ReviewerChart({ pull }: { pull: PullDetail }) {
+  const activity = reviewerActivity(pull);
+  const [picked, setPicked] = useState<string | null>(null);
+  if (!activity || activity.people.length === 0) return null;
+  const person = activity.people.find((p) => p.login === picked) ?? activity.people[0]!;
+  const used = (key: keyof Omit<ReviewerPoint, 'day'>) => person.points.some((p) => p[key] > 0);
+  const series = [
+    ...LANES.filter((l) => used(l.state)).map((l) => ({ name: l.state, label: l.label, color: l.color })),
+    ...(used('comments') ? [{ name: 'comments', label: 'Comments', color: COMMENTS_COLOR }] : []),
+  ];
+  const until = pull.state === 'MERGED' ? 'merge' : pull.state === 'CLOSED' ? 'closing' : 'today';
+  return (
+    <Box mb={44}>
+      <SectionHeader
+        title="Reviewer activity"
+        caption={`What each reviewer did per ${pull.activity!.unit}, from opening to ${until}${
+          activity.comments ? '' : '. Reviews only: GitHub could not list every comment'
+        }`}
+        right={
+          <Select
+            size="xs"
+            w={200}
+            allowDeselect={false}
+            value={person.login}
+            onChange={setPicked}
+            data={activity.people.map((p) => ({ value: p.login, label: p.login }))}
+            leftSection={<Avatar src={person.avatarUrl} name={person.login} size={18} />}
+            renderOption={({ option }) => {
+              const p = activity.people.find((x) => x.login === option.value)!;
+              return (
+                <Group gap={8} wrap="nowrap" w="100%">
+                  <Avatar src={p.avatarUrl} name={p.login} size={18} />
+                  <Text size="sm" truncate style={{ flex: 1 }}>
+                    {p.login}
+                  </Text>
+                  <Text size="xs" c="dimmed" className="tabular">
+                    {num(p.total)}
+                  </Text>
+                </Group>
+              );
+            }}
+          />
+        }
+      />
+      <BarChart
+        h={220}
+        data={person.points}
+        dataKey="day"
+        type="stacked"
+        series={series}
         gridAxis="y"
         withLegend
         legendProps={{ verticalAlign: 'top', height: 40 }}
@@ -787,6 +853,7 @@ export function Pull() {
             <WaitingOn pull={data} />
             <TimeSpent pull={data} />
             <ActivityChart pull={data} />
+            <ReviewerChart pull={data} />
             {/* Two independent columns, so a longer list never leaves a gap on the other side. */}
             <Grid gap={48}>
               <Grid.Col span={{ base: 12, lg: 6 }}>

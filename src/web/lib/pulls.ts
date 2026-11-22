@@ -1,4 +1,11 @@
-import type { MyPull, MyPullsResponse, PullFilter, RepoBaseline } from '../../shared/types';
+import type {
+  MyPull,
+  MyPullsResponse,
+  PullDetail,
+  PullFilter,
+  PullReviewMark,
+  RepoBaseline,
+} from '../../shared/types';
 
 const HOUR = 3_600_000;
 
@@ -181,4 +188,65 @@ export function sharedFolder(paths: string[]): string {
     else break;
   }
   return common.join('/');
+}
+
+/** What one reviewer did in one day (or week): their reviews, by outcome, and their comments. */
+export type ReviewerPoint = { day: string; comments: number } & Record<PullReviewMark['state'], number>;
+
+export interface ReviewerActivity {
+  login: string;
+  avatarUrl: string | null;
+  /** Reviews and comments, all added up. */
+  total: number;
+  points: ReviewerPoint[];
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Each reviewer's reviews and comments over the pull request's life, on the same days (or weeks)
+ * as its activity chart, most active first. People other than the author only, no apps and no
+ * deleted accounts. Comments only count when every one of them was read (`comments` says so).
+ */
+export function reviewerActivity(pull: PullDetail): { comments: boolean; people: ReviewerActivity[] } | null {
+  const activity = pull.activity;
+  if (!activity || activity.points.length < 2) return null;
+  const start = new Date(`${activity.points[0]!.day}T00:00:00Z`).getTime();
+  const step = (activity.unit === 'week' ? 7 : 1) * DAY_MS;
+  const slot = (iso: string) =>
+    Math.min(activity.points.length - 1, Math.max(0, Math.floor((new Date(iso).getTime() - start) / step)));
+  const author = pull.author?.toLowerCase();
+  const avatars = new Map(pull.reviewers.map((r) => [r.login.toLowerCase(), r.avatarUrl]));
+  const people = new Map<string, ReviewerActivity>();
+  const person = (login: string) => {
+    const key = login.toLowerCase();
+    let p = people.get(key);
+    if (!p) {
+      p = {
+        login,
+        avatarUrl: avatars.get(key) ?? null,
+        total: 0,
+        points: activity.points.map((a) => ({
+          day: a.day,
+          APPROVED: 0,
+          CHANGES_REQUESTED: 0,
+          COMMENTED: 0,
+          DISMISSED: 0,
+          comments: 0,
+        })),
+      };
+      people.set(key, p);
+    }
+    p.total++;
+    return p;
+  };
+  for (const r of pull.reviewMarks) person(r.login).points[slot(r.at)]![r.state]++;
+  for (const c of pull.commentMarks ?? []) {
+    if (c.bot || c.login === 'ghost' || c.login.toLowerCase() === author) continue;
+    person(c.login).points[slot(c.at)]!.comments++;
+  }
+  return {
+    comments: pull.commentMarks !== null,
+    people: [...people.values()].sort((a, b) => b.total - a.total || a.login.localeCompare(b.login)),
+  };
 }
