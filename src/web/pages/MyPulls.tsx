@@ -28,7 +28,7 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import type { MyPull, MyPullsResponse, PullFilter } from '../../shared/types';
 import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../components/ui';
@@ -125,14 +125,18 @@ interface Account {
  */
 function useAccounts(state: 'open' | 'closed', owner: string, data?: MyPullsResponse): Account[] {
   const owners = useOwners();
-  const client = useQueryClient();
-  const everyone = client.getQueryData<MyPullsResponse>(['my-pulls', state, '']);
+  // The list for every account, shared with the page's own query when no account is chosen.
+  const everyone = useMyPulls(state).data;
+  // Accounts seen during this visit stay listed, whatever is chosen or loaded right now.
+  const seen = useRef(new Map<string, Account>()).current;
+  for (const p of [...(everyone?.pulls ?? []), ...(data?.pulls ?? [])]) {
+    if (!seen.has(p.owner.toLowerCase())) {
+      seen.set(p.owner.toLowerCase(), { login: p.owner, avatarUrl: p.ownerAvatarUrl });
+    }
+  }
   const list = new Map<string, Account>();
   for (const o of owners) list.set(o.login.toLowerCase(), { login: o.login, avatarUrl: o.avatarUrl });
-  for (const p of [...(everyone?.pulls ?? []), ...(data?.pulls ?? [])]) {
-    if (!list.has(p.owner.toLowerCase()))
-      list.set(p.owner.toLowerCase(), { login: p.owner, avatarUrl: p.ownerAvatarUrl });
-  }
+  for (const [key, account] of seen) if (!list.has(key)) list.set(key, account);
   // The chosen account stays in the list even before its pull requests load.
   if (owner && !list.has(owner.toLowerCase())) {
     list.set(owner.toLowerCase(), { login: owner, avatarUrl: `https://github.com/${owner}.png?size=40` });
