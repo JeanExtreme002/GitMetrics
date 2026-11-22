@@ -463,6 +463,8 @@ export interface MyPull {
   additions: number;
   deletions: number;
   reviewDecision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
+  /** Comments in the conversation plus comments on the code from reviews. */
+  comments: number;
   checks: ChecksState | null;
   /** When your review was requested, while it is still pending. */
   reviewRequestedAt: string | null;

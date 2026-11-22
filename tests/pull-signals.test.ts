@@ -24,6 +24,7 @@ const pull = (overrides: Partial<MyPull> = {}): MyPull => ({
   additions: 1,
   deletions: 1,
   reviewDecision: null,
+  comments: 0,
   checks: null,
   reviewRequestedAt: null,
   firstReviewAt: null,

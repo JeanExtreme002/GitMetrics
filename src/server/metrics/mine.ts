@@ -79,7 +79,8 @@ fragment pull on PullRequest {
   number title url state isDraft createdAt updatedAt mergedAt closedAt additions deletions reviewDecision
   author { login avatarUrl }
   repository { nameWithOwner name owner { login avatarUrl } }
-  reviews(first: 20) { nodes { submittedAt author { __typename login } } }
+  comments { totalCount }
+  reviews(first: 20) { nodes { submittedAt author { __typename login } comments { totalCount } } }
   reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login } } } }
   timelineItems(last: 20, itemTypes: [REVIEW_REQUESTED_EVENT]) {
     nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { __typename ... on User { login } } } }
@@ -106,6 +107,8 @@ query ($q: String!) {
     number title url state isDraft createdAt updatedAt mergedAt closedAt additions deletions
     author { login avatarUrl }
     repository { nameWithOwner name owner { login avatarUrl } }
+    comments { totalCount }
+    reviews(first: 20) { nodes { comments { totalCount } } }
   } } }
 }`;
 
@@ -138,7 +141,14 @@ export interface RawListPull {
   reviewDecision?: MyPull['reviewDecision'];
   author: (Login & { avatarUrl: string }) | null;
   repository: { nameWithOwner: string; name: string; owner: { login: string; avatarUrl: string } };
-  reviews: { nodes: { submittedAt: string | null; author: (Login & { __typename?: string }) | null }[] };
+  comments?: { totalCount: number };
+  reviews: {
+    nodes: {
+      submittedAt?: string | null;
+      author?: (Login & { __typename?: string }) | null;
+      comments?: { totalCount: number };
+    }[];
+  };
   reviewRequests: { nodes: { requestedReviewer: Reviewer | null }[] };
   timelineItems: { nodes: { createdAt?: string; requestedReviewer?: Reviewer | null }[] };
   commits?: { nodes: { commit: { statusCheckRollup: { contexts: { nodes: RawCheck[] } } | null } }[] };
@@ -202,6 +212,10 @@ export function toMyPull(raw: RawListPull, login: string, roles: Role[]): MyPull
     additions: raw.additions,
     deletions: raw.deletions,
     reviewDecision: raw.reviewDecision ?? null,
+    // The conversation, plus comments left on the code while reviewing.
+    comments:
+      (raw.comments?.totalCount ?? 0) +
+      (raw.reviews?.nodes ?? []).reduce((sum, r) => sum + (r.comments?.totalCount ?? 0), 0),
     checks: checksState(readChecks(contexts)),
     reviewRequestedAt:
       raw.state === 'OPEN' && roles.includes('review') ? reviewRequestedAt(raw, login, true) : null,

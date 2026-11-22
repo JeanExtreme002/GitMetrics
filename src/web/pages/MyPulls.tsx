@@ -18,6 +18,7 @@ import {
   IconEye,
   IconFilter,
   IconGitPullRequest,
+  IconMessageCircle,
   IconUserCheck,
   IconUsers,
 } from '@tabler/icons-react';
@@ -79,6 +80,14 @@ function PullRow({ pull }: { pull: MyPull }) {
           </Tooltip>
         ))}
       </Group>
+      <Tooltip label="Comments in the conversation and on the code">
+        <Group gap={4} wrap="nowrap" className="tabular my-pull-comments" justify="flex-end">
+          <IconMessageCircle size={14} stroke={1.7} color="var(--mantine-color-dimmed)" />
+          <Text size="xs" c={pull.comments ? undefined : 'dimmed'}>
+            {num(pull.comments)}
+          </Text>
+        </Group>
+      </Tooltip>
       <Group gap={6} wrap="nowrap" className="tabular my-pull-size" justify="flex-end">
         <Text size="xs" c="green">
           +{num(pull.additions)}
@@ -258,7 +267,8 @@ export function MyPulls() {
             data={FILTERS}
           />
         </Box>
-        <Group gap="sm" wrap="nowrap">
+        {/* On narrow screens the controls wrap onto more lines instead of running off the screen. */}
+        <Group gap="sm" wrap="wrap">
           {state === 'open' && (
             <Switch
               size="xs"

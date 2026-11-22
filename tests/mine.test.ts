@@ -186,6 +186,21 @@ describe('your pull requests', () => {
     }
   });
 
+  it('counts comments in the conversation and on the code', async () => {
+    const commented = pull({
+      comments: { totalCount: 2 },
+      reviews: {
+        nodes: [
+          { submittedAt: at(1), author: { login: 'bo' }, comments: { totalCount: 3 } },
+          { submittedAt: at(2), author: { login: 'cy' } },
+        ],
+      },
+    });
+    const { gh } = github({ involved: [commented, pull({ number: 2 })] });
+    const result = await getMyPulls(gh, 'me', 'open');
+    expect(result.pulls.map((p) => p.comments)).toEqual([5, 0]);
+  });
+
   it('only searches with GitHub qualifiers for you, and reads reviewed ones once closed', () => {
     expect(searchQueries('open').review).toContain('review-requested:@me');
     expect(searchQueries('closed').review).toContain('reviewed-by:@me');
