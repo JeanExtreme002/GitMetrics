@@ -8,21 +8,19 @@ import { serve } from '@hono/node-server';
 import type { UpdateInfo } from '../shared/types.js';
 import { createApp } from './app.js';
 import { defaultDataDir } from './store.js';
-import { NO_UPDATE_CHECK, RELAUNCHED, installKind, latestVersion, updateInfo } from './update.js';
+import { NO_UPDATE_CHECK, PACKAGE, RELAUNCHED, installKind, latestVersion, updateInfo } from './update.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PORT = 4280;
 const DEV_API_PORT = 4281;
 
-function manifest(): { name: string; version: string } {
+function version(): string {
   for (const candidate of ['../package.json', '../../package.json']) {
     const file = path.join(here, candidate);
-    if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8')) as { name: string; version: string };
+    if (existsSync(file)) return (JSON.parse(readFileSync(file, 'utf8')) as { version: string }).version;
   }
-  return { name: '@gitmetrics/app', version: 'unknown' };
+  return 'unknown';
 }
-
-const version = () => manifest().version;
 
 const HELP = `
 GitMetrics ${version()}
@@ -115,10 +113,9 @@ function openBrowser(url: string) {
  */
 async function checkForUpdate(): Promise<UpdateInfo | undefined> {
   if (process.env[NO_UPDATE_CHECK] === '1') return undefined;
-  const { name, version: current } = manifest();
   const kind = installKind(fileURLToPath(import.meta.url));
   if (kind === 'source') return undefined;
-  return updateInfo(name, current, await latestVersion(name, defaultDataDir()), kind);
+  return updateInfo(version(), await latestVersion(defaultDataDir()), kind);
 }
 
 /** Hands over to the newer version through npx; if that can't start, runs this one instead. */
@@ -128,7 +125,7 @@ function relaunch(args: Args, update: UpdateInfo) {
   // The arguments were validated by parseArgs, so they are safe to hand to the shell on Windows.
   const child = spawn(
     windows ? 'npx.cmd' : 'npx',
-    ['--yes', `${manifest().name}@${update.latest}`, ...process.argv.slice(2)],
+    ['--yes', `${PACKAGE}@${update.latest}`, ...process.argv.slice(2)],
     { stdio: 'inherit', shell: windows, env: { ...process.env, [RELAUNCHED]: '1' } },
   );
   const forward = (signal: NodeJS.Signals) => () => child.kill(signal);
