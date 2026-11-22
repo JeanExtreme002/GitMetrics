@@ -3,6 +3,7 @@ import {
   Affix,
   AppShell,
   Avatar,
+  Badge,
   Box,
   Burger,
   CloseButton,
@@ -15,7 +16,6 @@ import {
   NavLink as MantineNavLink,
   ScrollArea,
   Text,
-  ThemeIcon,
   Tooltip,
   Transition,
   UnstyledButton,
@@ -26,6 +26,7 @@ import { useDebouncedValue, useDisclosure, useLocalStorage } from '@mantine/hook
 import { Spotlight, spotlight, type SpotlightActionData } from '@mantine/spotlight';
 import {
   IconArrowLeft,
+  IconArrowRight,
   IconBook2,
   IconCode,
   IconChartArea,
@@ -39,7 +40,6 @@ import {
   IconRocket,
   IconSearch,
   IconSettings,
-  IconSparkles,
   IconStar,
   IconSun,
   IconTag,
@@ -335,22 +335,27 @@ function UpdatePopup() {
         {(style) => (
           <Paper style={style} className="update-popup" shadow="lg" withBorder role="status">
             <Group justify="space-between" wrap="nowrap" align="flex-start" gap="sm">
-              <Group gap={10} wrap="nowrap" align="flex-start">
-                <ThemeIcon size={30} radius="md" variant="light" color="red">
-                  <IconSparkles size={17} stroke={1.7} />
-                </ThemeIcon>
+              <Group gap={12} wrap="nowrap" align="center">
+                <Logo size={36} />
                 <Box>
-                  <Text size="sm" fw={600}>
-                    GitMetrics {data?.latest} is out
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    You are on {data?.current}. Run this in a terminal, then start it again.
-                  </Text>
+                  <Text fw={700}>Your GitMetrics is out of date</Text>
+                  <Group gap={6} mt={4} wrap="nowrap">
+                    <Badge variant="default" tt="none" className="update-old">
+                      {data?.current}
+                    </Badge>
+                    <IconArrowRight size={14} stroke={2} color="var(--mantine-color-dimmed)" />
+                    <Badge color="green" variant="light" tt="none">
+                      {data?.latest}
+                    </Badge>
+                  </Group>
                 </Box>
               </Group>
               <CloseButton size="sm" aria-label="Dismiss" onClick={() => setDismissed(data?.latest ?? '')} />
             </Group>
-            <Group gap={8} wrap="nowrap" mt="sm" className="update-command">
+            <Text size="sm" mt="md" lh={1.5}>
+              You are missing the latest features and fixes. Update now, then start GitMetrics again:
+            </Text>
+            <Group gap={8} wrap="nowrap" mt={10} className="update-command">
               <Text component="code" size="xs" truncate>
                 {data?.command}
               </Text>

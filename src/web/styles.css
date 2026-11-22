@@ -794,8 +794,8 @@
 
 /* A newer version is on npm: a small card in the bottom right corner. */
 .update-popup {
-  width: min(360px, calc(100vw - 40px));
-  padding: 14px 14px 12px;
+  width: min(380px, calc(100vw - 40px));
+  padding: 16px;
   border-radius: var(--mantine-radius-md);
 }
 
@@ -809,4 +809,10 @@
 .update-command code {
   flex: 1;
   min-width: 0;
+}
+
+/* The version you are on, crossed out next to the new one. */
+.update-old {
+  text-decoration: line-through;
+  color: var(--mantine-color-dimmed);
 }
