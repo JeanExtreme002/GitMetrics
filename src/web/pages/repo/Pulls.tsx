@@ -1,6 +1,7 @@
 import { DonutChart } from '@mantine/charts';
-import { Anchor, Avatar, Badge, Box, Button, Grid, Group, Text } from '@mantine/core';
+import { Anchor, Avatar, Badge, Box, Button, Grid, Group, SegmentedControl, Text } from '@mantine/core';
 import { MarkGithubIcon } from '@primer/octicons-react';
+import { Link } from 'react-router';
 import {
   IconArrowUpRight,
   IconInfoCircle,
@@ -188,18 +189,12 @@ function Authors({ people, analyzed }: { people: PersonCount[]; analyzed: number
 
 /** Pull requests as hairline rows: author, title with number and age, and lines changed. */
 function PullList({ pulls, empty, merged }: { pulls: PullItem[]; empty: string; merged?: boolean }) {
+  const { fullName } = useRepoParams();
   if (!pulls.length) return <NoData>{empty}</NoData>;
   return (
     <div className="rank-list">
       {pulls.map((p) => (
-        <Anchor
-          key={p.number}
-          href={p.url}
-          target="_blank"
-          underline="never"
-          c="inherit"
-          className="pull-row"
-        >
+        <Link key={p.number} to={`/r/${fullName}/pull/${p.number}`} className="pull-row">
           <Avatar src={p.avatarUrl} size={22} radius="xl" />
           <Box miw={0}>
             <Group gap={6} wrap="nowrap">
@@ -225,7 +220,7 @@ function PullList({ pulls, empty, merged }: { pulls: PullItem[]; empty: string; 
               −{num(p.deletions)}
             </Text>
           </Group>
-        </Anchor>
+        </Link>
       ))}
     </div>
   );
@@ -234,6 +229,8 @@ function PullList({ pulls, empty, merged }: { pulls: PullItem[]; empty: string; 
 export function Pulls() {
   const query = useSection<PullsResponse>('pulls');
   const { fullName } = useRepoParams();
+  // The open pull requests opened most recently, or the ones waiting the longest.
+  const [openOrder, setOpenOrder] = useState<'newest' | 'oldest'>('newest');
   const hasData =
     query.data && query.data.counts.open + query.data.counts.merged + query.data.counts.closed > 0;
 
@@ -303,10 +300,24 @@ export function Pulls() {
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, lg: 6 }}>
                   <SectionHeader
-                    title="Waiting the longest"
-                    caption={`Open pull requests still waiting for a review or decision, oldest first${limited ? `, among the latest ${num(data.sampleSize)}` : ''}`}
+                    title={openOrder === 'oldest' ? 'Waiting the longest' : 'Opened most recently'}
+                    caption={`Open pull requests still waiting for a review or decision, ${openOrder} first${limited ? `, among the latest ${num(data.sampleSize)}` : ''}`}
+                    right={
+                      <SegmentedControl
+                        size="xs"
+                        value={openOrder}
+                        onChange={(v) => setOpenOrder(v as 'newest' | 'oldest')}
+                        data={[
+                          { value: 'newest', label: 'Newest' },
+                          { value: 'oldest', label: 'Oldest' },
+                        ]}
+                      />
+                    }
                   />
-                  <PullList pulls={data.openOldest} empty="No open pull requests. Nice." />
+                  <PullList
+                    pulls={openOrder === 'oldest' ? data.openOldest : data.openNewest}
+                    empty="No open pull requests. Nice."
+                  />
                   <Box mt={44}>
                     <SectionHeader title="Recently merged" caption="The latest pull requests to land" />
                     <PullList pulls={data.recentMerged} empty="Nothing merged yet." merged />

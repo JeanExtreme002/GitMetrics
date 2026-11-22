@@ -4,6 +4,7 @@ import { FullPageLoader } from './components/ui';
 import { useAuth } from './lib/queries';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { MyPulls } from './pages/MyPulls';
 import { Repositories } from './pages/Repositories';
 import { NotFound } from './pages/NotFound';
 import { Settings } from './pages/Settings';
@@ -14,6 +15,7 @@ import { Contributors } from './pages/repo/Contributors';
 import { Deployments } from './pages/repo/Deployments';
 import { Issues } from './pages/repo/Issues';
 import { Overview } from './pages/repo/Overview';
+import { Pull } from './pages/repo/Pull';
 import { Pulls } from './pages/repo/Pulls';
 import { Releases } from './pages/repo/Releases';
 import { Stars } from './pages/repo/Stars';
@@ -36,6 +38,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Home /> },
           { path: 'repositories', element: <Repositories /> },
+          { path: 'pulls', element: <MyPulls /> },
           { path: 'settings', element: <Settings /> },
           {
             path: 'r/:owner/:repo',
@@ -45,6 +48,7 @@ const router = createBrowserRouter([
               { path: 'traffic', element: <Traffic /> },
               { path: 'commits', element: <Commits /> },
               { path: 'pulls', element: <Pulls /> },
+              { path: 'pull/:number', element: <Pull /> },
               { path: 'issues', element: <Issues /> },
               { path: 'contributors', element: <Contributors /> },
               { path: 'code', element: <Code /> },

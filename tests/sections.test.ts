@@ -125,6 +125,65 @@ const ISSUES = [
   },
 ];
 
+/** An open pull request on the fake repository, waiting for your review. */
+const MY_PULL = {
+  number: 7,
+  title: 'Add caching',
+  url: 'https://github.com/octo/app/pull/7',
+  state: 'OPEN',
+  isDraft: false,
+  createdAt: isoDaysAgo(2),
+  updatedAt: isoDaysAgo(1),
+  mergedAt: null,
+  closedAt: null,
+  additions: 120,
+  deletions: 30,
+  reviewDecision: 'REVIEW_REQUIRED',
+  author: { login: 'bo', avatarUrl: '' },
+  repository: { nameWithOwner: 'octo/app', name: 'app', owner: { login: 'octo', avatarUrl: '' } },
+  reviews: { nodes: [] },
+  reviewRequests: { nodes: [{ requestedReviewer: { __typename: 'User', login: 'octo' } }] },
+  timelineItems: {
+    nodes: [{ createdAt: isoDaysAgo(2), requestedReviewer: { __typename: 'User', login: 'octo' } }],
+  },
+  commits: { nodes: [] },
+};
+
+/** The same pull request as the detail page reads it: every connection as one complete page. */
+const done = { hasNextPage: false, endCursor: null };
+const DETAIL = {
+  ...MY_PULL,
+  id: 'PR_7',
+  changedFiles: 1,
+  baseRefName: 'main',
+  headRefName: 'cache',
+  participants: { totalCount: 2 },
+  reviews: { totalCount: 0, pageInfo: done, nodes: [] },
+  comments: { totalCount: 1, pageInfo: done, nodes: [{ createdAt: isoDaysAgo(1) }] },
+  commits: { totalCount: 1, pageInfo: done, nodes: [{ commit: { committedDate: isoDaysAgo(2) } }] },
+  threads: { totalCount: 0, pageInfo: done, nodes: [] },
+  requests: {
+    totalCount: 1,
+    pageInfo: done,
+    nodes: [{ requestedReviewer: { __typename: 'User', login: 'octo', avatarUrl: '' } }],
+  },
+  people: {
+    totalCount: 2,
+    pageInfo: done,
+    nodes: [
+      { login: 'octocat', avatarUrl: 'https://avatars/octocat' },
+      { login: 'octo', avatarUrl: 'https://avatars/octo' },
+    ],
+  },
+  files: { totalCount: 1, pageInfo: done, nodes: [{ path: 'src/cache.ts', additions: 120, deletions: 30 }] },
+  // The timeline names each event's type, as GitHub does.
+  events: {
+    pageInfo: done,
+    nodes: MY_PULL.timelineItems.nodes.map((e) => ({ ...e, __typename: 'ReviewRequestedEvent' })),
+  },
+  latest: { nodes: [] },
+};
+
 /** A whole repository on a fake GitHub; `calls` records every path that was requested. */
 function fakeGitHub(overrides: Record<string, () => Response> = {}) {
   const calls: string[] = [];
@@ -154,7 +213,55 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
     if (p === '/search/repositories') return json({ total_count: 1, items: [REPO] });
 
     if (p === '/graphql') {
-      const query = String(JSON.parse(String(init?.body)).query);
+      const body = JSON.parse(String(init?.body)) as { query: string; variables?: Record<string, unknown> };
+      const query = String(body.query);
+      // Your pull requests: one search per filter, a repository's baseline, one pull request.
+      if (query.includes('search(query: $q')) {
+        const q = String(body.variables?.q);
+        const nodes = q.includes('review-requested:@me') ? [MY_PULL] : [];
+        return json({ data: { search: { issueCount: nodes.length, nodes } } });
+      }
+      if (query.includes('states: MERGED, orderBy')) {
+        return json({
+          data: {
+            repository: {
+              pullRequests: {
+                nodes: [
+                  {
+                    createdAt: isoDaysAgo(3),
+                    mergedAt: isoDaysAgo(2),
+                    additions: 40,
+                    deletions: 10,
+                    author: { login: 'bo' },
+                    reviews: { nodes: [] },
+                  },
+                ],
+              },
+            },
+          },
+        });
+      }
+      // The commits of a pull request, for which files they keep coming back to.
+      if (query.includes('oid parents')) {
+        const nodes = [
+          { commit: { oid: 'c3', parents: { totalCount: 1 } } },
+          { commit: { oid: 'm2', parents: { totalCount: 2 } } },
+          { commit: { oid: 'c1', parents: { totalCount: 1 } } },
+        ];
+        return json({
+          data: {
+            repository: {
+              pullRequest: {
+                commits: { totalCount: 3, pageInfo: { hasNextPage: false, endCursor: null }, nodes },
+              },
+            },
+          },
+        });
+      }
+      if (query.includes('pullRequest(number: $number)')) {
+        const pull = body.variables?.number === 7 ? DETAIL : null;
+        return json({ data: { repository: { pullRequest: pull } } });
+      }
       if (query.includes('pullRequests(first')) {
         return json({
           data: {
@@ -555,6 +662,81 @@ describe('repository pages, end to end', () => {
       expect(res.status, bad).toBe(400);
     }
     expect(urls.some((u) => u.pathname === '/search/repositories')).toBe(false);
+  });
+
+  it("your pull requests: what waits on you, and each repository's usual pace", async () => {
+    const { send } = await signedIn();
+    const list = (await (await send('/api/pulls')).json()) as {
+      pulls: { repo: string; number: number; roles: string[]; reviewRequestedAt: string }[];
+      counts: Record<string, number>;
+    };
+    expect(list.pulls).toEqual([
+      expect.objectContaining({
+        repo: 'octo/app',
+        number: 7,
+        roles: ['review'],
+        reviewRequestedAt: MY_PULL.timelineItems.nodes[0]!.createdAt,
+      }),
+    ]);
+    expect(list.counts).toMatchObject({ all: 1, review: 1, authored: 0 });
+
+    const baseline = (await (await send('/api/repos/octo/app/baseline')).json()) as Record<string, unknown>;
+    // Its dates are made from "now" a moment apart, so the hours can be off by a hair.
+    expect(baseline).toEqual({
+      firstReviewHours: null,
+      mergeHours: expect.closeTo(24, 3),
+      size: 50,
+      sample: 1,
+    });
+  });
+
+  it('your pull requests from one account only, and nothing but an account name in the search', async () => {
+    const { send, urls } = await signedIn();
+    expect((await send('/api/pulls?owner=octo')).status).toBe(200);
+    const searches = () => urls.filter((u) => u.pathname === '/graphql').length;
+    const before = searches();
+    for (const bad of ['a%20b', 'user%3Ax', '-octo', 'octo%2Fapp']) {
+      expect((await send(`/api/pulls?owner=${bad}`)).status, bad).toBe(400);
+    }
+    expect(searches()).toBe(before);
+  });
+
+  it('searches your pull requests on GitHub, and only with plain words', async () => {
+    const { send, urls } = await signedIn();
+    const res = await send('/api/pulls?state=closed&q=cache%20bug&tab=authored');
+    expect(res.status).toBe(200);
+    const searches = () => urls.filter((u) => u.pathname === '/graphql').length;
+    const before = searches();
+    for (const bad of ['user%3Aother', '%22quoted%22', 'a%2Fb', 'x'.repeat(101)]) {
+      expect((await send(`/api/pulls?q=${bad}`)).status, bad).toBe(400);
+    }
+    expect((await send('/api/pulls?q=cache&tab=everything')).status).toBe(400);
+    expect(searches()).toBe(before);
+  });
+
+  it('which files the commits of a pull request keep coming back to', async () => {
+    const { send } = await signedIn();
+    const { churn } = (await (await send('/api/repos/octo/app/pull/7/churn')).json()) as {
+      churn: { commits: number; merges: number; files: { path: string; commits: number }[] };
+    };
+    expect(churn).toMatchObject({ commits: 2, merges: 1 });
+    expect(churn.files).toEqual([expect.objectContaining({ path: 'src/app/main.ts', commits: 2 })]);
+    expect((await send('/api/repos/octo/app/pull/x/churn')).status).toBe(400);
+  });
+
+  it('one pull request in detail, and the ones that do not exist', async () => {
+    const { send } = await signedIn();
+    const pull = (await (await send('/api/repos/octo/app/pull/7')).json()) as {
+      waitingOn: { kind: string; who: string[] };
+      folders: { path: string }[];
+      comments: number;
+    };
+    expect(pull.waitingOn).toMatchObject({ kind: 'review', who: ['octo'] });
+    expect(pull.folders.map((f) => f.path)).toEqual(['src']);
+    expect(pull.comments).toBe(1);
+    expect((await send('/api/repos/octo/app/pull/8')).status).toBe(404);
+    expect((await send('/api/repos/octo/app/pull/abc')).status).toBe(400);
+    expect((await send('/api/repos/octo/a%20b/baseline')).status).toBe(400);
   });
 
   it('serves monthly counts for a longer window', async () => {

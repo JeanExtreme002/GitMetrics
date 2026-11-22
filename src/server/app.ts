@@ -1,7 +1,14 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
-import type { AuthStatus, ReposResponse, SearchResponse, UpdateInfo } from '../shared/types.js';
+import type {
+  AuthStatus,
+  PullFilter,
+  RepoBaseline,
+  ReposResponse,
+  SearchResponse,
+  UpdateInfo,
+} from '../shared/types.js';
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getActions } from './metrics/actions.js';
@@ -12,11 +19,15 @@ import { getIssues, getMonthlyCounts, getPulls, windowMonths } from './metrics/p
 import { getDeployments, getReleases } from './metrics/releases.js';
 import { getActivityRanking, getTrafficRanking } from './metrics/rankings.js';
 import { getOverview, getRepo, listRepos, searchRepos } from './metrics/repos.js';
+import { ACCOUNT, SEARCH_TEXT, getBaseline, getMyPulls } from './metrics/mine.js';
+import { getPullChurn } from './metrics/churn.js';
+import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
 
 const MINUTE = 60_000;
+const TABS = new Set<string>(['all', 'authored', 'assigned', 'involved', 'review', 'owned']);
 const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
 /**
  * What the quick search accepts: words made of GitHub's name characters, or owner/name (an
@@ -176,6 +187,90 @@ export function createApp(options: AppOptions = {}) {
       c.req.query('refresh') === '1',
     );
     return c.json({ repos, favorites: config.favorites } satisfies ReposResponse);
+  });
+
+  // Your pull requests, across every repository ---------------------------------
+
+  /** What a repository's merged pull requests usually look like, kept for an hour. */
+  const baseline = (gh: GitHubClient, repo: string) =>
+    memory.wrap(`${config.auth!.login}:baseline:${repo.toLowerCase()}`, 60 * MINUTE, () =>
+      getBaseline(gh, repo),
+    );
+
+  const myPulls = (
+    state: 'open' | 'closed',
+    owner = '',
+    refresh = false,
+    search?: { text: string; tab: PullFilter },
+  ) => {
+    const gh = github()!;
+    const login = config.auth!.login;
+    const searched = search ? `:${search.tab}:${search.text.toLowerCase()}` : '';
+    return memory.wrap(
+      `${login}:my-pulls:${state}:${owner.toLowerCase()}${searched}`,
+      2 * MINUTE,
+      () => getMyPulls(gh, login, state, owner || undefined, search),
+      refresh,
+    );
+  };
+
+  app.get('/api/pulls', async (c) => {
+    const state = c.req.query('state') === 'closed' ? 'closed' : 'open';
+    // Only an account name reaches the search, so nothing else can be slipped into it.
+    const owner = c.req.query('owner') ?? '';
+    if (owner && !ACCOUNT.test(owner)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    // A text search: plain words only, looked up on GitHub for the open tab.
+    const text = (c.req.query('q') ?? '').trim();
+    const tab = (c.req.query('tab') ?? 'all') as PullFilter;
+    if (text && (text.length > 100 || !SEARCH_TEXT.test(text) || !TABS.has(tab))) {
+      return c.json({ error: 'Invalid search.', status: 400 }, 400);
+    }
+    const search = text ? { text, tab } : undefined;
+    return c.json(await myPulls(state, owner, c.req.query('refresh') === '1', search));
+  });
+
+  // A repository's usual review and merge times, to put its pull requests in context.
+  app.get('/api/repos/:owner/:repo/baseline', async (c) => {
+    const { owner, repo } = c.req.param();
+    if (!NAME.test(owner) || !NAME.test(repo)) {
+      return c.json({ error: 'Invalid repository name.', status: 400 }, 400);
+    }
+    const { firstReviewHours, mergeHours, size, sample } = await baseline(github()!, `${owner}/${repo}`);
+    return c.json({ firstReviewHours, mergeHours, size, sample } satisfies RepoBaseline);
+  });
+
+  // Which files and folders a pull request's commits keep coming back to. Read apart from the
+  // rest of the page, since it takes one request per commit the first time.
+  app.get('/api/repos/:owner/:repo/pull/:number/churn', async (c) => {
+    const { owner, repo, number } = c.req.param();
+    if (!NAME.test(owner) || !NAME.test(repo) || !/^\d{1,9}$/.test(number)) {
+      return c.json({ error: 'Invalid pull request.', status: 400 }, 400);
+    }
+    const gh = github()!;
+    const churn = await memory.wrap(
+      `${config.auth!.login}:pull-churn:${owner}/${repo}#${number}`.toLowerCase(),
+      10 * MINUTE,
+      () => getPullChurn(gh, commitCache, owner, repo, Number(number)),
+      c.req.query('refresh') === '1',
+    );
+    return c.json({ churn });
+  });
+
+  // One pull request, everything about it exact.
+  app.get('/api/repos/:owner/:repo/pull/:number', async (c) => {
+    const { owner, repo, number } = c.req.param();
+    if (!NAME.test(owner) || !NAME.test(repo) || !/^\d{1,9}$/.test(number)) {
+      return c.json({ error: 'Invalid pull request.', status: 400 }, 400);
+    }
+    const gh = github()!;
+    const pull = await memory.wrap(
+      `${config.auth!.login}:pull:${owner}/${repo}#${number}`.toLowerCase(),
+      2 * MINUTE,
+      () => getPull(gh, owner, repo, Number(number)),
+      c.req.query('refresh') === '1',
+    );
+    if (!pull) return c.json({ error: 'Pull request not found.', status: 404 }, 404);
+    return c.json(pull);
   });
 
   // Repositories anywhere on GitHub, for opening one that is not in your own list.

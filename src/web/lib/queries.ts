@@ -1,7 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import type { AuthStatus, RateLimitInfo, ReposResponse } from '../../shared/types';
+import type {
+  AuthStatus,
+  MyPullsResponse,
+  PullChurn,
+  PullDetail,
+  PullFilter,
+  RateLimitInfo,
+  RepoBaseline,
+  ReposResponse,
+} from '../../shared/types';
 import { api, put } from './api';
 
 export const useAuth = () =>
@@ -129,3 +138,53 @@ export function useOwners() {
     );
   }, [auth, data]);
 }
+
+// Your pull requests ------------------------------------------------------
+
+/** Your pull requests; `owner` keeps only one account's repositories. */
+export interface PullSearch {
+  text: string;
+  tab: PullFilter;
+}
+
+export const myPullsPath = (state: 'open' | 'closed', owner = '', search?: PullSearch) => {
+  const params = new URLSearchParams({ state });
+  if (owner) params.set('owner', owner);
+  if (search) {
+    params.set('q', search.text);
+    params.set('tab', search.tab);
+  }
+  return `/pulls?${params.toString()}`;
+};
+
+export const useMyPulls = (state: 'open' | 'closed', owner = '', search?: PullSearch) =>
+  useQuery({
+    queryKey: ['my-pulls', state, owner.toLowerCase(), search?.tab ?? '', search?.text.toLowerCase() ?? ''],
+    queryFn: () => api<MyPullsResponse>(myPullsPath(state, owner, search)),
+    staleTime: 2 * 60_000,
+    // While a search runs, keep the results on screen instead of flashing a skeleton.
+    placeholderData: search ? keepPreviousData : undefined,
+  });
+
+/** A repository's usual review and merge times, shared by every row from that repository. */
+export const useBaseline = (repo: string) =>
+  useQuery({
+    queryKey: ['baseline', repo.toLowerCase()],
+    queryFn: () => api<RepoBaseline>(`/repos/${repo}/baseline`),
+    staleTime: 60 * 60_000,
+  });
+
+export const usePull = (owner: string, repo: string, number: string) =>
+  useQuery({
+    queryKey: ['pull', owner.toLowerCase(), repo.toLowerCase(), number],
+    queryFn: () => api<PullDetail>(`/repos/${owner}/${repo}/pull/${number}`),
+    staleTime: 2 * 60_000,
+  });
+
+/** Which files and folders a pull request's commits keep coming back to; null past GitHub's limits. */
+export const usePullChurn = (owner: string, repo: string, number: string) =>
+  useQuery({
+    queryKey: ['pull-churn', owner.toLowerCase(), repo.toLowerCase(), number],
+    queryFn: () => api<{ churn: PullChurn | null }>(`/repos/${owner}/${repo}/pull/${number}/churn`),
+    staleTime: 10 * 60_000,
+  });

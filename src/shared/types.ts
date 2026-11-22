@@ -212,6 +212,8 @@ export interface PullsResponse {
   sizes: { size: string; count: number }[];
   topAuthors: PersonCount[];
   openOldest: PullItem[];
+  /** The open pull requests opened most recently. */
+  openNewest: PullItem[];
   recentMerged: PullItem[];
 }
 
@@ -423,4 +425,216 @@ export interface RankingResponse {
   mode: RankingMode;
   windowDays: number;
   entries: RankingEntry[];
+}
+
+// Your pull requests ------------------------------------------------------
+
+/** How you are related to a pull request. "involved" covers all of them. */
+/** How you are related to a pull request; "owned" is one someone else opened in your repositories. */
+export type PullFilter = 'all' | 'authored' | 'assigned' | 'involved' | 'review' | 'owned';
+
+/** What a repository's merged pull requests usually look like, to put one in context. */
+export interface RepoBaseline {
+  /** Median hours from opening to the first review by someone other than the author. */
+  firstReviewHours: number | null;
+  /** Median hours from opening to merge. */
+  mergeHours: number | null;
+  /** Median lines changed (additions + deletions). */
+  size: number | null;
+  /** How many merged pull requests the medians come from. */
+  sample: number;
+}
+
+export type ChecksState = 'success' | 'failure' | 'pending';
+
+export interface MyPull {
+  repo: string;
+  owner: string;
+  name: string;
+  ownerAvatarUrl: string;
+  number: number;
+  title: string;
+  url: string;
+  author: string | null;
+  authorAvatarUrl: string | null;
+  state: 'OPEN' | 'MERGED' | 'CLOSED';
+  isDraft: boolean;
+  createdAt: string;
+  updatedAt: string;
+  mergedAt: string | null;
+  closedAt: string | null;
+  additions: number;
+  deletions: number;
+  reviewDecision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
+  /** Open and in conflict with its base branch, so it can't be merged as it is. */
+  conflicts: boolean;
+  /** Comments in the conversation and on the code, plus reviews with a written summary. */
+  comments: number;
+  checks: ChecksState | null;
+  /** When your review was requested, while it is still pending. */
+  reviewRequestedAt: string | null;
+  /** When someone other than the author first reviewed it. */
+  firstReviewAt: string | null;
+  /** Which of GitHub's searches found it; "all" holds every one. */
+  roles: ('authored' | 'assigned' | 'involved' | 'review' | 'owned')[];
+}
+
+export interface MyPullsResponse {
+  state: 'open' | 'closed';
+  pulls: MyPull[];
+  counts: Record<PullFilter, number>;
+}
+
+// A single pull request ---------------------------------------------------
+
+export interface PullStage {
+  kind: 'opened' | 'ready' | 'first-review' | 'changes' | 'approved' | 'merged' | 'closed';
+  at: string;
+  /** For a request for changes or an approval: who gave it. */
+  login?: string;
+  /** Hours since the previous stage. */
+  hours: number | null;
+}
+
+export interface PullReviewer {
+  login: string;
+  avatarUrl: string | null;
+  /** The latest state of this person's review, or PENDING if requested and not reviewed yet. */
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
+  reviews: number;
+  requestedAt: string | null;
+  firstReviewAt: string | null;
+  /** Hours from the request (or opening) to this person's first review. */
+  responseHours: number | null;
+}
+
+export interface PullCheck {
+  name: string;
+  conclusion: 'success' | 'failure' | 'pending' | 'skipped' | 'cancelled' | 'neutral';
+  minutes: number | null;
+  /** The run (or the status) on GitHub or the service that set it, when there is one. */
+  url: string | null;
+}
+
+/** One stretch of a pull request's life, for "where the time went". */
+export interface PullPhase {
+  kind: 'draft' | 'waiting' | 'review' | 'approved';
+  hours: number;
+  /** Still going on: the pull request is open and in this stretch now. */
+  ongoing: boolean;
+}
+
+/** One review by a person, placed on the pull request's life. */
+export interface PullReviewMark {
+  /** Hours after the pull request was opened. */
+  hours: number;
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED';
+  login: string;
+  at: string;
+}
+
+/** Lines changed under one folder. */
+export interface PullFolder {
+  path: string;
+  additions: number;
+  deletions: number;
+  files: number;
+}
+
+/** A file or folder, and how many of a pull request's commits touched it. */
+export interface ChurnEntry {
+  path: string;
+  /** For a file: where it is in the pull request's "Files changed" tab. */
+  url?: string;
+  commits: number;
+  additions: number;
+  deletions: number;
+}
+
+/** The files and folders a pull request's commits keep coming back to. */
+export interface PullChurn {
+  /** Commits looked at: every commit of the pull request but merge commits. */
+  commits: number;
+  merges: number;
+  files: ChurnEntry[];
+  folders: ChurnEntry[];
+}
+
+/** What happened on one day (or week) of the pull request's life. */
+export interface PullActivityPoint {
+  day: string;
+  commits: number;
+  reviews: number;
+  comments: number;
+}
+
+export interface PullDetail {
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  author: string | null;
+  authorAvatarUrl: string | null;
+  state: 'OPEN' | 'MERGED' | 'CLOSED';
+  isDraft: boolean;
+  createdAt: string;
+  mergedAt: string | null;
+  closedAt: string | null;
+  baseRef: string;
+  headRef: string;
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+  commits: number;
+  /** Comments in the conversation and on the code, plus reviews with a written summary. */
+  comments: number;
+  reviewThreads: number;
+  participants: number;
+  /**
+   * The most involved people, those who approved first, then most active first, or null when not
+   * everything could be counted.
+   */
+  involved: { login: string; avatarUrl: string; actions: number; approved: boolean }[] | null;
+  stages: PullStage[];
+  /** Hours from ready for review to the first review by a person, if any. */
+  firstReviewHours: number | null;
+  /** Open: hours so far. Merged: hours to merge. Closed: null. */
+  ageHours: number | null;
+  /** The whole life of the pull request, in order, split into stretches (a kind can come back). */
+  phases: PullPhase[];
+  reviewMarks: PullReviewMark[];
+  /** Every time a person (not a team) was asked for a review, in order. */
+  requestMarks: { hours: number; login: string; at: string }[];
+  /** Every commit by the date written in it, or null when GitHub can't list them all. */
+  commitMarks: { hours: number; login: string; at: string }[] | null;
+  /**
+   * Every comment in the conversation and on the code, in order, or null when some couldn't be
+   * read; `bot` marks the ones written by apps.
+   */
+  commentMarks: { hours: number; login: string; at: string; bot?: true }[] | null;
+  rounds: {
+    changesRequested: number;
+    forcePushes: number;
+  };
+  reviewers: PullReviewer[];
+  checks: {
+    state: ChecksState | null;
+    list: PullCheck[];
+    /** Longest check run on the latest commit, in minutes. */
+    minutes: number | null;
+    /** All check runs on the latest commit added up, in minutes. */
+    totalMinutes: number | null;
+  };
+  /** Lines changed per folder, or null when GitHub can't list every file. */
+  folders: PullFolder[] | null;
+  /** Commits, reviews and comments over time, or null when any of them can't be listed in full. */
+  activity: { unit: 'day' | 'week'; points: PullActivityPoint[] } | null;
+  /** Open and in conflict with its base branch, so it can't be merged as it is. */
+  conflicts: boolean;
+  /** Who or what the pull request is waiting on, while it is open. */
+  waitingOn: {
+    kind: 'review' | 'author' | 'checks' | 'merge' | 'draft';
+    who: string[];
+    since: string | null;
+  } | null;
 }

@@ -52,6 +52,27 @@ export function relative(iso: string | null | undefined): string {
   return 'just now';
 }
 
+const dateTimeFormat = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+const dateTimeYearFormat = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+/** "Nov 21, 2:14 PM", with the year only when it isn't this one: for steps hours apart. */
+export function dateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return (d.getFullYear() === new Date().getFullYear() ? dateTimeFormat : dateTimeYearFormat).format(d);
+}
+
 /** Dates without a time ("2025-03-04") are calendar days and must not shift with the time zone. */
 export const date = (iso: string | null | undefined) =>
   iso ? dateFormat.format(new Date(iso.length === 10 ? `${iso}T12:00:00` : iso)) : '—';
