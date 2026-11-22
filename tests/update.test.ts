@@ -6,14 +6,24 @@ import { installKind, isNewer, latestVersion, updateInfo } from '../src/server/u
 
 describe('how GitMetrics was started', () => {
   it('tells npx, an npm install and a checkout apart', () => {
-    expect(installKind('/home/me/.npm/_npx/9a1b/node_modules/@gitmetrics/app/dist/cli.js')).toBe('npx');
+    expect(installKind('/home/me/.npm/_npx/9a1b/node_modules/@gitmetrics/app/dist/cli.js', {})).toBe('npx');
     expect(
       installKind(
         'C:\\Users\\me\\AppData\\Local\\npm-cache\\_npx\\9a1b\\node_modules\\@gitmetrics\\app\\dist\\cli.js',
       ),
     ).toBe('npx');
-    expect(installKind('/usr/local/lib/node_modules/@gitmetrics/app/dist/cli.js')).toBe('installed');
-    expect(installKind('/home/me/code/GitMetrics/dist/cli.js')).toBe('source');
+    expect(installKind('/usr/local/lib/node_modules/@gitmetrics/app/dist/cli.js', {})).toBe('installed');
+    expect(installKind('/home/me/code/GitMetrics/dist/cli.js', {})).toBe('source');
+  });
+
+  it('knows npx ran a global install, which npx prefers to its own cache', () => {
+    const global = '/usr/local/lib/node_modules/@gitmetrics/app/dist/cli.js';
+    // npm marks what npx (npm exec) starts.
+    expect(installKind(global, { npm_command: 'exec' })).toBe('npx');
+    // Started as `gitmetrics`, or from an npm script: still an install.
+    expect(installKind(global, { npm_command: 'run-script' })).toBe('installed');
+    // A checkout stays a checkout, even through npx.
+    expect(installKind('/home/me/code/GitMetrics/dist/cli.js', { npm_command: 'exec' })).toBe('source');
   });
 });
 
