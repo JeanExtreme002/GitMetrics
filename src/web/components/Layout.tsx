@@ -1,28 +1,31 @@
 import {
   ActionIcon,
+  Affix,
   AppShell,
   Avatar,
   Box,
   Burger,
-  Code,
+  CloseButton,
   CopyButton,
   Group,
   Kbd,
   Menu,
+  Paper,
   Progress,
   NavLink as MantineNavLink,
   ScrollArea,
   Text,
+  ThemeIcon,
   Tooltip,
+  Transition,
   UnstyledButton,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
+import { useDebouncedValue, useDisclosure, useLocalStorage } from '@mantine/hooks';
 import { Spotlight, spotlight, type SpotlightActionData } from '@mantine/spotlight';
 import {
   IconArrowLeft,
-  IconArrowUpCircle,
   IconBook2,
   IconCode,
   IconChartArea,
@@ -36,6 +39,7 @@ import {
   IconRocket,
   IconSearch,
   IconSettings,
+  IconSparkles,
   IconStar,
   IconSun,
   IconTag,
@@ -308,38 +312,64 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
 }
 
 /**
- * A newer GitMetrics is on npm. Started through npx it restarts into the update by itself, so
- * this mostly shows for a global install, with the one command that updates it.
+ * A newer GitMetrics is on npm: a small card in the bottom right corner with the command that
+ * updates it. Started through npx GitMetrics updates itself, so this mostly shows for a global
+ * install. Closing it hides it until the next version comes out.
  */
-function UpdateNotice() {
+function UpdatePopup() {
   const { data } = useQuery({
     queryKey: ['update'],
     queryFn: () => api<UpdateInfo>('/update'),
     staleTime: Infinity,
   });
-  if (!data?.available || !data.command) return null;
+  const [dismissed, setDismissed] = useLocalStorage<string>({
+    key: 'gitmetrics:update-dismissed',
+    defaultValue: '',
+    getInitialValueInEffect: false,
+  });
+  const show = Boolean(data?.available && data.command && data.latest !== dismissed);
+
   return (
-    <Box className="update-notice">
-      <Group gap={6} wrap="nowrap">
-        <IconArrowUpCircle size={16} stroke={1.7} color="var(--mantine-color-red-6)" />
-        <Text size="xs" fw={600}>
-          GitMetrics {data.latest} is available
-        </Text>
-      </Group>
-      <Group gap={6} wrap="nowrap" mt={6}>
-        <Code className="update-command">{data.command}</Code>
-        <CopyButton value={data.command}>
-          {({ copied, copy }) => (
-            <UnstyledButton onClick={copy} className="group-action" aria-label="Copy the update command">
-              {copied ? 'Copied' : 'Copy'}
-            </UnstyledButton>
-          )}
-        </CopyButton>
-      </Group>
-      <Text size="xs" c="dimmed" mt={6}>
-        Run it in a terminal, then start GitMetrics again.
-      </Text>
-    </Box>
+    <Affix position={{ bottom: 20, right: 20 }} zIndex={150}>
+      <Transition mounted={show} transition="slide-up" duration={220}>
+        {(style) => (
+          <Paper style={style} className="update-popup" shadow="lg" withBorder role="status">
+            <Group justify="space-between" wrap="nowrap" align="flex-start" gap="sm">
+              <Group gap={10} wrap="nowrap" align="flex-start">
+                <ThemeIcon size={30} radius="md" variant="light" color="red">
+                  <IconSparkles size={17} stroke={1.7} />
+                </ThemeIcon>
+                <Box>
+                  <Text size="sm" fw={600}>
+                    GitMetrics {data?.latest} is out
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    You are on {data?.current}. Run this in a terminal, then start it again.
+                  </Text>
+                </Box>
+              </Group>
+              <CloseButton size="sm" aria-label="Dismiss" onClick={() => setDismissed(data?.latest ?? '')} />
+            </Group>
+            <Group gap={8} wrap="nowrap" mt="sm" className="update-command">
+              <Text component="code" size="xs" truncate>
+                {data?.command}
+              </Text>
+              <CopyButton value={data?.command ?? ''}>
+                {({ copied, copy }) => (
+                  <UnstyledButton
+                    onClick={copy}
+                    className="group-action"
+                    aria-label="Copy the update command"
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </UnstyledButton>
+                )}
+              </CopyButton>
+            </Group>
+          </Paper>
+        )}
+      </Transition>
+    </Affix>
   );
 }
 
@@ -683,7 +713,6 @@ export function Layout() {
           </Box>
         </AppShell.Section>
         <AppShell.Section className="navbar-footer">
-          <UpdateNotice />
           <AccountFooter onNavigate={close} />
         </AppShell.Section>
       </AppShell.Navbar>
@@ -694,6 +723,7 @@ export function Layout() {
         </Box>
       </AppShell.Main>
       <RepoSpotlight />
+      <UpdatePopup />
     </AppShell>
   );
 }

@@ -792,19 +792,21 @@
   border-radius: 99px;
 }
 
-/* A newer version is on npm: a quiet card above the account, with the command to run. */
-.update-notice {
-  margin: 0 12px 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--mantine-color-default-border);
+/* A newer version is on npm: a small card in the bottom right corner. */
+.update-popup {
+  width: min(360px, calc(100vw - 40px));
+  padding: 14px 14px 12px;
   border-radius: var(--mantine-radius-md);
 }
 
 .update-command {
+  padding: 7px 10px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-default-hover);
+  font-family: var(--mantine-font-family-monospace);
+}
+
+.update-command code {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
 }
