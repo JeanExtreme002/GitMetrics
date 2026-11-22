@@ -19,7 +19,6 @@ import {
   IconCircleDashed,
   IconCircleX,
   IconClockHour4,
-  IconEye,
   IconFileDiff,
   IconFiles,
   IconGitCommit,
@@ -100,23 +99,11 @@ const people = (who: string[]) =>
 
 const minutes = (value: number) => (value < 1 ? '<1 min' : `${Math.round(value)} min`);
 
-/** The pull request's numbers, as counters like every page's header. */
+/** How long it has been open (or took to merge) and how big it is, beside its description. */
 function PullStats({ pull }: { pull: PullDetail }) {
   const open = pull.state === 'OPEN';
   return (
     <Counters>
-      <Counter
-        icon={IconEye}
-        value={pull.firstReviewHours !== null ? span(pull.firstReviewHours) : open ? 'Not yet' : 'None'}
-        label="First review"
-        hint={
-          pull.firstReviewHours !== null
-            ? `First reviewed ${hours(pull.firstReviewHours)} after it was ready for review`
-            : open
-              ? 'Nobody has reviewed it yet'
-              : `${pull.state === 'MERGED' ? 'Merged' : 'Closed'} without a review`
-        }
-      />
       <Counter
         icon={IconClockHour4}
         value={pull.ageHours !== null ? span(pull.ageHours) : date(pull.closedAt)}
@@ -132,12 +119,6 @@ function PullStats({ pull }: { pull: PullDetail }) {
         value={num(pull.additions + pull.deletions)}
         label="Lines changed"
         hint={`+${num(pull.additions)} −${num(pull.deletions)} in ${num(pull.changedFiles)} files`}
-      />
-      <Counter
-        icon={IconPencil}
-        value={num(pull.rounds.changesRequested)}
-        label="Changes requested"
-        hint={`Reviews that asked for changes · ${num(pull.rounds.forcePushes)} force pushes`}
       />
     </Counters>
   );
@@ -670,44 +651,43 @@ export function Pull() {
           </Group>
         </Group>
         {pull && state && (
-          <Group gap={10} mt={10} wrap="wrap" align="center">
-            <Badge
-              variant="filled"
-              color={state.color}
-              radius="xl"
-              size="lg"
-              tt="none"
-              fw={600}
-              leftSection={state.icon}
-              className="pr-state"
-            >
-              {state.label}
-            </Badge>
-            <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
-              <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
-              <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
-                {pull.author ?? 'ghost'}
-              </Text>
-              <span>
-                {pull.state === 'MERGED'
-                  ? 'merged into'
-                  : pull.state === 'CLOSED'
-                    ? 'wanted to merge into'
-                    : 'wants to merge into'}
-              </span>
-              <Code className="pr-branch">{pull.baseRef}</Code>
-              <span>from</span>
-              <Code className="pr-branch">{pull.headRef}</Code>
-              <span>· opened {relative(pull.createdAt)}</span>
+          <Group justify="space-between" align="center" wrap="wrap" gap="md" mt={10}>
+            {/* Takes the row; when the numbers no longer fit beside it, they go to the next line. */}
+            <Group gap={10} wrap="wrap" align="center" miw={0} style={{ flex: '1 1 380px' }}>
+              <Badge
+                variant="filled"
+                color={state.color}
+                radius="xl"
+                size="lg"
+                tt="none"
+                fw={600}
+                leftSection={state.icon}
+                className="pr-state"
+              >
+                {state.label}
+              </Badge>
+              <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
+                <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
+                <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
+                  {pull.author ?? 'ghost'}
+                </Text>
+                <span>
+                  {pull.state === 'MERGED'
+                    ? 'merged into'
+                    : pull.state === 'CLOSED'
+                      ? 'wanted to merge into'
+                      : 'wants to merge into'}
+                </span>
+                <Code className="pr-branch">{pull.baseRef}</Code>
+                <span>from</span>
+                <Code className="pr-branch">{pull.headRef}</Code>
+                <span>· opened {relative(pull.createdAt)}</span>
+              </Group>
             </Group>
+            <PullStats pull={pull} />
           </Group>
         )}
         {pull && <ActivityLine pull={pull} />}
-        {pull && (
-          <Box mt="lg">
-            <PullStats pull={pull} />
-          </Box>
-        )}
       </Box>
 
       <QueryView query={query}>
