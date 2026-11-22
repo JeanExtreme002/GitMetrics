@@ -134,7 +134,7 @@ function ActivityLine({ pull }: { pull: PullDetail }) {
     [pull.participants, 'person involved', 'people involved', IconUsers],
   ];
   return (
-    <Group gap="lg" mt={12} wrap="wrap">
+    <Group gap="lg" wrap="wrap" miw={0} style={{ flex: '1 1 420px' }}>
       {items.map(([value, one, many, ItemIcon]) => (
         <Group key={many} gap={6} wrap="nowrap">
           <ItemIcon size={15} stroke={1.7} color="var(--mantine-color-dimmed)" />
@@ -651,43 +651,46 @@ export function Pull() {
           </Group>
         </Group>
         {pull && state && (
-          <Group justify="space-between" align="center" wrap="wrap" gap="md" mt={10}>
-            {/* Takes the row; when the numbers no longer fit beside it, they go to the next line. */}
-            <Group gap={10} wrap="wrap" align="center" miw={0} style={{ flex: '1 1 380px' }}>
-              <Badge
-                variant="filled"
-                color={state.color}
-                radius="xl"
-                size="lg"
-                tt="none"
-                fw={600}
-                leftSection={state.icon}
-                className="pr-state"
-              >
-                {state.label}
-              </Badge>
-              <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
-                <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
-                <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
-                  {pull.author ?? 'ghost'}
-                </Text>
-                <span>
-                  {pull.state === 'MERGED'
-                    ? 'merged into'
-                    : pull.state === 'CLOSED'
-                      ? 'wanted to merge into'
-                      : 'wants to merge into'}
-                </span>
-                <Code className="pr-branch">{pull.baseRef}</Code>
-                <span>from</span>
-                <Code className="pr-branch">{pull.headRef}</Code>
-                <span>· opened {relative(pull.createdAt)}</span>
-              </Group>
+          <Group gap={10} wrap="wrap" align="center" mt={10}>
+            <Badge
+              variant="filled"
+              color={state.color}
+              radius="xl"
+              size="lg"
+              tt="none"
+              fw={600}
+              leftSection={state.icon}
+              className="pr-state"
+            >
+              {state.label}
+            </Badge>
+            <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
+              <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
+              <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
+                {pull.author ?? 'ghost'}
+              </Text>
+              <span>
+                {pull.state === 'MERGED'
+                  ? 'merged into'
+                  : pull.state === 'CLOSED'
+                    ? 'wanted to merge into'
+                    : 'wants to merge into'}
+              </span>
+              <Code className="pr-branch">{pull.baseRef}</Code>
+              <span>from</span>
+              <Code className="pr-branch">{pull.headRef}</Code>
+              <span>· opened {relative(pull.createdAt)}</span>
             </Group>
+          </Group>
+        )}
+        {/* What went into it, with the two numbers on the same line, centered with it; when they
+            no longer fit beside it, they go to the next line. */}
+        {pull && (
+          <Group justify="space-between" align="center" wrap="wrap" gap="md" mt={12}>
+            <ActivityLine pull={pull} />
             <PullStats pull={pull} />
           </Group>
         )}
-        {pull && <ActivityLine pull={pull} />}
       </Box>
 
       <QueryView query={query}>
