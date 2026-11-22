@@ -71,6 +71,8 @@ const CONNECTIONS = {
     'reviewThreads(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { comments(first: 100) { totalCount nodes { createdAt author { __typename login avatarUrl } } } } }',
   requests:
     'reviewRequests(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { requestedReviewer { __typename ... on User { login avatarUrl } ... on Team { name } } } }',
+  people:
+    'participants(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { login avatarUrl } }',
   files:
     'files(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { path additions deletions } }',
   // The timeline only for the events nothing else gives. Its pages can come back short, so it is
@@ -151,6 +153,8 @@ export interface RawPull {
   headRefName: string;
   author: Person | null;
   participants: { totalCount: number };
+  /** Everyone involved, read to the end; left out when GitHub couldn't list them all. */
+  people?: { login: string; avatarUrl: string }[];
   reviews: RawReview[];
   /** Comments in the conversation: when, and by whom (same order). */
   comments: { totalCount: number; createdAt: string[]; by?: (string | null)[]; bot?: boolean[] };
@@ -435,6 +439,7 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     comments: raw.comments.totalCount + codeComments + written,
     reviewThreads: raw.threads.totalCount,
     participants: raw.participants.totalCount,
+    involved: involved(raw, everyComment),
     stages: timed,
     firstReviewHours: firstReview ? hoursBetween(reviewStart, firstReview) : null,
     ageHours: raw.mergedAt
@@ -524,6 +529,34 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
 }
 
 /** Who or what the pull request needs next, in the order it would unblock it. */
+/** How many people's faces the activity line shows. */
+const FACES = 7;
+
+/**
+ * The people most involved, most active first: commits, reviews and comments each count one, and
+ * opening it counts one for the author. Only when every one of those was read, so the order is right.
+ */
+export function involved(raw: RawPull, everyComment: boolean): PullDetail['involved'] {
+  if (!raw.people || !everyComment || raw.commits.committedAt.length !== raw.commits.totalCount) return null;
+  const actions = new Map<string, number>();
+  const add = (login: string | null | undefined) => {
+    if (login) actions.set(login.toLowerCase(), (actions.get(login.toLowerCase()) ?? 0) + 1);
+  };
+  add(raw.author?.login);
+  raw.commits.by?.forEach(add);
+  raw.reviews.forEach((r) => add(r.author?.login));
+  raw.comments.by?.forEach(add);
+  raw.threads.nodes.forEach((t) => t.comments.nodes.forEach((c) => add(c.author?.login)));
+  return raw.people
+    .map((p) => ({
+      login: p.login,
+      avatarUrl: p.avatarUrl,
+      actions: actions.get(p.login.toLowerCase()) ?? 0,
+    }))
+    .sort((a, b) => b.actions - a.actions || a.login.localeCompare(b.login))
+    .slice(0, FACES);
+}
+
 function waitingOn(
   raw: RawPull,
   reviewers: PullReviewer[],
@@ -576,6 +609,7 @@ interface FirstPage {
   commits: Page<RawCommit>;
   threads: Page<RawThread>;
   requests: Page<{ requestedReviewer: Requested | null }>;
+  people: Page<{ login: string; avatarUrl: string }>;
   files: Page<RawFile>;
   events: Page<RawEvent>;
   latest: { nodes: { commit: { id: string; statusCheckRollup: Contexts } }[] };
@@ -618,7 +652,7 @@ export async function getPull(
   const commit = p.latest.nodes[0]?.commit;
   const firstChecks = commit?.statusCheckRollup?.contexts;
 
-  const [reviews, comments, commits, threads, requests, files, events, checks] = await Promise.all([
+  const [reviews, comments, commits, threads, requests, people, files, events, checks] = await Promise.all([
     readAll(p.reviews, more<RawReview>('reviews')),
     readAll(
       p.comments,
@@ -627,6 +661,7 @@ export async function getPull(
     readAll(p.commits, more<RawCommit>('commits')),
     readAll(p.threads, more<RawThread>('threads')),
     readAll(p.requests, more<{ requestedReviewer: Requested | null }>('requests')),
+    readAll(p.people, more<{ login: string; avatarUrl: string }>('people')),
     readAll(p.files, more<RawFile>('files')),
     readAll(p.events, more<RawEvent>('events')),
     firstChecks && commit
@@ -656,6 +691,7 @@ export async function getPull(
       },
       threads: { totalCount: p.threads.totalCount ?? threads.length, nodes: threads },
       requests,
+      people: people.length === (p.people.totalCount ?? people.length) ? people : undefined,
       files: { totalCount: p.files.totalCount ?? files.length, nodes: files },
       events,
       checks,

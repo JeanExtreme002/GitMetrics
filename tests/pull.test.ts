@@ -250,6 +250,36 @@ describe('a pull request in detail', () => {
     expect(pull.reviewThreads).toBe(2);
   });
 
+  it('shows the most involved people, most active first, only when everything was counted', () => {
+    const people = ['ana', 'bo', 'cy', 'di'].map((login) => ({
+      login,
+      avatarUrl: `https://avatars/${login}`,
+    }));
+    const base = raw({
+      author: person('ana'),
+      people,
+      commits: { totalCount: 2, committedAt: [at(1), at(2)], by: ['ana', 'ana'] },
+      reviews: [review(3, 'bo', 'COMMENTED'), review(4, 'Bo', 'APPROVED')],
+      comments: { totalCount: 3, createdAt: [at(3), at(4), at(5)], by: ['cy', 'bo', 'bo'] },
+    });
+    // Opening counts one for the author; logins match whatever their case.
+    expect(buildPull(base, 'octo/app', now).involved).toEqual([
+      { login: 'bo', avatarUrl: 'https://avatars/bo', actions: 4 },
+      { login: 'ana', avatarUrl: 'https://avatars/ana', actions: 3 },
+      { login: 'cy', avatarUrl: 'https://avatars/cy', actions: 1 },
+      { login: 'di', avatarUrl: 'https://avatars/di', actions: 0 },
+    ]);
+    // Seven at most.
+    const many = Array.from({ length: 10 }, (_, i) => ({ login: `p${i}`, avatarUrl: '' }));
+    expect(buildPull(raw({ people: many }), 'octo/app', now).involved).toHaveLength(7);
+    // Not every participant listed, or not every commit: no faces rather than a wrong order.
+    expect(buildPull(raw({ people: undefined }), 'octo/app', now).involved).toBeNull();
+    expect(
+      buildPull(raw({ people, commits: { totalCount: 300, committedAt: [at(0)] } }), 'octo/app', now)
+        .involved,
+    ).toBeNull();
+  });
+
   it('says it has conflicts only when GitHub knows, and only while open', () => {
     expect(buildPull(raw({ mergeable: 'CONFLICTING' }), 'octo/app', now).conflicts).toBe(true);
     // Right after a push GitHub may still be working it out.
@@ -502,6 +532,7 @@ describe('reading every page', () => {
       commits: { totalCount: 1, pageInfo: done, nodes: [{ commit: { committedDate: at(0) } }] },
       threads: empty,
       requests: empty,
+      people: empty,
       files: { totalCount: 2, pageInfo: done, nodes: raw().files.nodes },
       events: empty,
       latest: { nodes: [] },

@@ -167,6 +167,14 @@ const DETAIL = {
     pageInfo: done,
     nodes: [{ requestedReviewer: { __typename: 'User', login: 'octo', avatarUrl: '' } }],
   },
+  people: {
+    totalCount: 2,
+    pageInfo: done,
+    nodes: [
+      { login: 'octocat', avatarUrl: 'https://avatars/octocat' },
+      { login: 'octo', avatarUrl: 'https://avatars/octo' },
+    ],
+  },
   files: { totalCount: 1, pageInfo: done, nodes: [{ path: 'src/cache.ts', additions: 120, deletions: 30 }] },
   // The timeline names each event's type, as GitHub does.
   events: {

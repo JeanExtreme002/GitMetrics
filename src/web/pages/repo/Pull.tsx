@@ -133,6 +133,21 @@ function ActivityLine({ pull }: { pull: PullDetail }) {
             </Text>{' '}
             {value === 1 ? one : many}
           </Text>
+          {/* The most involved people's faces, most active first. */}
+          {many === 'people involved' && pull.involved && pull.involved.length > 0 && (
+            <Tooltip.Group openDelay={150} closeDelay={80}>
+              <Avatar.Group spacing={6} ml={2}>
+                {pull.involved.map((p) => (
+                  <Tooltip
+                    key={p.login}
+                    label={`${p.login} · ${num(p.actions)} ${p.actions === 1 ? 'action' : 'actions'}`}
+                  >
+                    <Avatar src={p.avatarUrl} alt={p.login} size={20} radius="xl" />
+                  </Tooltip>
+                ))}
+              </Avatar.Group>
+            </Tooltip.Group>
+          )}
         </Group>
       ))}
     </Group>
