@@ -5,20 +5,24 @@ import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
+import type { UpdateInfo } from '../shared/types.js';
 import { createApp } from './app.js';
 import { defaultDataDir } from './store.js';
+import { NO_UPDATE_CHECK, RELAUNCHED, installKind, latestVersion, updateInfo } from './update.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PORT = 4280;
 const DEV_API_PORT = 4281;
 
-function version(): string {
+function manifest(): { name: string; version: string } {
   for (const candidate of ['../package.json', '../../package.json']) {
     const file = path.join(here, candidate);
-    if (existsSync(file)) return (JSON.parse(readFileSync(file, 'utf8')) as { version: string }).version;
+    if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8')) as { name: string; version: string };
   }
-  return 'unknown';
+  return { name: '@gitmetrics/app', version: 'unknown' };
 }
+
+const version = () => manifest().version;
 
 const HELP = `
 GitMetrics ${version()}
@@ -36,6 +40,7 @@ Options
 Environment
   GITMETRICS_HOME       Where GitMetrics keeps its data (default: ~/.gitmetrics)
   GITMETRICS_CLIENT_ID  Use your own GitHub OAuth App for "Sign in with GitHub"
+  GITMETRICS_NO_UPDATE_CHECK=1  Don't check npm for a newer version
 `;
 
 interface Args {
@@ -102,10 +107,51 @@ function openBrowser(url: string) {
   child.unref();
 }
 
+/**
+ * Checks npm for a newer GitMetrics. Started through npx, it restarts into the newer version
+ * right away (npx would otherwise keep running the copy it cached the first time); installed
+ * with npm, it only reports the update, since reinstalling a global package may need admin
+ * rights and Windows locks the running files.
+ */
+async function checkForUpdate(): Promise<UpdateInfo | undefined> {
+  if (process.env[NO_UPDATE_CHECK] === '1') return undefined;
+  const { name, version: current } = manifest();
+  const kind = installKind(fileURLToPath(import.meta.url));
+  if (kind === 'source') return undefined;
+  return updateInfo(name, current, await latestVersion(name, defaultDataDir()), kind);
+}
+
+/** Hands over to the newer version through npx; if that can't start, runs this one instead. */
+function relaunch(args: Args, update: UpdateInfo) {
+  console.log(`\n  Updating GitMetrics ${update.current} → ${update.latest}…`);
+  const windows = process.platform === 'win32';
+  // The arguments were validated by parseArgs, so they are safe to hand to the shell on Windows.
+  const child = spawn(
+    windows ? 'npx.cmd' : 'npx',
+    ['--yes', `${manifest().name}@${update.latest}`, ...process.argv.slice(2)],
+    { stdio: 'inherit', shell: windows, env: { ...process.env, [RELAUNCHED]: '1' } },
+  );
+  const forward = (signal: NodeJS.Signals) => () => child.kill(signal);
+  process.on('SIGINT', forward('SIGINT'));
+  process.on('SIGTERM', forward('SIGTERM'));
+  child.on('exit', (code) => process.exit(code ?? 0));
+  child.on('error', () => {
+    console.log(`  Couldn't update, starting ${update.current} instead.`);
+    void start(args, update);
+  });
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const update = args.dev ? undefined : await checkForUpdate();
+  const viaNpx = update?.command?.startsWith('npx ');
+  if (update?.available && viaNpx && process.env[RELAUNCHED] !== '1') relaunch(args, update);
+  else await start(args, update);
+}
+
+async function start(args: Args, update: UpdateInfo | undefined) {
   const port = args.dev ? DEV_API_PORT : await pickPort(args.port ?? DEFAULT_PORT, args.port !== undefined);
-  const app = createApp({ webDir: args.dev ? null : path.join(here, 'web') });
+  const app = createApp({ webDir: args.dev ? null : path.join(here, 'web'), update });
 
   serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, () => {
     const url = `http://localhost:${port}`;
@@ -115,6 +161,9 @@ async function main() {
     }
     console.log(`\n  GitMetrics ${version()} is running at ${url}`);
     console.log(`  Data folder: ${defaultDataDir()}`);
+    if (update?.available && update.command) {
+      console.log(`  Update available: ${update.current} → ${update.latest}. Run: ${update.command}`);
+    }
     console.log('  Press Ctrl+C to stop.\n');
     if (args.open) openBrowser(url);
   });

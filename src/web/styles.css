@@ -791,3 +791,20 @@
   height: 8px;
   border-radius: 99px;
 }
+
+/* A newer version is on npm: a quiet card above the account, with the command to run. */
+.update-notice {
+  margin: 0 12px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.update-command {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}

@@ -4,6 +4,8 @@ import {
   Avatar,
   Box,
   Burger,
+  Code,
+  CopyButton,
   Group,
   Kbd,
   Menu,
@@ -20,6 +22,7 @@ import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { Spotlight, spotlight, type SpotlightActionData } from '@mantine/spotlight';
 import {
   IconArrowLeft,
+  IconArrowUpCircle,
   IconBook2,
   IconCode,
   IconChartArea,
@@ -49,7 +52,7 @@ import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { useRecentRepos } from '../lib/recent';
 import { sectionQuery, useAuth, useOwners, useRateLimit, useRepos } from '../lib/queries';
-import type { OverviewResponse, SearchResponse } from '../../shared/types';
+import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
 
@@ -301,6 +304,42 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * A newer GitMetrics is on npm. Started through npx it restarts into the update by itself, so
+ * this mostly shows for a global install, with the one command that updates it.
+ */
+function UpdateNotice() {
+  const { data } = useQuery({
+    queryKey: ['update'],
+    queryFn: () => api<UpdateInfo>('/update'),
+    staleTime: Infinity,
+  });
+  if (!data?.available || !data.command) return null;
+  return (
+    <Box className="update-notice">
+      <Group gap={6} wrap="nowrap">
+        <IconArrowUpCircle size={16} stroke={1.7} color="var(--mantine-color-red-6)" />
+        <Text size="xs" fw={600}>
+          GitMetrics {data.latest} is available
+        </Text>
+      </Group>
+      <Group gap={6} wrap="nowrap" mt={6}>
+        <Code className="update-command">{data.command}</Code>
+        <CopyButton value={data.command}>
+          {({ copied, copy }) => (
+            <UnstyledButton onClick={copy} className="group-action" aria-label="Copy the update command">
+              {copied ? 'Copied' : 'Copy'}
+            </UnstyledButton>
+          )}
+        </CopyButton>
+      </Group>
+      <Text size="xs" c="dimmed" mt={6}>
+        Run it in a terminal, then start GitMetrics again.
+      </Text>
+    </Box>
   );
 }
 
@@ -644,6 +683,7 @@ export function Layout() {
           </Box>
         </AppShell.Section>
         <AppShell.Section className="navbar-footer">
+          <UpdateNotice />
           <AccountFooter onNavigate={close} />
         </AppShell.Section>
       </AppShell.Navbar>

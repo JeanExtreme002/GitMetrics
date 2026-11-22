@@ -70,7 +70,7 @@ Have your own GitHub OAuth App? Set its client ID in the `GITMETRICS_CLIENT_ID` 
 
 ## Privacy
 
-No backend, no account, no analytics. GitMetrics runs only on `127.0.0.1` and talks only to `api.github.com`. Your token, pins, cache and traffic history stay in `~/.gitmetrics`, private to you. Signing out deletes the token.
+No backend, no account, no analytics. GitMetrics runs only on `127.0.0.1` and talks only to `api.github.com`, plus npm to check for a newer version. Your token, pins, cache and traffic history stay in `~/.gitmetrics`, private to you. Signing out deletes the token.
 
 ## Options
 
@@ -87,6 +87,7 @@ gitmetrics [options]
 
 - `GITMETRICS_HOME` keeps the data somewhere other than `~/.gitmetrics`.
 - `GITMETRICS_CLIENT_ID` enables **Sign in with GitHub** through your own OAuth App.
+- `GITMETRICS_NO_UPDATE_CHECK=1` stops GitMetrics from checking npm for a newer version.
 
 ## Contributing
 

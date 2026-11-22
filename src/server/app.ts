@@ -1,7 +1,7 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
-import type { AuthStatus, ReposResponse, SearchResponse } from '../shared/types.js';
+import type { AuthStatus, ReposResponse, SearchResponse, UpdateInfo } from '../shared/types.js';
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getActions } from './metrics/actions.js';
@@ -31,6 +31,8 @@ export interface AppOptions {
   webDir?: string | null;
   fetchImpl?: typeof fetch;
   ghToken?: () => Promise<string | null>;
+  /** What the CLI found out about updates when it started. */
+  update?: UpdateInfo;
 }
 
 type Section = (gh: GitHubClient, owner: string, repo: string, c: Context) => Promise<unknown>;
@@ -82,6 +84,12 @@ export function createApp(options: AppOptions = {}) {
     console.error(error);
     return c.json({ error: 'Something went wrong on the local server.', status: 500 }, 500);
   });
+
+  app.get('/api/update', (c) =>
+    c.json(
+      options.update ?? ({ current: '', latest: null, available: false, command: null } satisfies UpdateInfo),
+    ),
+  );
 
   // Auth ------------------------------------------------------------------
 

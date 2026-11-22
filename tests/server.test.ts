@@ -210,6 +210,14 @@ describe('local server', () => {
   const make = (ghToken: string | null = null) =>
     createApp({ dataDir: dir, fetchImpl: fakeFetch(github), ghToken: async () => ghToken });
 
+  it('tells the web app about an update found when the CLI started', async () => {
+    const update = { current: '1.2.0', latest: '1.3.0', available: true, command: 'npm install -g x' };
+    const withUpdate = createApp({ dataDir: dir, fetchImpl: fakeFetch(github), update });
+    expect(await (await request(withUpdate, '/api/update')).json()).toEqual(update);
+    // Not checked (a checkout, or the check turned off): nothing to offer.
+    expect(await (await request(make(), '/api/update')).json()).toMatchObject({ available: false });
+  });
+
   it('rejects requests that are not addressed to localhost', async () => {
     const res = await make().request('/api/auth/status', { headers: { host: 'evil.example' } });
     expect(res.status).toBe(403);
