@@ -944,3 +944,39 @@ a.pull-row {
 .pr-state {
   padding-inline: 10px;
 }
+
+/* Where the time went: one bar split into the stretches of the pull request's life. */
+.pr-time-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 99px;
+}
+
+.pr-time-segment {
+  min-width: 4px;
+  flex-basis: 0;
+}
+
+.pr-time-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* Where the change is: a folder, its share of the lines as a bar, the lines and the share. */
+.pr-folder {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(60px, 1fr) auto 40px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.pr-folder-track {
+  display: flex;
+}

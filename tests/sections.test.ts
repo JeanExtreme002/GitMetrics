@@ -149,20 +149,30 @@ const MY_PULL = {
   commits: { nodes: [] },
 };
 
+/** The same pull request as the detail page reads it: every connection as one complete page. */
+const done = { hasNextPage: false, endCursor: null };
 const DETAIL = {
   ...MY_PULL,
-  // The full timeline names each event's type, as GitHub does.
-  timelineItems: {
-    nodes: MY_PULL.timelineItems.nodes.map((e) => ({ ...e, __typename: 'ReviewRequestedEvent' })),
-  },
-  changedFiles: 4,
+  id: 'PR_7',
+  changedFiles: 1,
   baseRefName: 'main',
   headRefName: 'cache',
-  commits: { totalCount: 2 },
-  comments: { totalCount: 1 },
-  reviewThreads: { totalCount: 0 },
   participants: { totalCount: 2 },
-  history: { nodes: [] },
+  reviews: { totalCount: 0, pageInfo: done, nodes: [] },
+  comments: { totalCount: 1, pageInfo: done, nodes: [{ createdAt: isoDaysAgo(1) }] },
+  commits: { totalCount: 1, pageInfo: done, nodes: [{ commit: { committedDate: isoDaysAgo(2) } }] },
+  threads: { totalCount: 0, pageInfo: done, nodes: [] },
+  requests: {
+    totalCount: 1,
+    pageInfo: done,
+    nodes: [{ requestedReviewer: { __typename: 'User', login: 'octo', avatarUrl: '' } }],
+  },
+  files: { totalCount: 1, pageInfo: done, nodes: [{ path: 'src/cache.ts', additions: 120, deletions: 30 }] },
+  // The timeline names each event's type, as GitHub does.
+  events: {
+    pageInfo: done,
+    nodes: MY_PULL.timelineItems.nodes.map((e) => ({ ...e, __typename: 'ReviewRequestedEvent' })),
+  },
   latest: { nodes: [] },
 };
 
@@ -677,10 +687,12 @@ describe('repository pages, end to end', () => {
     const { send } = await signedIn();
     const pull = (await (await send('/api/repos/octo/app/pull/7')).json()) as {
       waitingOn: { kind: string; who: string[] };
-      sizePercentile: number;
+      folders: { path: string }[];
+      comments: number;
     };
     expect(pull.waitingOn).toMatchObject({ kind: 'review', who: ['octo'] });
-    expect(pull.sizePercentile).toBe(1);
+    expect(pull.folders.map((f) => f.path)).toEqual(['src']);
+    expect(pull.comments).toBe(1);
     expect((await send('/api/repos/octo/app/pull/8')).status).toBe(404);
     expect((await send('/api/repos/octo/app/pull/abc')).status).toBe(400);
     expect((await send('/api/repos/octo/a%20b/baseline')).status).toBe(400);

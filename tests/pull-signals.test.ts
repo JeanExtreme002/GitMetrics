@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
 import {
   cutShort,
+  sharedFolder,
   githubPullsUrl,
   hasStatus,
   pullSignals,
@@ -209,5 +210,13 @@ describe('telling the list is cut short', () => {
     expect(cutShort(data({ involved: 1, review: 7 }), 'all')).toBe(true);
     expect(cutShort(data({ authored: 40, involved: 1, review: 1 }), 'all')).toBe(false);
     expect(cutShort(data({ owned: 3 }), 'owned')).toBe(true);
+  });
+});
+
+describe('folders that share a path', () => {
+  it('finds the folder every path sits in, if any', () => {
+    expect(sharedFolder(['infra/prod/web/apps', 'infra/prod/web'])).toBe('infra/prod/web');
+    expect(sharedFolder(['src', 'tests'])).toBe('');
+    expect(sharedFolder(['src/a'])).toBe('');
   });
 });

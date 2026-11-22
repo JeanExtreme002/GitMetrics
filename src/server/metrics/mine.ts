@@ -41,14 +41,19 @@ const CONCLUSIONS: Record<string, PullCheck['conclusion']> = {
  * The checks on a commit, one per name (the latest run wins, so a run cancelled and started
  * again doesn't count as a failure), with how long each took.
  */
-export function readChecks(raw: RawCheck[]): PullCheck[] {
+/** The latest run of each check, by name: a run cancelled and started again counts once. */
+export function latestRuns(raw: RawCheck[]): Map<string, RawCheck> {
   const latest = new Map<string, RawCheck>();
   for (const check of raw) {
     const name = check.name ?? check.context ?? '';
     const previous = latest.get(name);
     if (!previous || (check.startedAt ?? '') >= (previous.startedAt ?? '')) latest.set(name, check);
   }
-  return [...latest.entries()].map(([name, check]) => {
+  return latest;
+}
+
+export function readChecks(raw: RawCheck[]): PullCheck[] {
+  return [...latestRuns(raw).entries()].map(([name, check]) => {
     const value = check.conclusion ?? check.state ?? null;
     const minutes =
       check.startedAt && check.completedAt

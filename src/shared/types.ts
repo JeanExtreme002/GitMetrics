@@ -510,6 +510,30 @@ export interface PullCheck {
   minutes: number | null;
 }
 
+/** One stretch of a pull request's life, for "where the time went". */
+export interface PullPhase {
+  kind: 'draft' | 'waiting' | 'review' | 'approved';
+  hours: number;
+  /** Still going on: the pull request is open and in this stretch now. */
+  ongoing: boolean;
+}
+
+/** Lines changed under one folder. */
+export interface PullFolder {
+  path: string;
+  additions: number;
+  deletions: number;
+  files: number;
+}
+
+/** What happened on one day (or week) of the pull request's life. */
+export interface PullActivityPoint {
+  day: string;
+  commits: number;
+  reviews: number;
+  comments: number;
+}
+
 export interface PullDetail {
   repo: string;
   number: number;
@@ -528,20 +552,19 @@ export interface PullDetail {
   deletions: number;
   changedFiles: number;
   commits: number;
+  /** Comments in the conversation and on the code, plus reviews with a written summary. */
   comments: number;
   reviewThreads: number;
   participants: number;
   stages: PullStage[];
-  /** Hours to first review and to merge (or open so far), next to the repository's medians. */
+  /** Hours from ready for review to the first review by a person, if any. */
   firstReviewHours: number | null;
   /** Open: hours so far. Merged: hours to merge. Closed: null. */
   ageHours: number | null;
-  baseline: RepoBaseline;
-  /** Where this pull request's size falls among the repository's recent merged ones (0 to 1). */
-  sizePercentile: number | null;
+  /** The whole life of the pull request, split into consecutive stretches. */
+  phases: PullPhase[];
   rounds: {
     changesRequested: number;
-    commitsAfterFirstReview: number;
     forcePushes: number;
   };
   reviewers: PullReviewer[];
@@ -550,10 +573,13 @@ export interface PullDetail {
     list: PullCheck[];
     /** Longest check run on the latest commit, in minutes. */
     minutes: number | null;
-    /** Pushes whose checks failed, out of the pushes with checks. */
-    failedPushes: number;
-    pushesWithChecks: number;
+    /** All check runs on the latest commit added up, in minutes. */
+    totalMinutes: number | null;
   };
+  /** Lines changed per folder, or null when GitHub can't list every file. */
+  folders: PullFolder[] | null;
+  /** Commits, reviews and comments over time, or null when any of them can't be listed in full. */
+  activity: { unit: 'day' | 'week'; points: PullActivityPoint[] } | null;
   /** Who or what the pull request is waiting on, while it is open. */
   waitingOn: {
     kind: 'review' | 'author' | 'checks' | 'merge' | 'draft';

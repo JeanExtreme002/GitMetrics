@@ -1,3 +1,4 @@
+import { BarChart } from '@mantine/charts';
 import {
   ActionIcon,
   Avatar,
@@ -13,7 +14,6 @@ import {
 } from '@mantine/core';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import {
-  IconAlertTriangle,
   IconArrowUpRight,
   IconCircleCheck,
   IconCircleDashed,
@@ -37,12 +37,13 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
-import type { PullCheck, PullDetail, PullReviewer, PullStage } from '../../../shared/types';
+import type { PullCheck, PullDetail, PullPhase, PullReviewer, PullStage } from '../../../shared/types';
 import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } from '../../components/ui';
 import { api } from '../../lib/api';
-import { date, dateTime, hours, num, relative } from '../../lib/format';
-import { slower, span } from '../../lib/pulls';
+import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../lib/format';
+import { sharedFolder, span } from '../../lib/pulls';
 import { usePull } from '../../lib/queries';
+import { semantic } from '../../theme';
 
 const STATE: Record<string, { label: string; color: string; icon: ReactNode }> = {
   OPEN: { label: 'Open', color: 'green.7', icon: <IconGitPullRequest size={14} stroke={2.2} /> },
@@ -77,75 +78,87 @@ const CHECK_ICON: Record<PullCheck['conclusion'], ReactNode> = {
   neutral: <IconCircleDashed size={16} stroke={1.8} color="var(--mantine-color-dimmed)" />,
 };
 
+/** The stretches of a pull request's life, each with its color. */
+const PHASE: Record<PullPhase['kind'], { label: string; color: string }> = {
+  draft: { label: 'Draft', color: 'gray.5' },
+  waiting: { label: 'Waiting for a first review', color: 'yellow.6' },
+  review: { label: 'In review', color: 'blue.5' },
+  approved: { label: 'Approved', color: 'green.6' },
+};
+
+const cssColor = (color: string) => `var(--mantine-color-${color.replace('.', '-')})`;
+
 const people = (who: string[]) =>
   who.length <= 2 ? who.join(' and ') : `${who.slice(0, -1).join(', ')} and ${who.at(-1)}`;
 
-/** A value in red when it is far slower than the repository usually is. */
-const paced = (text: string, slow: boolean) =>
-  slow ? (
-    <Text component="span" inherit c="red">
-      {text}
-    </Text>
-  ) : (
-    text
-  );
+const minutes = (value: number) => (value < 1 ? '<1 min' : `${Math.round(value)} min`);
 
-/** The pull request's numbers, as counters like every page's header, each with its context. */
+/** The pull request's numbers, as counters like every page's header. */
 function PullStats({ pull }: { pull: PullDetail }) {
   const open = pull.state === 'OPEN';
-  const usual = (value: number | null) =>
-    value === null ? '' : ` Usually ${span(value)} in this repository.`;
-  const size = pull.additions + pull.deletions;
-  const pct = pull.sizePercentile;
   return (
     <Counters>
       <Counter
         icon={IconEye}
-        value={paced(
-          pull.firstReviewHours !== null ? span(pull.firstReviewHours) : open ? 'Not yet' : 'None',
-          pull.firstReviewHours !== null && slower(pull.firstReviewHours, pull.baseline.firstReviewHours),
-        )}
+        value={pull.firstReviewHours !== null ? span(pull.firstReviewHours) : open ? 'Not yet' : 'None'}
         label="First review"
         hint={
           pull.firstReviewHours !== null
-            ? `First reviewed ${hours(pull.firstReviewHours)} after it was ready.${usual(pull.baseline.firstReviewHours)}`
+            ? `First reviewed ${hours(pull.firstReviewHours)} after it was ready for review`
             : open
-              ? `Nobody has reviewed it yet.${usual(pull.baseline.firstReviewHours)}`
-              : `${pull.state === 'MERGED' ? 'Merged' : 'Closed'} without a review.`
+              ? 'Nobody has reviewed it yet'
+              : `${pull.state === 'MERGED' ? 'Merged' : 'Closed'} without a review`
         }
       />
       <Counter
         icon={IconClockHour4}
-        value={paced(
-          pull.ageHours !== null ? span(pull.ageHours) : date(pull.closedAt),
-          pull.ageHours !== null && slower(pull.ageHours, pull.baseline.mergeHours),
-        )}
+        value={pull.ageHours !== null ? span(pull.ageHours) : date(pull.closedAt)}
         label={pull.state === 'MERGED' ? 'Merged after' : open ? 'Open for' : 'Closed'}
         hint={
           pull.state === 'CLOSED'
-            ? 'Closed without being merged.'
-            : `${pull.state === 'MERGED' ? 'Merged' : 'Open for'} ${hours(pull.ageHours)}${pull.state === 'MERGED' ? ' after it was opened' : ''}.${usual(pull.baseline.mergeHours)}`
+            ? 'Closed without being merged'
+            : `${pull.state === 'MERGED' ? 'Merged' : 'Open for'} ${hours(pull.ageHours)}${pull.state === 'MERGED' ? ' after it was opened' : ''}`
         }
       />
       <Counter
         icon={IconFileDiff}
-        value={num(size)}
+        value={num(pull.additions + pull.deletions)}
         label="Lines changed"
-        hint={`+${num(pull.additions)} −${num(pull.deletions)} in ${num(pull.changedFiles)} files.${
-          pct === null
-            ? ''
-            : pct >= 0.5
-              ? ` Bigger than ${Math.round(pct * 100)}% of the recent merged ones here.`
-              : ` Smaller than ${Math.round((1 - pct) * 100)}% of the recent merged ones here.`
-        }`}
+        hint={`+${num(pull.additions)} −${num(pull.deletions)} in ${num(pull.changedFiles)} files`}
       />
       <Counter
         icon={IconPencil}
         value={num(pull.rounds.changesRequested)}
         label="Changes requested"
-        hint={`${num(pull.rounds.commitsAfterFirstReview)} commits after the first review, ${num(pull.rounds.forcePushes)} force pushes.`}
+        hint={`Reviews that asked for changes · ${num(pull.rounds.forcePushes)} force pushes`}
       />
     </Counters>
+  );
+}
+
+/** What went into the pull request, as one compact line under the description. */
+function ActivityLine({ pull }: { pull: PullDetail }) {
+  const items: [number, string, string, Icon][] = [
+    [pull.commits, 'commit', 'commits', IconGitCommit],
+    [pull.changedFiles, 'file changed', 'files changed', IconFiles],
+    [pull.comments, 'comment', 'comments', IconMessageCircle],
+    [pull.reviewThreads, 'review thread', 'review threads', IconMessages],
+    [pull.participants, 'person involved', 'people involved', IconUsers],
+  ];
+  return (
+    <Group gap="lg" mt={12} wrap="wrap">
+      {items.map(([value, one, many, ItemIcon]) => (
+        <Group key={many} gap={6} wrap="nowrap">
+          <ItemIcon size={15} stroke={1.7} color="var(--mantine-color-dimmed)" />
+          <Text fz={13} c="dimmed">
+            <Text component="span" inherit fw={600} c="var(--mantine-color-text)" className="tabular">
+              {num(value)}
+            </Text>{' '}
+            {value === 1 ? one : many}
+          </Text>
+        </Group>
+      ))}
+    </Group>
   );
 }
 
@@ -155,25 +168,17 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
   if (!w) return null;
   const waited = w.since ? (Date.now() - new Date(w.since).getTime()) / 3_600_000 : null;
   const forHow = waited === null ? '' : ` for ${span(waited)}`;
-  // The repository's usual pace only applies while nobody has reviewed it yet.
-  const firstWait = w.kind === 'review' && pull.firstReviewHours === null;
-  const usual = pull.baseline.firstReviewHours;
-  const late = firstWait && waited !== null && slower(waited, usual);
   const reviewed = pull.reviewers.filter((r) => r.state !== 'PENDING').length;
 
   const [IconFor, color, text, detail]: [Icon, string, string, string | null] =
     w.kind === 'review'
       ? [
-          late ? IconAlertTriangle : IconHourglass,
-          late ? 'red' : 'yellow',
+          IconHourglass,
+          'yellow',
           w.who.length
             ? `Waiting for a review from ${people(w.who)}${forHow}.`
             : `Waiting for a first review${forHow}.`,
-          firstWait
-            ? usual === null
-              ? null
-              : `A first review here usually comes within ${span(usual)}.`
-            : `Already reviewed by ${num(reviewed)} ${reviewed === 1 ? 'person' : 'people'}.`,
+          reviewed ? `Already reviewed by ${num(reviewed)} ${reviewed === 1 ? 'person' : 'people'}.` : null,
         ]
       : w.kind === 'author'
         ? [
@@ -208,6 +213,88 @@ function WaitingOn({ pull }: { pull: PullDetail }) {
         )}
       </Text>
     </Group>
+  );
+}
+
+/** The whole life of the pull request as one bar, split into the stretches it went through. */
+function TimeSpent({ pull }: { pull: PullDetail }) {
+  const total = pull.phases.reduce((sum, p) => sum + p.hours, 0);
+  if (!total) return null;
+  const until = pull.state === 'MERGED' ? 'merged' : pull.state === 'CLOSED' ? 'closed' : 'now';
+  const label = (p: PullPhase) =>
+    p.kind === 'approved'
+      ? pull.state === 'OPEN'
+        ? 'Approved, waiting to be merged'
+        : `Approved, until ${until}`
+      : p.kind === 'waiting' && pull.state !== 'OPEN' && pull.firstReviewHours === null
+        ? `No review, until ${until}`
+        : PHASE[p.kind].label;
+  return (
+    <Box mb={44}>
+      <SectionHeader
+        title="Where the time went"
+        caption={`${hours(total)} from opening to ${until}, by stretch`}
+      />
+      <div className="pr-time-bar">
+        {pull.phases.map((p) => (
+          <Tooltip key={p.kind} label={`${label(p)}: ${hours(p.hours)}`}>
+            <div
+              className="pr-time-segment"
+              style={{ flexGrow: p.hours, background: cssColor(PHASE[p.kind].color) }}
+            />
+          </Tooltip>
+        ))}
+      </div>
+      <Group gap="xl" mt="md" wrap="wrap">
+        {pull.phases.map((p) => (
+          <Group key={p.kind} gap={8} wrap="nowrap" align="flex-start">
+            <span className="pr-time-dot" style={{ background: cssColor(PHASE[p.kind].color) }} />
+            <Box>
+              <Text size="sm" fw={500}>
+                {label(p)}
+                {p.ongoing ? ' (now)' : ''}
+              </Text>
+              <Text size="xs" c="dimmed" className="tabular">
+                {hours(p.hours)} · {percent(p.hours / total)}
+              </Text>
+            </Box>
+          </Group>
+        ))}
+      </Group>
+    </Box>
+  );
+}
+
+/** Commits, reviews and comments over the pull request's life. */
+function ActivityChart({ pull }: { pull: PullDetail }) {
+  const activity = pull.activity;
+  if (!activity || activity.points.length < 2) return null;
+  return (
+    <Box mb={44}>
+      <SectionHeader
+        title="Activity over time"
+        caption={`Commits, reviews and comments per ${activity.unit}, from opening to ${
+          pull.state === 'MERGED' ? 'merge' : pull.state === 'CLOSED' ? 'closing' : 'today'
+        }`}
+      />
+      <BarChart
+        h={220}
+        data={activity.points}
+        dataKey="day"
+        type="stacked"
+        series={[
+          { name: 'commits', label: 'Commits', color: semantic.commits },
+          { name: 'reviews', label: 'Reviews', color: 'violet.5' },
+          { name: 'comments', label: 'Comments', color: 'gray.5' },
+        ]}
+        gridAxis="y"
+        withLegend
+        legendProps={{ verticalAlign: 'top', height: 40 }}
+        xAxisProps={{ tickFormatter: dayLabel, minTickGap: 24 }}
+        yAxisProps={{ allowDecimals: false }}
+        barProps={{ radius: [3, 3, 0, 0], maxBarSize: 22 }}
+      />
+    </Box>
   );
 }
 
@@ -257,6 +344,13 @@ function Timeline({ pull }: { pull: PullDetail }) {
   );
 }
 
+/** A pending request reads differently once someone reviewed already, or the pull request ended. */
+function reviewState(r: PullReviewer, pull: PullDetail) {
+  if (r.state !== 'PENDING') return REVIEW[r.state];
+  if (pull.state !== 'OPEN') return { label: 'Not reviewed', color: 'gray' };
+  return r.reviews > 0 ? { label: 'Requested again', color: 'yellow' } : REVIEW.PENDING;
+}
+
 function Reviewers({ pull }: { pull: PullDetail }) {
   return (
     <Box>
@@ -281,8 +375,8 @@ function Reviewers({ pull }: { pull: PullDetail }) {
                       : 'Asked'}
                 </Text>
               </Box>
-              <Badge variant="light" color={REVIEW[r.state].color} tt="none" radius="sm">
-                {REVIEW[r.state].label}
+              <Badge variant="light" color={reviewState(r, pull).color} tt="none" radius="sm">
+                {reviewState(r, pull).label}
               </Badge>
             </div>
           ))}
@@ -290,6 +384,60 @@ function Reviewers({ pull }: { pull: PullDetail }) {
       ) : (
         <NoData>No reviews yet.</NoData>
       )}
+    </Box>
+  );
+}
+
+/** Lines changed per folder, with a bar split into additions and deletions. */
+function Changes({ pull }: { pull: PullDetail }) {
+  if (!pull.folders?.length) return null;
+  // A long path every folder starts with is said once, in the caption, instead of on every row.
+  const paths = pull.folders.map((f) => f.path).filter((p) => p !== 'Other' && p !== '(root)');
+  const shared = sharedFolder(paths);
+  const folders = pull.folders.map((f) => ({
+    ...f,
+    name: shared && f.path.startsWith(shared) ? f.path.slice(shared.length + 1) || '(this folder)' : f.path,
+  }));
+  const max = Math.max(...folders.map((f) => f.additions + f.deletions), 1);
+  return (
+    <Box mb={44}>
+      <SectionHeader
+        title="Where the change is"
+        caption={`Lines changed per folder${shared ? ` under ${shared}` : ''}, across all ${num(pull.changedFiles)} ${pull.changedFiles === 1 ? 'file' : 'files'}`}
+      />
+      <div className="rank-list">
+        {folders.map((f) => {
+          const lines = f.additions + f.deletions;
+          return (
+            <div key={f.path} className="pr-folder">
+              <Tooltip label={`${f.path} · ${num(f.files)} ${f.files === 1 ? 'file' : 'files'}`}>
+                <Text size="sm" fw={500} truncate>
+                  {f.name}
+                </Text>
+              </Tooltip>
+              <div className="rank-track pr-folder-track">
+                <div
+                  style={{ width: `${(f.additions / max) * 100}%`, background: cssColor(semantic.additions) }}
+                />
+                <div
+                  style={{ width: `${(f.deletions / max) * 100}%`, background: cssColor(semantic.deletions) }}
+                />
+              </div>
+              <Group gap={6} wrap="nowrap" justify="flex-end" className="tabular">
+                <Text size="xs" c="green">
+                  +{num(f.additions)}
+                </Text>
+                <Text size="xs" c="red">
+                  −{num(f.deletions)}
+                </Text>
+              </Group>
+              <Text size="xs" c="dimmed" ta="right" className="tabular">
+                {percent(lines / Math.max(pull.additions + pull.deletions, 1))}
+              </Text>
+            </div>
+          );
+        })}
+      </div>
     </Box>
   );
 }
@@ -313,8 +461,8 @@ function Checks({ pull }: { pull: PullDetail }) {
     count('skipped', 'cancelled', 'neutral')
       ? `${num(count('skipped', 'cancelled', 'neutral'))} skipped`
       : null,
-    c.minutes !== null ? `longest took ${Math.max(1, Math.round(c.minutes))} min` : null,
-    c.pushesWithChecks > 1 ? `failed on ${num(c.failedPushes)} of ${num(c.pushesWithChecks)} commits` : null,
+    c.minutes !== null ? `longest ${minutes(c.minutes)}` : null,
+    c.totalMinutes !== null ? `${minutes(c.totalMinutes)} in total` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -339,38 +487,12 @@ function Checks({ pull }: { pull: PullDetail }) {
               {x.name}
             </Text>
             <Text size="xs" c="dimmed" className="tabular">
-              {x.minutes === null ? '' : x.minutes < 1 ? '<1 min' : `${Math.round(x.minutes)} min`}
+              {x.minutes === null ? '' : minutes(x.minutes)}
             </Text>
           </div>
         ))}
       </div>
     </Box>
-  );
-}
-
-/** What went into the pull request, as one compact line under the description. */
-function ActivityLine({ pull }: { pull: PullDetail }) {
-  const items: [number, string, string, Icon][] = [
-    [pull.commits, 'commit', 'commits', IconGitCommit],
-    [pull.changedFiles, 'file changed', 'files changed', IconFiles],
-    [pull.comments, 'comment', 'comments', IconMessageCircle],
-    [pull.reviewThreads, 'review thread', 'review threads', IconMessages],
-    [pull.participants, 'person involved', 'people involved', IconUsers],
-  ];
-  return (
-    <Group gap="lg" mt={12} wrap="wrap">
-      {items.map(([value, one, many, ItemIcon]) => (
-        <Group key={many} gap={6} wrap="nowrap">
-          <ItemIcon size={15} stroke={1.7} color="var(--mantine-color-dimmed)" />
-          <Text fz={13} c="dimmed">
-            <Text component="span" inherit fw={600} c="var(--mantine-color-text)" className="tabular">
-              {num(value)}
-            </Text>{' '}
-            {value === 1 ? one : many}
-          </Text>
-        </Group>
-      ))}
-    </Group>
   );
 }
 
@@ -460,6 +582,8 @@ export function Pull() {
         {(data) => (
           <>
             <WaitingOn pull={data} />
+            <TimeSpent pull={data} />
+            <ActivityChart pull={data} />
             {/* Two independent columns, so a longer list never leaves a gap on the other side. */}
             <Grid gap={48}>
               <Grid.Col span={{ base: 12, lg: 6 }}>
@@ -468,8 +592,8 @@ export function Pull() {
                   <Reviewers pull={data} />
                 </Box>
               </Grid.Col>
-              {/* Checks are usually the longest list, so they get a column of their own. */}
               <Grid.Col span={{ base: 12, lg: 6 }}>
+                <Changes pull={data} />
                 <Checks pull={data} />
               </Grid.Col>
             </Grid>
@@ -485,14 +609,9 @@ export function Pull() {
                 leftSection={<MarkGithubIcon size={14} />}
                 rightSection={<IconArrowUpRight size={14} />}
               >
-                See the code and the conversation on GitHub
+                See it on GitHub
               </Button>
             </Group>
-            {data.baseline.sample > 0 && (
-              <Text size="xs" c="dimmed" mt="xs" ta="center">
-                Compared with the last {num(data.baseline.sample)} merged pull requests in this repository.
-              </Text>
-            )}
           </>
         )}
       </QueryView>

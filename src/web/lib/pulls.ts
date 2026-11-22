@@ -169,3 +169,16 @@ export function cutShort(data: MyPullsResponse, filter: PullFilter): boolean {
     (search) => data.counts[search] > data.pulls.filter((p) => p.roles.includes(search)).length,
   );
 }
+
+/** The folder every path sits in, if they share one: "a/b" for "a/b/c" and "a/b". */
+export function sharedFolder(paths: string[]): string {
+  if (paths.length < 2) return '';
+  const split = paths.map((p) => p.split('/'));
+  const common: string[] = [];
+  for (let i = 0; i < split[0]!.length; i++) {
+    const part = split[0]![i]!;
+    if (split.every((s) => s[i] === part)) common.push(part);
+    else break;
+  }
+  return common.join('/');
+}

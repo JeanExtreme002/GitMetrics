@@ -248,7 +248,7 @@ export function createApp(options: AppOptions = {}) {
     const pull = await memory.wrap(
       `${config.auth!.login}:pull:${owner}/${repo}#${number}`.toLowerCase(),
       2 * MINUTE,
-      async () => getPull(gh, owner, repo, Number(number), await baseline(gh, `${owner}/${repo}`)),
+      () => getPull(gh, owner, repo, Number(number)),
       c.req.query('refresh') === '1',
     );
     if (!pull) return c.json({ error: 'Pull request not found.', status: 404 }, 404);
