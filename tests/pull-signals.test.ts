@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MyPull } from '../src/shared/types';
 import {
+  cutShort,
   githubPullsUrl,
   hasStatus,
   pullSignals,
@@ -165,5 +166,22 @@ describe('the search box', () => {
     expect(decodeURIComponent(githubPullsUrl('open', 'authored', '', 'cache').split('?q=')[1]!)).toBe(
       'is:pr is:open author:@me cache sort:updated-desc',
     );
+  });
+});
+
+describe('telling the list is cut short', () => {
+  const data = (counts: Partial<Record<'authored' | 'assigned' | 'involved' | 'review', number>>) => ({
+    state: 'closed' as const,
+    counts: { all: 0, authored: 0, assigned: 0, involved: 0, review: 0, ...counts },
+    pulls: [pull({ roles: ['authored', 'involved'] }), pull({ roles: ['review'] })],
+  });
+
+  it('only when GitHub found more than the list brought for that tab', () => {
+    expect(cutShort(data({ authored: 1, involved: 1, review: 1 }), 'authored')).toBe(false);
+    expect(cutShort(data({ authored: 40, involved: 1, review: 1 }), 'authored')).toBe(true);
+    expect(cutShort(data({ authored: 40, involved: 1, review: 1 }), 'review')).toBe(false);
+    // "All" stands on what you're involved in and on review requests.
+    expect(cutShort(data({ involved: 1, review: 7 }), 'all')).toBe(true);
+    expect(cutShort(data({ authored: 40, involved: 1, review: 1 }), 'all')).toBe(false);
   });
 });

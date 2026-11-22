@@ -1,4 +1,4 @@
-import type { MyPull, PullFilter, RepoBaseline } from '../../shared/types';
+import type { MyPull, MyPullsResponse, PullFilter, RepoBaseline } from '../../shared/types';
 
 const HOUR = 3_600_000;
 
@@ -129,4 +129,20 @@ export function searchText(input: string): { text: string } | { invalid: true } 
   const text = input.trim().replace(/\s+/g, ' ');
   if (text.length < 2) return null;
   return text.length <= 100 && SEARCH_TEXT.test(text) ? { text } : { invalid: true };
+}
+
+/** The GitHub searches behind a tab: "All" is what you're involved in plus review requests. */
+const TAB_SEARCHES: Record<PullFilter, Exclude<PullFilter, 'all'>[]> = {
+  all: ['involved', 'review'],
+  authored: ['authored'],
+  assigned: ['assigned'],
+  involved: ['involved'],
+  review: ['review'],
+};
+
+/** Whether GitHub found more pull requests for a tab than the list brought, so some are missing. */
+export function cutShort(data: MyPullsResponse, filter: PullFilter): boolean {
+  return TAB_SEARCHES[filter].some(
+    (search) => data.counts[search] > data.pulls.filter((p) => p.roles.includes(search)).length,
+  );
 }

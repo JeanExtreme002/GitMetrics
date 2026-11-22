@@ -35,6 +35,7 @@ import { Counter, Counters, EmptyState, PageHeader, QueryView } from '../compone
 import { api } from '../lib/api';
 import { num, relative } from '../lib/format';
 import {
+  cutShort,
   githubPullsUrl,
   hasStatus,
   inFilter,
@@ -334,28 +335,28 @@ export function MyPulls() {
         {(data) => {
           const pulls = data.pulls.filter((p) => inFilter(p, filter) && (!narrowed || narrowed(p)));
           const matching = search ? ` matching “${search.text}”` : '';
-          const note =
-            state === 'closed' || search ? (
-              <Stack align="center" gap={8} mt="md">
-                <Text size="xs" c="dimmed" ta="center">
-                  {search
-                    ? 'The most recently updated matches, up to 30 for each filter.'
-                    : 'The most recently updated ones, up to 30 for each filter.'}
-                </Text>
-                <Button
-                  component="a"
-                  href={githubPullsUrl(state, filter, owner, search?.text)}
-                  target="_blank"
-                  variant="subtle"
-                  color="gray"
-                  size="compact-sm"
-                  leftSection={<MarkGithubIcon size={14} />}
-                  rightSection={<IconArrowUpRight size={14} />}
-                >
-                  See all on GitHub
-                </Button>
-              </Stack>
-            ) : null;
+          // Only when GitHub has more than the list brought: otherwise the list is already complete.
+          const note = cutShort(data, filter) ? (
+            <Stack align="center" gap={8} mt="md">
+              <Text size="xs" c="dimmed" ta="center">
+                {search
+                  ? 'The most recently updated matches, up to 30 for each filter.'
+                  : 'The most recently updated ones, up to 30 for each filter.'}
+              </Text>
+              <Button
+                component="a"
+                href={githubPullsUrl(state, filter, owner, search?.text)}
+                target="_blank"
+                variant="subtle"
+                color="gray"
+                size="compact-sm"
+                leftSection={<MarkGithubIcon size={14} />}
+                rightSection={<IconArrowUpRight size={14} />}
+              >
+                See all on GitHub
+              </Button>
+            </Stack>
+          ) : null;
           if (!pulls.length) {
             return (
               <>
