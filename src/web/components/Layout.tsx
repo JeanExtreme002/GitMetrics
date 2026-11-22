@@ -3,7 +3,6 @@ import {
   Affix,
   AppShell,
   Avatar,
-  Badge,
   Box,
   Burger,
   CloseButton,
@@ -26,7 +25,6 @@ import { useDebouncedValue, useDisclosure, useLocalStorage } from '@mantine/hook
 import { Spotlight, spotlight, type SpotlightActionData } from '@mantine/spotlight';
 import {
   IconArrowLeft,
-  IconArrowRight,
   IconBook2,
   IconCode,
   IconChartArea,
@@ -334,21 +332,10 @@ function UpdatePopup() {
       <Transition mounted={show} transition="slide-up" duration={220}>
         {(style) => (
           <Paper style={style} className="update-popup" shadow="lg" withBorder role="status">
-            <Group justify="space-between" wrap="nowrap" align="flex-start" gap="sm">
+            <Group justify="space-between" wrap="nowrap" align="center" gap="sm">
               <Group gap={12} wrap="nowrap" align="center">
                 <Logo size={36} />
-                <Box>
-                  <Text fw={700}>Your GitMetrics is out of date</Text>
-                  <Group gap={6} mt={4} wrap="nowrap">
-                    <Badge variant="default" tt="none" className="update-old">
-                      {data?.current}
-                    </Badge>
-                    <IconArrowRight size={14} stroke={2} color="var(--mantine-color-dimmed)" />
-                    <Badge color="green" variant="light" tt="none">
-                      {data?.latest}
-                    </Badge>
-                  </Group>
-                </Box>
+                <Text fw={700}>Your GitMetrics is out of date</Text>
               </Group>
               <CloseButton size="sm" aria-label="Dismiss" onClick={() => setDismissed(data?.latest ?? '')} />
             </Group>

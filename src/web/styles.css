@@ -810,9 +810,3 @@
   flex: 1;
   min-width: 0;
 }
-
-/* The version you are on, crossed out next to the new one. */
-.update-old {
-  text-decoration: line-through;
-  color: var(--mantine-color-dimmed);
-}
