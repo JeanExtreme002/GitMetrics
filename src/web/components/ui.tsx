@@ -245,8 +245,9 @@ export function ChartCard({
 export function PageSkeleton() {
   return (
     <Stack gap="md">
-      <Skeleton h={34} w={260} />
-      <Skeleton h={18} w={420} mb="md" />
+      {/* Capped at the screen width, so the loading page never runs off a phone. */}
+      <Skeleton h={34} w={260} maw="100%" />
+      <Skeleton h={18} w={420} maw="100%" mb="md" />
       <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }}>
         {[0, 1, 2, 3].map((i) => (
           <Skeleton key={i} h={110} radius="lg" />

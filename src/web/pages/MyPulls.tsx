@@ -245,6 +245,7 @@ export function MyPulls() {
   const [owner, setOwner] = useState('');
   // Your repositories only exist under your account: the tab shows for all accounts or yours.
   const yoursShown = !owner || owner.toLowerCase() === login.toLowerCase();
+  const tabs = yoursShown ? FILTERS : FILTERS.filter((f) => f.value !== 'owned');
   const chooseOwner = (next: string) => {
     setOwner(next);
     const stillYours = !next || next.toLowerCase() === login.toLowerCase();
@@ -313,14 +314,26 @@ export function MyPulls() {
       />
 
       <Group justify="space-between" mb="md" gap="sm">
-        <Box className="filter-scroll">
+        {/* Tabs side by side where they fit; a picker on narrow screens, where they would be cut off. */}
+        <Box className="filter-scroll" visibleFrom="md">
           <SegmentedControl
             size="xs"
             value={filter}
             onChange={(v) => setFilter(v as PullFilter)}
-            data={yoursShown ? FILTERS : FILTERS.filter((f) => f.value !== 'owned')}
+            data={tabs}
           />
         </Box>
+        <Select
+          hiddenFrom="md"
+          size="xs"
+          w="100%"
+          aria-label="Pull requests to show"
+          value={filter}
+          onChange={(v) => v && setFilter(v as PullFilter)}
+          data={tabs}
+          allowDeselect={false}
+          comboboxProps={{ withinPortal: true }}
+        />
         {/* On narrow screens the controls wrap onto more lines instead of running off the screen. */}
         <Group gap="sm" wrap="wrap">
           {state === 'open' && (
