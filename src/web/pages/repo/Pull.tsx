@@ -556,7 +556,8 @@ function Timeline({ pull }: { pull: PullDetail }) {
             />
             <Box miw={0}>
               <Text size="sm" fw={500}>
-                {STAGE[s.kind]}
+                {/* An approval is final once merged; while open (or closed unmerged) it could still change. */}
+                {s.kind === 'approved' && pull.state !== 'MERGED' ? 'Approved' : STAGE[s.kind]}
                 {s.login && (
                   <Text component="span" inherit fw={400} c="dimmed">
                     {' '}
