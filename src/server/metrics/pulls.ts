@@ -174,6 +174,11 @@ export function buildPulls(
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .slice(0, 6)
       .map(toPullItem),
+    openNewest: pulls
+      .filter((p) => p.state === 'OPEN')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 6)
+      .map(toPullItem),
     recentMerged: merged
       .sort((a, b) => b.mergedAt!.localeCompare(a.mergedAt!))
       .slice(0, 6)

@@ -212,6 +212,8 @@ export interface PullsResponse {
   sizes: { size: string; count: number }[];
   topAuthors: PersonCount[];
   openOldest: PullItem[];
+  /** The open pull requests opened most recently. */
+  openNewest: PullItem[];
   recentMerged: PullItem[];
 }
 

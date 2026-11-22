@@ -83,14 +83,17 @@ describe('pull requests', () => {
         pull({ number: 2, mergedAt: '2025-06-02T06:00:00Z' }),
         pull({ number: 3, state: 'OPEN', mergedAt: null, closedAt: null, createdAt: '2025-05-01T00:00:00Z' }),
         pull({ number: 4, state: 'CLOSED', mergedAt: null, author: null }),
+        pull({ number: 5, state: 'OPEN', mergedAt: null, closedAt: null, createdAt: '2025-05-20T00:00:00Z' }),
       ],
       now,
     );
     expect(result.medianTimeToMergeHours).toBe(20);
     expect(result.mergeRate).toBe(0.75);
     expect(result.monthly.at(-1)).toEqual({ month: '2025-06', opened: 3, merged: 2, closed: 1 });
-    expect(result.openOldest.map((p) => p.number)).toEqual([3]);
-    expect(result.topAuthors).toEqual([{ login: 'octocat', avatarUrl: '', count: 3 }]);
+    expect(result.openOldest.map((p) => p.number)).toEqual([3, 5]);
+    // The same open pull requests, the most recently opened first.
+    expect(result.openNewest.map((p) => p.number)).toEqual([5, 3]);
+    expect(result.topAuthors).toEqual([{ login: 'octocat', avatarUrl: '', count: 4 }]);
   });
 });
 
