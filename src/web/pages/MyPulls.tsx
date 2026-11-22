@@ -1,5 +1,4 @@
 import { Avatar, Badge, Box, Group, SegmentedControl, Select, Switch, Text, Tooltip } from '@mantine/core';
-import { useLocalStorage } from '@mantine/hooks';
 import {
   IconClockHour4,
   IconEye,
@@ -197,26 +196,11 @@ function Totals({ owner }: { owner: string }) {
 
 export function MyPulls() {
   const [state, setState] = useState<'open' | 'closed'>('open');
-  const [filter, setFilter] = useLocalStorage<PullFilter>({
-    key: 'gitmetrics:my-pulls-filter',
-    defaultValue: 'all',
-    getInitialValueInEffect: false,
-  });
-  const [owner, setOwner] = useLocalStorage<string>({
-    key: 'gitmetrics:my-pulls-owner',
-    defaultValue: '',
-    getInitialValueInEffect: false,
-  });
-  const [status, setStatus] = useLocalStorage<PullStatus | ''>({
-    key: 'gitmetrics:my-pulls-status',
-    defaultValue: '',
-    getInitialValueInEffect: false,
-  });
-  const [drafts, setDrafts] = useLocalStorage<boolean>({
-    key: 'gitmetrics:my-pulls-drafts',
-    defaultValue: true,
-    getInitialValueInEffect: false,
-  });
+  // Every visit starts from the defaults: the filters only last while you are on the page.
+  const [filter, setFilter] = useState<PullFilter>('all');
+  const [owner, setOwner] = useState('');
+  const [status, setStatus] = useState<PullStatus | ''>('');
+  const [drafts, setDrafts] = useState(true);
   const query = useMyPulls(state, owner);
   /** The draft switch and the status picker, as one check, or null when neither narrows the list. */
   const narrowed =
