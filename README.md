@@ -56,7 +56,7 @@ See where every repository is heading: stars gained, release cadence, how fast p
 
 ## Traffic history that never expires
 
-GitHub keeps only the last 14 days of traffic. GitMetrics saves each window on your machine and merges it with what it saw before, so your views and clones history keeps growing for as long as you use it.
+GitHub keeps only the last 14 days of traffic. Each time you open GitMetrics (and once a day while it stays open), it saves the traffic of all your repositories, and of any other you opened in the last year, merging it with what it saw before. Your views and clones history keeps growing, even for repositories you don't open, as long as you start GitMetrics at least every two weeks.
 
 ## Signing in
 

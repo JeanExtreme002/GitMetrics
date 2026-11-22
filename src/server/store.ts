@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import type { AuthSource } from '../shared/types.js';
@@ -19,7 +19,7 @@ interface StoredConfig {
   favorites: string[];
 }
 
-function readJson<T>(file: string, fallback: T): T {
+export function readJson<T>(file: string, fallback: T): T {
   try {
     return JSON.parse(readFileSync(file, 'utf8')) as T;
   } catch {
@@ -27,9 +27,15 @@ function readJson<T>(file: string, fallback: T): T {
   }
 }
 
-function writePrivate(file: string, value: unknown) {
+/**
+ * Writes a file only its owner can read. It is written beside its place first and then moved in
+ * one step, so another GitMetrics writing the same file, or a crash halfway, never leaves it cut.
+ */
+export function writePrivate(file: string, value: unknown) {
   mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  writeFileSync(file, JSON.stringify(value, null, 2), { mode: 0o600 });
+  const temporary = `${file}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });
+  renameSync(temporary, file);
 }
 
 /** Persists the token and preferences in ~/.gitmetrics/config.json (owner-only permissions). */

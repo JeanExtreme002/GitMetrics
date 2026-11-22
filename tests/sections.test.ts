@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -453,6 +453,35 @@ describe('repository pages, end to end', () => {
     };
     return { ...github, send, page };
   }
+
+  it('keeps the traffic history growing on its own, for your repositories and the ones you open', async () => {
+    const day = isoDaysAgo(1);
+    const traffic = (kind: string) => () =>
+      json({ count: 4, uniques: 3, [kind]: [{ timestamp: day, count: 4, uniques: 3 }] });
+    const { send, page, calls } = await signedIn({
+      '/user/repos': () => json([REPO]),
+      '/repos/octo/app/traffic/views': traffic('views'),
+      '/repos/octo/app/traffic/clones': traffic('clones'),
+    });
+    // Opening a repository's page: a visit, and the first request starts today's collection.
+    await page('stars');
+    const history = path.join(dir, 'traffic', 'octo__app.json');
+    await vi.waitFor(() => expect(existsSync(history)).toBe(true));
+    expect(JSON.parse(readFileSync(history, 'utf8'))).toEqual({
+      views: { [day.slice(0, 10)]: [4, 3] },
+      clones: { [day.slice(0, 10)]: [4, 3] },
+    });
+    // The pull request list's baselines, and a page that didn't load, aren't visits.
+    await send('/api/repos/acme/api/baseline');
+    await send('/api/repos/acme/missing/stars');
+    const saved = JSON.parse(readFileSync(path.join(dir, 'collection.json'), 'utf8'));
+    expect(Object.keys(saved.octo.visits)).toEqual(['octo/app']);
+    expect(saved.octo.collectedOn).toBe(new Date().toISOString().slice(0, 10));
+    // Once a day: later requests don't collect again.
+    const asked = calls.filter((c) => c.includes('/traffic/')).length;
+    await page('stars');
+    expect(calls.filter((c) => c.includes('/traffic/')).length).toBe(asked);
+  });
 
   it('stars: history, recent stargazers and totals', async () => {
     const { page } = await signedIn();
