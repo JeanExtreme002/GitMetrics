@@ -428,7 +428,8 @@ export interface RankingResponse {
 // Your pull requests ------------------------------------------------------
 
 /** How you are related to a pull request. "involved" covers all of them. */
-export type PullFilter = 'all' | 'authored' | 'assigned' | 'involved' | 'review';
+/** How you are related to a pull request; "owned" is one someone else opened in your repositories. */
+export type PullFilter = 'all' | 'authored' | 'assigned' | 'involved' | 'review' | 'owned';
 
 /** What a repository's merged pull requests usually look like, to put one in context. */
 export interface RepoBaseline {
@@ -473,7 +474,7 @@ export interface MyPull {
   /** When someone other than the author first reviewed it. */
   firstReviewAt: string | null;
   /** Which of GitHub's searches found it; "all" holds every one. */
-  roles: ('authored' | 'assigned' | 'involved' | 'review')[];
+  roles: ('authored' | 'assigned' | 'involved' | 'review' | 'owned')[];
 }
 
 export interface MyPullsResponse {

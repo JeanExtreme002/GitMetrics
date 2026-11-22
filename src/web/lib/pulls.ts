@@ -79,7 +79,7 @@ export function pullSignals(p: MyPull, baseline?: RepoBaseline, now = Date.now()
       color: slower(waited, baseline?.firstReviewHours) ? 'red' : 'yellow',
       hint: `Your review was asked for ${span(waited)} ago.${usually('a first review', baseline?.firstReviewHours)}`,
     });
-  } else if (p.roles.includes('authored') && !p.firstReviewAt && !p.isDraft) {
+  } else if ((p.roles.includes('authored') || p.roles.includes('owned')) && !p.firstReviewAt && !p.isDraft) {
     const waited = since(p.createdAt);
     signals.push({
       label: `No review yet · ${span(waited)}`,
@@ -116,8 +116,19 @@ export const inFilter = (p: MyPull, filter: PullFilter) => filter === 'all' || p
  * The same list on github.com/pulls, which lists everything, not just the latest. "All" opens
  * involves:@me, the closest single GitHub search to it.
  */
-export function githubPullsUrl(state: 'open' | 'closed', filter: PullFilter, owner = '', text = ''): string {
-  const who: Record<PullFilter, string> = {
+export function githubPullsUrl(
+  state: 'open' | 'closed',
+  filter: PullFilter,
+  owner = '',
+  text = '',
+  login = '',
+): string {
+  // Your repositories are your account's, so that tab names it and leaves out any other account.
+  if (filter === 'owned') {
+    const q = `is:pr is:${state} user:${login} -author:@me${text ? ` ${text}` : ''} sort:updated-desc`;
+    return `https://github.com/pulls?q=${encodeURIComponent(q)}`;
+  }
+  const who: Record<Exclude<PullFilter, 'owned'>, string> = {
     all: 'involves:@me',
     authored: 'author:@me',
     assigned: 'assignee:@me',
@@ -144,11 +155,12 @@ export function searchText(input: string): { text: string } | { invalid: true } 
 
 /** The GitHub searches behind a tab: "All" is what you're involved in plus review requests. */
 const TAB_SEARCHES: Record<PullFilter, Exclude<PullFilter, 'all'>[]> = {
-  all: ['involved', 'review'],
+  all: ['involved', 'review', 'owned'],
   authored: ['authored'],
   assigned: ['assigned'],
   involved: ['involved'],
   review: ['review'],
+  owned: ['owned'],
 };
 
 /** Whether GitHub found more pull requests for a tab than the list brought, so some are missing. */

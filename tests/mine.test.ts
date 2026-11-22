@@ -141,15 +141,16 @@ describe('repository baseline', () => {
 describe('your pull requests', () => {
   /** A fake GitHub answering each search with the pull requests given for its filter. */
   const github = (byFilter: Record<string, RawListPull[]>, extra: Record<string, unknown> = {}) => {
-    const queries = searchQueries('open');
+    const queries = searchQueries('open', undefined, undefined, 'me');
     const asked: string[] = [];
     const gh = {
       graphql: async (_query: string, variables: Record<string, string>) => {
         if (variables.q) {
           asked.push(variables.q);
           // Recognize the tab by its qualifier, which ends every search, with or without words.
-          const filter = Object.entries(queries).find(([, q]) =>
-            variables.q!.endsWith(q.split(' ').at(-1)!),
+          const last = (q: string) => q.split(' ').at(-1);
+          const filter = Object.entries(queries).find(
+            ([, q]) => q !== null && last(variables.q!) === last(q),
           )![0];
           const nodes = byFilter[filter] ?? [];
           return { search: { issueCount: nodes.length + (filter === 'involved' ? 10 : 0), nodes } };
@@ -176,13 +177,15 @@ describe('your pull requests', () => {
       [2, ['involved', 'review'], at(4)],
       [1, ['authored', 'involved'], null],
     ]);
-    expect(result.counts).toEqual({ all: 2, authored: 1, assigned: 0, involved: 12, review: 1 });
+    expect(result.counts).toEqual({ all: 2, authored: 1, assigned: 0, involved: 12, review: 1, owned: 0 });
   });
 
   it("keeps one account's repositories when asked, and only takes real account names", () => {
-    expect(Object.values(searchQueries('open', 'octo-org')).every((q) => q.includes(' user:octo-org '))).toBe(
-      true,
-    );
+    expect(
+      Object.values(searchQueries('open', 'octo-org')).every(
+        (q) => q === null || q.includes(' user:octo-org '),
+      ),
+    ).toBe(true);
     expect(searchQueries('open').authored).not.toContain('user:');
     for (const ok of ['octo', 'Octo-Org', 'a1', 'x'.repeat(39)]) expect(ACCOUNT.test(ok), ok).toBe(true);
     for (const bad of ['', '-octo', 'octo-', 'oc--to', 'a b', 'user:x', 'a/b', 'x'.repeat(40)]) {
@@ -223,7 +226,11 @@ describe('your pull requests', () => {
     expect(asked).toEqual([expect.stringMatching(/ cache author:@me$/)]);
     asked.length = 0;
     await getMyPulls(gh, 'me', 'open', undefined, { text: 'cache', tab: 'all' });
-    expect(asked.map((q) => q.split(' ').at(-1))).toEqual(['involves:@me', 'review-requested:@me']);
+    expect(asked.map((q) => q.split(' ').at(-1))).toEqual([
+      'involves:@me',
+      'review-requested:@me',
+      '-author:@me',
+    ]);
   });
 
   it('marks open pull requests in conflict with their base branch', async () => {
@@ -247,6 +254,29 @@ describe('your pull requests', () => {
   it('only searches with GitHub qualifiers for you, and reads reviewed ones once closed', () => {
     expect(searchQueries('open').review).toContain('review-requested:@me');
     expect(searchQueries('closed').review).toContain('reviewed-by:@me');
-    expect(Object.values(searchQueries('closed')).every((q) => q.includes('is:closed'))).toBe(true);
+    expect(Object.values(searchQueries('closed')).every((q) => q === null || q.includes('is:closed'))).toBe(
+      true,
+    );
+  });
+
+  it('finds pull requests others opened in your own repositories, unless another account is chosen', async () => {
+    expect(searchQueries('open', undefined, undefined, 'me').owned).toBe(
+      'is:pr is:open archived:false sort:updated-desc user:me -author:@me',
+    );
+    expect(searchQueries('open', 'Me', 'cache', 'me').owned).toBe(
+      'is:pr is:open archived:false sort:updated-desc user:me cache -author:@me',
+    );
+    expect(searchQueries('open', 'octo-org', undefined, 'me').owned).toBeNull();
+
+    const contribution = pull({ number: 9, author: { login: 'peyn', avatarUrl: '' } });
+    const { gh, asked } = github({ owned: [contribution] });
+    const result = await getMyPulls(gh, 'me', 'open');
+    expect(result.pulls.map((p) => [p.number, p.roles])).toEqual([[9, ['owned']]]);
+    expect(result.counts.owned).toBe(1);
+
+    // With another account chosen, that search doesn't even run.
+    asked.length = 0;
+    await getMyPulls(gh, 'me', 'open', 'octo-org');
+    expect(asked.some((q) => q.includes('-author:@me'))).toBe(false);
   });
 });

@@ -255,30 +255,41 @@ export const SEARCH_TEXT = /^[\p{L}\p{N}_.-]+(?: [\p{L}\p{N}_.-]+)*$/u;
 /**
  * GitHub's own search, one query per filter. `owner` keeps only repositories of that account
  * (a user or an organization) and must already match {@link ACCOUNT}; `text` must already match
- * {@link SEARCH_TEXT}.
+ * {@link SEARCH_TEXT}. `owned` (pull requests others opened in your own repositories) is null
+ * when another account is chosen, since your repositories can't belong to it.
  */
 export function searchQueries(
   state: 'open' | 'closed',
   owner?: string,
   text?: string,
-): Record<Exclude<PullFilter, 'all'>, string> {
-  const base = `is:pr is:${state} archived:false sort:updated-desc${owner ? ` user:${owner}` : ''}${text ? ` ${text}` : ''}`;
+  login?: string,
+): Record<Role, string | null> {
+  const words = text ? ` ${text}` : '';
+  const base = `is:pr is:${state} archived:false sort:updated-desc${owner ? ` user:${owner}` : ''}${words}`;
+  const yours = login && ACCOUNT.test(login) && (!owner || owner.toLowerCase() === login.toLowerCase());
   return {
     authored: `${base} author:@me`,
     assigned: `${base} assignee:@me`,
     involved: `${base} involves:@me`,
     // Review requests go away once you review, so closed ones are the ones you reviewed.
     review: state === 'open' ? `${base} review-requested:@me` : `${base} reviewed-by:@me`,
+    owned: yours
+      ? `is:pr is:${state} archived:false sort:updated-desc user:${login}${words} -author:@me`
+      : null,
   };
 }
 
-/** Which searches a tab needs: "All" is everything you're involved in plus review requests. */
+/**
+ * Which searches a tab needs: "All" is everything you're involved in, review requests, and
+ * pull requests others opened in your repositories.
+ */
 const TAB_SEARCHES: Record<PullFilter, Role[]> = {
-  all: ['involved', 'review'],
+  all: ['involved', 'review', 'owned'],
   authored: ['authored'],
   assigned: ['assigned'],
   involved: ['involved'],
   review: ['review'],
+  owned: ['owned'],
 };
 
 export async function getMyPulls(
@@ -290,12 +301,16 @@ export async function getMyPulls(
 ): Promise<MyPullsResponse> {
   // One request per filter, side by side: a single request with all four takes their sum. A text
   // search only runs what the open tab needs, since GitHub limits how many searches run a minute.
-  const queries = searchQueries(state, owner, search?.text);
-  const filters: Role[] = search ? TAB_SEARCHES[search.tab] : ['authored', 'assigned', 'involved', 'review'];
+  const queries = searchQueries(state, owner, search?.text, login);
+  const filters: Role[] = search
+    ? TAB_SEARCHES[search.tab]
+    : ['authored', 'assigned', 'involved', 'review', 'owned'];
+  const none: SearchResult = { search: { issueCount: 0, nodes: [] } };
   const results = await Promise.all(
-    filters.map((filter) =>
-      gh.graphql<SearchResult>(state === 'open' ? LIST_QUERY : CLOSED_QUERY, { q: queries[filter] }),
-    ),
+    filters.map((filter) => {
+      const q = queries[filter];
+      return q ? gh.graphql<SearchResult>(state === 'open' ? LIST_QUERY : CLOSED_QUERY, { q }) : none;
+    }),
   );
 
   const byKey = new Map<string, { raw: RawListPull; roles: Set<Role> }>();
@@ -322,6 +337,7 @@ export async function getMyPulls(
       assigned: count('assigned'),
       involved: count('involved'),
       review: count('review'),
+      owned: count('owned'),
     },
   };
 }

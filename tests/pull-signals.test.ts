@@ -64,6 +64,12 @@ describe('what a pull request needs', () => {
     expect(labels(pull({ reviewRequestedAt: hoursAgo(72) }))).toEqual([['Your review · 3d', 'red']]);
   });
 
+  it('says when a contribution to your repositories has no review yet', () => {
+    expect(labels(pull({ roles: ['owned'], author: 'peyn', createdAt: hoursAgo(5) }))).toEqual([
+      ['No review yet · 5h', 'gray'],
+    ]);
+  });
+
   it('tells you when your own pull request has no review yet, except a draft', () => {
     expect(labels(pull({ roles: ['authored'], createdAt: hoursAgo(5) }))).toEqual([
       ['No review yet · 5h', 'gray'],
@@ -173,6 +179,12 @@ describe('the search box', () => {
     expect(searchText('"exact"')).toEqual({ invalid: true });
   });
 
+  it('opens your repositories on GitHub by your account name', () => {
+    expect(decodeURIComponent(githubPullsUrl('open', 'owned', '', '', 'me').split('?q=')[1]!)).toBe(
+      'is:pr is:open user:me -author:@me sort:updated-desc',
+    );
+  });
+
   it('carries the words to the same list on GitHub', () => {
     expect(decodeURIComponent(githubPullsUrl('open', 'authored', '', 'cache').split('?q=')[1]!)).toBe(
       'is:pr is:open author:@me cache sort:updated-desc',
@@ -181,9 +193,11 @@ describe('the search box', () => {
 });
 
 describe('telling the list is cut short', () => {
-  const data = (counts: Partial<Record<'authored' | 'assigned' | 'involved' | 'review', number>>) => ({
+  const data = (
+    counts: Partial<Record<'authored' | 'assigned' | 'involved' | 'review' | 'owned', number>>,
+  ) => ({
     state: 'closed' as const,
-    counts: { all: 0, authored: 0, assigned: 0, involved: 0, review: 0, ...counts },
+    counts: { all: 0, authored: 0, assigned: 0, involved: 0, review: 0, owned: 0, ...counts },
     pulls: [pull({ roles: ['authored', 'involved'] }), pull({ roles: ['review'] })],
   });
 
@@ -194,5 +208,6 @@ describe('telling the list is cut short', () => {
     // "All" stands on what you're involved in and on review requests.
     expect(cutShort(data({ involved: 1, review: 7 }), 'all')).toBe(true);
     expect(cutShort(data({ authored: 40, involved: 1, review: 1 }), 'all')).toBe(false);
+    expect(cutShort(data({ owned: 3 }), 'owned')).toBe(true);
   });
 });

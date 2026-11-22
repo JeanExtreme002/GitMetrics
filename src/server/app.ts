@@ -26,7 +26,7 @@ import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
 
 const MINUTE = 60_000;
-const TABS = new Set<string>(['all', 'authored', 'assigned', 'involved', 'review']);
+const TABS = new Set<string>(['all', 'authored', 'assigned', 'involved', 'review', 'owned']);
 const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
 /**
  * What the quick search accepts: words made of GitHub's name characters, or owner/name (an

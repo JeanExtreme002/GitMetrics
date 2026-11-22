@@ -44,7 +44,7 @@ import {
   STATUSES,
   type PullStatus,
 } from '../lib/pulls';
-import { myPullsPath, useBaseline, useMyPulls, useOwners } from '../lib/queries';
+import { myPullsPath, useAuth, useBaseline, useMyPulls, useOwners } from '../lib/queries';
 
 const FILTERS: { value: PullFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -52,6 +52,7 @@ const FILTERS: { value: PullFilter; label: string }[] = [
   { value: 'assigned', label: 'Assigned' },
   { value: 'involved', label: 'Involved' },
   { value: 'review', label: 'Review requested' },
+  { value: 'owned', label: 'In your repositories' },
 ];
 
 const EMPTY: Record<PullFilter, string> = {
@@ -60,6 +61,7 @@ const EMPTY: Record<PullFilter, string> = {
   assigned: 'No pull requests are assigned to you.',
   involved: 'You are not involved in any pull request here.',
   review: 'Nobody is waiting for your review. Nice.',
+  owned: 'Nobody else has a pull request in your repositories.',
 };
 
 /** One pull request: where it lives, who opened it, and what it needs, in context. */
@@ -236,6 +238,7 @@ function Totals({ owner }: { owner: string }) {
 }
 
 export function MyPulls() {
+  const login = useAuth().data?.viewer?.login ?? '';
   const [state, setState] = useState<'open' | 'closed'>('open');
   // Every visit starts from the defaults: the filters only last while you are on the page.
   const [filter, setFilter] = useState<PullFilter>('all');
@@ -349,7 +352,7 @@ export function MyPulls() {
               </Text>
               <Button
                 component="a"
-                href={githubPullsUrl(state, filter, owner, search?.text)}
+                href={githubPullsUrl(state, filter, owner, search?.text, login)}
                 target="_blank"
                 variant="subtle"
                 color="gray"
