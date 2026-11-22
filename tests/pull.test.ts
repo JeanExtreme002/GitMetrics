@@ -250,6 +250,23 @@ describe('a pull request in detail', () => {
     expect(pull.reviewThreads).toBe(2);
   });
 
+  it('places every commit by the date written in it, and none when GitHub lists only some', () => {
+    const pull = buildPull(
+      raw({ commits: { totalCount: 3, committedAt: [at(4), at(-2), at(1)], by: ['bo', null, 'cy'] } }),
+      'octo/app',
+      now,
+    );
+    // A commit dated before the opening goes at its start; one without an author says so.
+    expect(pull.commitMarks).toEqual([
+      { at: at(-2), login: 'someone', hours: 0 },
+      { at: at(1), login: 'cy', hours: 1 },
+      { at: at(4), login: 'bo', hours: 4 },
+    ]);
+    expect(
+      buildPull(raw({ commits: { totalCount: 300, committedAt: [at(0)] } }), 'octo/app', now).commitMarks,
+    ).toBeNull();
+  });
+
   it('places every comment, in the conversation and on the code, in order', () => {
     const pull = buildPull(
       raw({

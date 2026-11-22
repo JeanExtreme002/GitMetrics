@@ -66,7 +66,7 @@ const CONNECTIONS = {
   comments:
     'comments(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { createdAt author { __typename login } } }',
   commits:
-    'commits(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { commit { committedDate } } }',
+    'commits(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { commit { committedDate author { name user { login } } } } }',
   threads:
     'reviewThreads(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { comments(first: 100) { totalCount nodes { createdAt author { __typename login avatarUrl } } } } }',
   requests:
@@ -128,6 +128,10 @@ query ($id: ID!, $after: String) {
 
 type Contexts = { contexts: Page<RawCheck> } | null;
 
+interface RawCommit {
+  commit: { committedDate: string; author: { name: string | null; user: { login: string } | null } | null };
+}
+
 export interface RawPull {
   number: number;
   title: string;
@@ -148,7 +152,7 @@ export interface RawPull {
   reviews: RawReview[];
   /** Comments in the conversation: when, and by whom (same order). */
   comments: { totalCount: number; createdAt: string[]; by?: (string | null)[]; bot?: boolean[] };
-  commits: { totalCount: number; committedAt: string[] };
+  commits: { totalCount: number; committedAt: string[]; by?: (string | null)[] };
   threads: { totalCount: number; nodes: RawThread[] };
   requests: { requestedReviewer: Requested | null }[];
   files: { totalCount: number; nodes: RawFile[] };
@@ -456,6 +460,15 @@ export function buildPull(raw: RawPull, repo: string, now = new Date()): PullDet
     ),
     // Every review by a person, placed on the pull request's life, as GitHub keeps it now: an
     // approval or a request for changes that was later dismissed shows as dismissed.
+    // Every commit, placed on the pull request's life by the date written in it (not when it was
+    // pushed); commits dated before the opening go at its start.
+    commitMarks:
+      raw.commits.committedAt.length === raw.commits.totalCount
+        ? raw.commits.committedAt
+            .map((at, i) => ({ at, login: raw.commits.by?.[i] ?? 'someone' }))
+            .sort((a, b) => a.at.localeCompare(b.at))
+            .map((c) => ({ ...c, hours: Math.max(0, hoursBetween(raw.createdAt, c.at)) }))
+        : null,
     // Every comment, in the conversation and on the code, placed on the pull request's life.
     commentMarks: everyComment
       ? [
@@ -555,7 +568,7 @@ interface FirstPage {
   participants: { totalCount: number };
   reviews: Page<RawReview>;
   comments: Page<{ createdAt: string; author: { __typename?: string; login: string } | null }>;
-  commits: Page<{ commit: { committedDate: string } }>;
+  commits: Page<RawCommit>;
   threads: Page<RawThread>;
   requests: Page<{ requestedReviewer: Requested | null }>;
   files: Page<RawFile>;
@@ -606,7 +619,7 @@ export async function getPull(
       p.comments,
       more<{ createdAt: string; author: { __typename?: string; login: string } | null }>('comments'),
     ),
-    readAll(p.commits, more<{ commit: { committedDate: string } }>('commits')),
+    readAll(p.commits, more<RawCommit>('commits')),
     readAll(p.threads, more<RawThread>('threads')),
     readAll(p.requests, more<{ requestedReviewer: Requested | null }>('requests')),
     readAll(p.files, more<RawFile>('files')),
@@ -633,6 +646,8 @@ export async function getPull(
       commits: {
         totalCount: p.commits.totalCount ?? commits.length,
         committedAt: commits.map((c) => c.commit.committedDate),
+        // Who wrote each commit: their account, or the name in the commit when it has none.
+        by: commits.map((c) => c.commit.author?.user?.login ?? c.commit.author?.name ?? null),
       },
       threads: { totalCount: p.threads.totalCount ?? threads.length, nodes: threads },
       requests,

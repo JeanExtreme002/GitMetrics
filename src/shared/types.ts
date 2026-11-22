@@ -590,6 +590,8 @@ export interface PullDetail {
   /** The whole life of the pull request, in order, split into stretches (a kind can come back). */
   phases: PullPhase[];
   reviewMarks: PullReviewMark[];
+  /** Every commit by the date written in it, or null when GitHub can't list them all. */
+  commitMarks: { hours: number; login: string; at: string }[] | null;
   /**
    * Every comment in the conversation and on the code, in order, or null when some couldn't be
    * read; `bot` marks the ones written by apps.

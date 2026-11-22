@@ -266,6 +266,14 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
     color: string;
     marks: { hours: number; login: string; at: string }[];
   }[] = [
+    // The author's side: every commit, by the date written in it.
+    {
+      key: 'commits',
+      label: 'Commits',
+      verb: 'committed',
+      color: semantic.commits,
+      marks: pull.commitMarks ?? [],
+    },
     ...LANES.map((lane) => ({
       key: lane.state,
       label: lane.label,
@@ -285,8 +293,8 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
   return (
     <Box mb={44}>
       <SectionHeader
-        title="Where the time went"
-        caption={`${hours(total)} from opening to ${until}, in order, with every review and comment on the way`}
+        title="Activity over time"
+        caption={`Each stretch of its ${hours(total)} from opening to ${until}, and every commit, review and comment on the way. Commits go by the date written in them`}
       />
       {/* One time scale for everything: the stretches on top, a lane per kind of review below. */}
       <div className="pr-time">
@@ -360,39 +368,6 @@ function TimeSpent({ pull }: { pull: PullDetail }) {
           </Group>
         ))}
       </Group>
-    </Box>
-  );
-}
-
-/** Commits, reviews and comments over the pull request's life. */
-function ActivityChart({ pull }: { pull: PullDetail }) {
-  const activity = pull.activity;
-  if (!activity || activity.points.length < 2) return null;
-  return (
-    <Box mb={44}>
-      <SectionHeader
-        title="Activity over time"
-        caption={`Commits, reviews and comments per ${activity.unit}, from opening to ${
-          pull.state === 'MERGED' ? 'merge' : pull.state === 'CLOSED' ? 'closing' : 'today'
-        }`}
-      />
-      <BarChart
-        h={220}
-        data={activity.points}
-        dataKey="day"
-        type="stacked"
-        series={[
-          { name: 'commits', label: 'Commits', color: semantic.commits },
-          { name: 'reviews', label: 'Reviews', color: 'violet.5' },
-          { name: 'comments', label: 'Comments', color: 'gray.5' },
-        ]}
-        gridAxis="y"
-        withLegend
-        legendProps={{ verticalAlign: 'top', height: 40 }}
-        xAxisProps={{ tickFormatter: dayLabel, minTickGap: 24 }}
-        yAxisProps={{ allowDecimals: false }}
-        barProps={{ radius: [3, 3, 0, 0], maxBarSize: 22 }}
-      />
     </Box>
   );
 }
@@ -812,7 +787,6 @@ export function Pull() {
           <>
             <WaitingOn pull={data} />
             <TimeSpent pull={data} />
-            <ActivityChart pull={data} />
             <ReviewerChart pull={data} />
             {/* Two independent columns, so a longer list never leaves a gap on the other side. */}
             <Grid gap={48}>

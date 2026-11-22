@@ -934,7 +934,7 @@ a.pull-row {
   padding-inline: 10px;
 }
 
-/* Where the time went: one bar split into the stretches of the pull request's life. */
+/* Activity over time: one bar split into the stretches of the pull request's life. */
 .pr-time-bar {
   display: flex;
   gap: 2px;
@@ -970,7 +970,7 @@ a.pull-row {
   display: flex;
 }
 
-/* Where the time went: labels on the left, one shared time scale on the right. */
+/* Activity over time: labels on the left, one shared time scale on the right. */
 .pr-time {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);
