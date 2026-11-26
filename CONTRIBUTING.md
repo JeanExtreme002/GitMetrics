@@ -41,6 +41,17 @@ A typical new metric touches four places. Add the response type to `src/shared/t
 
 Please keep an eye on the API budget. GitHub allows 5,000 requests per hour, so prefer GraphQL when it saves many REST calls and avoid one request per item unless the result can be cached on disk.
 
+## Updating the screenshots
+
+The pictures in `assets/` (used by the README and the landing page) come from the real app. After changing how a page looks, regenerate them:
+
+```bash
+npx playwright install chromium   # once
+npm run screenshots
+```
+
+It builds the app, starts it on a free port with a temporary data folder, signs in with your GitHub CLI session, captures public pages only, frames them and deletes the temporary folder. Review the new pictures with `git diff` before committing them.
+
 ## Releasing
 
 Releases are published from GitHub. Bump the version with `npm version <patch|minor|major> --no-git-tag-version`, merge that change, then create a GitHub Release with a tag like `v1.2.3`. The release notes on GitHub are the changelog. The `Publish to npm` workflow checks that the tag matches `package.json`, runs the tests and publishes the package with provenance.
