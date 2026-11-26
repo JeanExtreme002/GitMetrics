@@ -102,7 +102,7 @@ function TopRepositories({ repos }: { repos: RepoSummary[] }) {
           />
         }
       />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {loading &&
           Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="rank-row">

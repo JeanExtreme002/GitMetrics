@@ -78,12 +78,12 @@ function RepoTable({
                         {showOwner ? repo.fullName : repo.name}
                       </Text>
                       {repo.visibility !== 'public' && (
-                        <Badge size="xs" variant="outline" color="gray">
+                        <Badge size="xs" variant="outline" color="gray" style={{ flex: 'none' }}>
                           {repo.visibility === 'internal' ? 'Internal' : 'Private'}
                         </Badge>
                       )}
                       {repo.fork && (
-                        <Badge size="xs" variant="outline" color="gray">
+                        <Badge size="xs" variant="outline" color="gray" style={{ flex: 'none' }}>
                           Fork
                         </Badge>
                       )}
