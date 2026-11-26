@@ -40,10 +40,8 @@ query ($login: String!) {
     forks: repositories(ownerAffiliations: OWNER, isFork: true) { totalCount }
     archived: repositories(ownerAffiliations: OWNER, isArchived: true) { totalCount }
     private: repositories(ownerAffiliations: OWNER, privacy: PRIVATE) { totalCount }
-    top: repositories(first: 6, ownerAffiliations: OWNER, isFork: false, orderBy: { field: STARGAZERS, direction: DESC }) {
-      nodes { ${REPO} }
-    }
-    recent: repositories(first: 5, ownerAffiliations: OWNER, orderBy: { field: PUSHED_AT, direction: DESC }) {
+    # In GitHub's own order, as on its repositories tab: pushed to most recently first, forks too.
+    repos: repositories(first: 6, ownerAffiliations: OWNER, orderBy: { field: PUSHED_AT, direction: DESC }) {
       nodes { ${REPO} }
     }
   }
@@ -115,8 +113,7 @@ export interface RawAccount {
   forks: { totalCount: number };
   archived: { totalCount: number };
   private: { totalCount: number };
-  top: { nodes: RawGraphRepo[] };
-  recent: { nodes: RawGraphRepo[] };
+  repos: { nodes: RawGraphRepo[] };
 }
 
 export const fromGraph = (r: RawGraphRepo): RepoSummary => ({
@@ -167,8 +164,12 @@ export function buildAccount(raw: RawAccount): AccountResponse {
       archived: raw.archived.totalCount,
       private: raw.private.totalCount,
     },
-    top: raw.top.nodes.filter((r) => r.stargazerCount > 0).map(fromGraph),
-    recent: raw.recent.nodes.filter((r) => r.pushedAt).map(fromGraph),
+    repos: raw.repos.nodes.map(fromGraph),
+    // The same order is when each was pushed to: the latest five that ever were.
+    recent: raw.repos.nodes
+      .filter((r) => r.pushedAt)
+      .slice(0, 5)
+      .map(fromGraph),
   };
 }
 

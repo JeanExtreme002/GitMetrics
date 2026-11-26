@@ -114,7 +114,7 @@ function Breakdown({ account }: { account: AccountResponse }) {
   ];
   return (
     <Box>
-      <SectionTitle title="Repositories" caption={`The ${num(r.total)} repositories it owns, by kind`} />
+      <SectionTitle title="What it owns" caption={`Its ${num(r.total)} repositories, by kind`} />
       <div className="rank-list">
         {rows.map(([label, value, hint]) => (
           <Tooltip key={label} label={hint} position="top-start">
@@ -215,7 +215,7 @@ function Languages({
 
 /**
  * A user's or an organization's page, read the way the home page reads: who it is and its numbers,
- * its most starred repositories and latest activity, then its languages and how its repositories
+ * its repositories in GitHub's order and latest activity, then its languages and how its repositories
  * split up. Its repositories open in the Repositories page.
  */
 export function Account() {
@@ -348,7 +348,7 @@ export function Account() {
       <Grid gap="md">
         <Grid.Col span={{ base: 12, lg: 8 }}>
           <SectionTitle
-            title="Most starred"
+            title="Repositories"
             action={
               <Button
                 component={Link}
@@ -361,14 +361,14 @@ export function Account() {
               </Button>
             }
           />
-          {account.top.length ? (
+          {account.repos.length ? (
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              {account.top.slice(0, 4).map((repo) => (
+              {account.repos.slice(0, 4).map((repo) => (
                 <RepoCard key={repo.id} repo={repo} />
               ))}
             </SimpleGrid>
           ) : (
-            <EmptyState icon={<IconBook2 size={28} />} title="No starred repositories yet" />
+            <EmptyState icon={<IconBook2 size={28} />} title="No repositories yet" />
           )}
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}>

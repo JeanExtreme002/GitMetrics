@@ -245,8 +245,7 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
               forks: count(1),
               archived: count(0),
               private: count(0),
-              top: { nodes: [] },
-              recent: { nodes: [] },
+              repos: { nodes: [] },
             },
           },
         });
