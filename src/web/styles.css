@@ -354,6 +354,19 @@
   flex: none;
 }
 
+/* The chart sits above the number in its middle, so a slice's tooltip covers the number instead of
+   showing it through. The chart is see-through, so the number shows everywhere else. */
+.donut > :first-child {
+  position: relative;
+  z-index: 1;
+}
+
+/* A slice's name and count on one line, however narrow the chart. */
+.donut .mantine-ChartTooltip-tooltipItemName,
+.donut .mantine-ChartTooltip-tooltipItemData {
+  white-space: nowrap;
+}
+
 .donut-label {
   position: absolute;
   inset: 0;
