@@ -29,6 +29,7 @@
     "site:dev": "vite --config site/vite.config.ts",
     "site:build": "vite build --config site/vite.config.ts",
     "site:preview": "vite preview --config site/vite.config.ts",
+    "screenshots": "node scripts/screenshots.mjs",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build"
   },
@@ -81,6 +82,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
     "hono": "^4.13.19",
+    "playwright": "^1.58.2",
     "prettier": "^3.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
