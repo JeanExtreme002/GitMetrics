@@ -69,3 +69,22 @@ export function useHeatScale(color = 'teal') {
   const shades = scheme === 'dark' ? [9, 7, 5, 3] : [2, 4, 6, 8];
   return shades.map((shade) => `var(--mantine-color-${color}-${shade})`);
 }
+
+/**
+ * A color chosen elsewhere, as a GitHub label's, made visible on this color scheme's background:
+ * one too dark on dark, or too light on light, is moved to a gray that reads; others are kept.
+ */
+export function useVisibleColor() {
+  const scheme = useComputedColorScheme('dark');
+  return (hex: string) => {
+    const value = hex.replace('#', '');
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
+    // Relative luminance, as WCAG defines it.
+    const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const luminance = 0.2126 * lin(r!) + 0.7152 * lin(g!) + 0.0722 * lin(b!);
+    if (Number.isNaN(luminance)) return `#${value}`;
+    if (scheme === 'dark' && luminance < 0.06) return 'var(--mantine-color-gray-6)';
+    if (scheme === 'light' && luminance > 0.75) return 'var(--mantine-color-gray-6)';
+    return `#${value}`;
+  };
+}

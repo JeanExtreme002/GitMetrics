@@ -351,11 +351,13 @@
 }
 
 /* On an account page, What it owns reads without lines between its rows. */
-.no-lines .rank-list {
+.no-lines .rank-list,
+.rank-list.no-lines {
   border-top: none;
 }
 
-.no-lines .legend-row {
+.no-lines .legend-row,
+.rank-list.no-lines > .legend-row {
   padding-block: 7px;
   border-bottom: none;
 }
@@ -372,6 +374,11 @@
 
 .lines-between .legend-row:last-child,
 .lines-between .account-row:last-child {
+  border-bottom: none;
+}
+
+/* A list with lines only between its rows, none at its ends. */
+.rank-list.lines-between > :last-child {
   border-bottom: none;
 }
 
@@ -806,7 +813,13 @@ a.bar-link:hover {
 
 .label-legend-row {
   grid-template-columns: 10px minmax(0, 1fr) auto;
+  row-gap: 7px;
   padding: 11px 4px;
+}
+
+/* Under a legend row's name and number: its size next to the largest, in its own color. */
+.legend-bar {
+  grid-column: 2 / -1;
 }
 
 .share-legend-row {

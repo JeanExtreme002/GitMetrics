@@ -82,7 +82,8 @@ export async function getCommits(gh: GitHubClient, owner: string, repo: string):
     // GitHub refuses code frequency for repositories with 10k+ commits (422).
     optional(gh.stats<[number, number, number][]>(`${base}/stats/code_frequency`), null),
     optional(gh.stats<[number, number, number][]>(`${base}/stats/punch_card`), null),
-    optional(gh.get<RawCommit[]>(`${base}/commits`, { per_page: 8 }), []),
+    // The latest, for the list that starts short and shows more on request.
+    optional(gh.get<RawCommit[]>(`${base}/commits`, { per_page: 30 }), []),
   ]);
   return buildCommits(activity, frequency, punch, recent.map(toCommitItem));
 }

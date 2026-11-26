@@ -355,7 +355,7 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
     if (p === '/repos/octo/app/stats/code_frequency') return json([[weekStart(1), 120, -30]]);
     if (p === '/repos/octo/app/stats/punch_card') return json([[1, 14, 3]]);
     if (p === '/repos/octo/app/commits') {
-      if (url.searchParams.get('per_page') === '8') {
+      if (url.searchParams.get('per_page') === '30') {
         return json([
           {
             sha: 'c3',

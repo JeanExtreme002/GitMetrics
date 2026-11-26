@@ -75,7 +75,7 @@ function Milestones({ data }: { data: StarsResponse }) {
   return (
     <Box>
       <SectionHeader title="Milestones" caption="When the repository reached each mark" />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {next && (
           <div className="milestone-row milestone-next">
             <IconFlag size={16} stroke={1.7} />
@@ -118,7 +118,7 @@ function RecentStargazers({ people, total }: { people: StarsResponse['recent']; 
   return (
     <Box mt={44}>
       <SectionHeader title="Recent stargazers" caption="The latest people to star this repository" />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {people.map((p) => (
           <Anchor
             key={p.login}

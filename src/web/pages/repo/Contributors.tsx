@@ -166,7 +166,7 @@ function Share({ contributors }: { contributors: Contributor[] }) {
           </Text>
         </div>
       </Box>
-      <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+      <div className="rank-list lines-between" style={{ flex: 1, minWidth: 0 }}>
         {slices.map((s) => (
           <div
             key={s.key}
@@ -205,7 +205,7 @@ function PersonList({
 }) {
   if (!people.length) return <NoData>{empty}</NoData>;
   return (
-    <div className="rank-list">
+    <div className="rank-list lines-between">
       {people.map((c) => (
         <Anchor key={c.login} href={c.url} target="_blank" underline="never" c="inherit" className="pull-row">
           <Avatar src={c.avatarUrl} size={22} radius="xl" />
@@ -251,7 +251,7 @@ function Ranking({ contributors, hasHistory }: { contributors: Contributor[]; ha
     : 'rank-row';
   return (
     <>
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         <div className={`${rowClass} rank-head`}>
           <span />
           <div className="rank-head-label">Contributor</div>

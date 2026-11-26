@@ -199,7 +199,8 @@ export function buildActions(
     daily: exactDaily ? exactDaily.map(({ cancelled: _, ...d }) => d) : [...daily.values()],
     workflows: workflowStats,
     events: [...events.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count })),
-    recentFailures: failures.slice(0, 6).map((r) => ({
+    // The latest, for the list that starts short and shows more on request.
+    recentFailures: failures.slice(0, 30).map((r) => ({
       id: r.id,
       name: r.name ?? known.get(r.workflow_id)?.name ?? 'Workflow',
       branch: r.head_branch,

@@ -120,15 +120,17 @@ function History({ monthly }: { monthly: ReleasesResponse['monthly'] }) {
   );
 }
 
-const PAGE = 8;
+/** Rows shown at first, and how many each "Show more" adds. */
+const FIRST = 6;
+const PAGE = 10;
 
 /** Releases as hairline rows: tag, name, author and age, with downloads on the right. */
 function ReleaseList({ releases }: { releases: ReleaseItem[] }) {
-  const [limit, setLimit] = useState(PAGE);
+  const [limit, setLimit] = useState(FIRST);
   const hasDownloads = releases.some((r) => r.downloads > 0);
   return (
     <>
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {releases.slice(0, limit).map((r, i) => (
           <Anchor key={r.id} href={r.url} target="_blank" underline="never" c="inherit" className="pull-row">
             <span className={i === 0 ? 'release-icon release-icon-latest' : 'release-icon'}>
@@ -193,44 +195,57 @@ function ReleaseList({ releases }: { releases: ReleaseItem[] }) {
 
 /** The releases people download the most, as ranking rows with their share of all downloads. */
 function TopDownloads({ releases, total }: { releases: ReleaseItem[]; total: number }) {
-  const top = [...releases]
-    .filter((r) => r.downloads > 0)
-    .sort((a, b) => b.downloads - a.downloads)
-    .slice(0, 8);
+  const [limit, setLimit] = useState(FIRST);
+  const top = [...releases].filter((r) => r.downloads > 0).sort((a, b) => b.downloads - a.downloads);
   if (!top.length) return <NoData>No downloads yet.</NoData>;
   const max = top[0]!.downloads;
   return (
-    <div className="rank-list">
-      {top.map((r, i) => (
-        <Anchor
-          key={r.id}
-          href={r.url}
-          target="_blank"
-          underline="never"
-          c="inherit"
-          className="rank-row release-rank-row"
-        >
-          <Text size="xs" c="dimmed" className="tabular rank-pos">
-            {String(i + 1).padStart(2, '0')}
-          </Text>
-          <Text size="sm" fw={500} ff="monospace" truncate>
-            {r.tag}
-          </Text>
-          <div className="rank-track">
-            <div
-              className="rank-fill"
-              style={{ width: `${(r.downloads / max) * 100}%`, background: 'var(--mantine-color-teal-5)' }}
-            />
-          </div>
-          <Text size="sm" fw={600} ta="right" className="tabular">
-            {compact(r.downloads)}
-          </Text>
-          <Text size="xs" c="dimmed" ta="right" className="tabular">
-            {percent(r.downloads / Math.max(total, 1))}
-          </Text>
-        </Anchor>
-      ))}
-    </div>
+    <>
+      <div className="rank-list lines-between">
+        {top.slice(0, limit).map((r, i) => (
+          <Anchor
+            key={r.id}
+            href={r.url}
+            target="_blank"
+            underline="never"
+            c="inherit"
+            className="rank-row release-rank-row"
+          >
+            <Text size="xs" c="dimmed" className="tabular rank-pos">
+              {String(i + 1).padStart(2, '0')}
+            </Text>
+            <Text size="sm" fw={500} ff="monospace" truncate>
+              {r.tag}
+            </Text>
+            <div className="rank-track">
+              <div
+                className="rank-fill"
+                style={{ width: `${(r.downloads / max) * 100}%`, background: 'var(--mantine-color-teal-5)' }}
+              />
+            </div>
+            <Text size="sm" fw={600} ta="right" className="tabular">
+              {compact(r.downloads)}
+            </Text>
+            <Text size="xs" c="dimmed" ta="right" className="tabular">
+              {percent(r.downloads / Math.max(total, 1))}
+            </Text>
+          </Anchor>
+        ))}
+      </div>
+      {top.length > limit && (
+        <Group justify="center" mt="sm">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            rightSection={<IconChevronDown size={14} />}
+            onClick={() => setLimit((l) => l + PAGE)}
+          >
+            Show {num(Math.min(PAGE, top.length - limit))} more
+          </Button>
+        </Group>
+      )}
+    </>
   );
 }
 

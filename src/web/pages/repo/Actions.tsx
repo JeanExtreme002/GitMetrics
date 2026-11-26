@@ -4,6 +4,7 @@ import { MarkGithubIcon } from '@primer/octicons-react';
 import {
   IconAlertTriangle,
   IconArrowUpRight,
+  IconChevronDown,
   IconCircleCheck,
   IconClockHour4,
   IconInfoCircle,
@@ -23,7 +24,7 @@ import {
   QueryView,
   SectionHeader,
 } from '../../components/ui';
-import { dayLabel, duration, num, percent, relative } from '../../lib/format';
+import { compact, dayLabel, duration, num, percent, relative } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
 import { semantic } from '../../theme';
 
@@ -210,6 +211,10 @@ function Workflows({ workflows }: { workflows: WorkflowStat[] }) {
   );
 }
 
+/** Failures shown at first, and how many each "Show more" adds. */
+const FIRST = 6;
+const PAGE = 10;
+
 /** Failed runs as hairline rows: workflow, branch, trigger and who started it. */
 function Failures({
   failures,
@@ -218,29 +223,45 @@ function Failures({
   failures: ActionsResponse['recentFailures'];
   windowDays: number;
 }) {
+  const [limit, setLimit] = useState(FIRST);
   if (!failures.length) return <NoData>No failures in the last {windowDays} days. Nice.</NoData>;
   return (
-    <div className="rank-list">
-      {failures.slice(0, 6).map((f) => (
-        <Anchor key={f.id} href={f.url} target="_blank" underline="never" c="inherit" className="pull-row">
-          <span className="run-fail-icon">
-            <IconX size={13} stroke={2.4} />
-          </span>
-          <Box miw={0}>
-            <Text size="sm" fw={500} truncate>
-              {f.name}
+    <>
+      <div className="rank-list lines-between">
+        {failures.slice(0, limit).map((f) => (
+          <Anchor key={f.id} href={f.url} target="_blank" underline="never" c="inherit" className="pull-row">
+            <span className="run-fail-icon">
+              <IconX size={13} stroke={2.4} />
+            </span>
+            <Box miw={0}>
+              <Text size="sm" fw={500} truncate>
+                {f.name}
+              </Text>
+              <Text size="xs" c="dimmed" truncate>
+                {f.branch ?? 'unknown branch'} · {eventLabel(f.event)}
+                {f.actor ? ` · ${f.actor}` : ''}
+              </Text>
+            </Box>
+            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+              {relative(f.createdAt)}
             </Text>
-            <Text size="xs" c="dimmed" truncate>
-              {f.branch ?? 'unknown branch'} · {eventLabel(f.event)}
-              {f.actor ? ` · ${f.actor}` : ''}
-            </Text>
-          </Box>
-          <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-            {relative(f.createdAt)}
-          </Text>
-        </Anchor>
-      ))}
-    </div>
+          </Anchor>
+        ))}
+      </div>
+      {failures.length > limit && (
+        <Group justify="center" mt="sm">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            rightSection={<IconChevronDown size={14} />}
+            onClick={() => setLimit((l) => l + PAGE)}
+          >
+            Show {num(Math.min(PAGE, failures.length - limit))} more
+          </Button>
+        </Group>
+      )}
+    </>
   );
 }
 
@@ -260,6 +281,7 @@ function Triggers({ events }: { events: ActionsResponse['events'] }) {
     ...(rest ? [{ name: '__other', label: 'other', value: rest, color: OTHER_EVENTS }] : []),
   ];
   const total = slices.reduce((s, e) => s + e.value, 0);
+  const max = Math.max(1, ...slices.map((s) => s.value));
   return (
     <Group gap="xl" wrap="nowrap" align="center">
       <Box className="donut">
@@ -281,18 +303,18 @@ function Triggers({ events }: { events: ActionsResponse['events'] }) {
         />
         <div className="donut-label">
           <Text fz={30} fw={600} lh={1} className="tabular">
-            {num(slices.length)}
+            {compact(total)}
           </Text>
           <Text size="xs" c="dimmed" mt={4}>
-            {slices.length === 1 ? 'trigger' : 'triggers'}
+            {total === 1 ? 'run' : 'runs'}
           </Text>
         </div>
       </Box>
-      <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+      <div className="rank-list no-lines" style={{ flex: 1, minWidth: 0 }}>
         {slices.map((s) => (
           <div
             key={s.name}
-            className="legend-row"
+            className="legend-row label-legend-row"
             onMouseEnter={() => setActive(s.name)}
             onMouseLeave={() => setActive(null)}
           >
@@ -300,9 +322,21 @@ function Triggers({ events }: { events: ActionsResponse['events'] }) {
             <Text size="sm" truncate>
               {s.label}
             </Text>
-            <Text size="sm" c="dimmed" ta="right" className="tabular">
-              {percent(s.value / total)}
-            </Text>
+            <Group gap={10} wrap="nowrap" className="tabular">
+              <Text size="sm" fw={600}>
+                {num(s.value)}
+              </Text>
+              <Text size="sm" c="dimmed" w={38} ta="right">
+                {s.value / total < 0.005 ? '<1%' : percent(s.value / total)}
+              </Text>
+            </Group>
+            {/* How many runs next to the most common trigger, in its color. */}
+            <div className="rank-track legend-bar">
+              <div
+                className="rank-fill"
+                style={{ width: `${(s.value / max) * 100}%`, background: s.color }}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -397,7 +431,11 @@ export function Actions() {
                 <Grid.Col span={{ base: 12, lg: 6 }}>
                   <SectionHeader
                     title="What triggers runs"
-                    caption="Share of runs by the event that started them"
+                    caption={
+                      limited
+                        ? `The latest ${num(sample)} runs, by the event that started them`
+                        : 'Runs by the event that started them'
+                    }
                   />
                   <Triggers events={data.events} />
                 </Grid.Col>
