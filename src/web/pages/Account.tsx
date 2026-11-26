@@ -165,14 +165,15 @@ function Owns({ account }: { account: AccountResponse }) {
                 <Text size="sm" truncate>
                   {s.name}
                 </Text>
-                <Text size="sm" ta="right" className="tabular">
-                  <Text component="span" inherit fw={600}>
+                <Group gap={10} wrap="nowrap" justify="flex-end" className="tabular">
+                  <Text size="sm" fw={600}>
                     {num(s.value)}
-                  </Text>{' '}
-                  <Text component="span" inherit c="dimmed">
+                  </Text>
+                  {/* A column of its own, so the shares line up under each other. */}
+                  <Text size="sm" c="dimmed" w={38} ta="right">
                     {percent(share(s.value))}
                   </Text>
-                </Text>
+                </Group>
               </div>
             </Tooltip>
           ))}
@@ -185,14 +186,15 @@ function Owns({ account }: { account: AccountResponse }) {
             <Box className="owns-bar">
               <Group justify="space-between" wrap="nowrap">
                 <Text size="sm">{b.name}</Text>
-                <Text size="sm" ta="right" className="tabular">
-                  <Text component="span" inherit fw={600}>
+                <Group gap={10} wrap="nowrap" justify="flex-end" className="tabular">
+                  <Text size="sm" fw={600}>
                     {num(b.value)}
-                  </Text>{' '}
-                  <Text component="span" inherit c="dimmed">
+                  </Text>
+                  {/* A column of its own, so the shares line up under each other. */}
+                  <Text size="sm" c="dimmed" w={38} ta="right">
                     {percent(share(b.value))}
                   </Text>
-                </Text>
+                </Group>
               </Group>
               <div className="rank-track">
                 <div
