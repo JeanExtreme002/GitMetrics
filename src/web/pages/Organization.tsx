@@ -215,7 +215,9 @@ function ShowMore({ left, onClick }: { left: number; onClick: () => void }) {
 export function AccountRepositories() {
   const { login = '' } = useParams();
   const { data } = useAccount(login);
-  return <Repositories owner={data?.login ?? login} />;
+  // Until the account is known, its own list can't be asked for: wait rather than show another.
+  if (!data) return <PageSkeleton />;
+  return <Repositories owner={data.login} organization={data.kind === 'organization'} />;
 }
 
 // People ------------------------------------------------------------------------------------------
@@ -474,7 +476,7 @@ export function Teams() {
                   Couldn&apos;t read the teams of @{member}.
                 </Text>
               )}
-              <div className="rank-list">
+              <div className="rank-list lines-between">
                 {shown.slice(0, limit).map((t) => (
                   <Anchor
                     key={t.slug}

@@ -72,9 +72,9 @@ export function RepoCard({ repo, showOwner = false }: { repo: RepoSummary; showO
             <Text fw={600} fz="md" truncate>
               {repo.name}
             </Text>
-            {repo.private && (
+            {repo.visibility !== 'public' && (
               <Badge size="xs" variant="outline" color="gray">
-                Private
+                {repo.visibility === 'internal' ? 'Internal' : 'Private'}
               </Badge>
             )}
           </Group>

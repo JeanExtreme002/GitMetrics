@@ -46,6 +46,8 @@ export interface RepoSummary {
   fullName: string;
   description: string | null;
   private: boolean;
+  /** Internal: visible to everyone in its enterprise, though private to the rest. */
+  visibility: 'public' | 'private' | 'internal';
   fork: boolean;
   archived: boolean;
   stars: number;
@@ -273,7 +275,6 @@ export interface RepoDetails extends RepoSummary {
   homepage: string | null;
   sizeKb: number;
   subscribers: number;
-  visibility: string;
 }
 
 export interface OverviewResponse {

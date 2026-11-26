@@ -221,10 +221,11 @@ export const useAccountTotals = (login: string) =>
   });
 
 /** The repositories of an account outside your own list. */
-export const useAccountRepos = (login: string, enabled: boolean) =>
+export const useAccountRepos = (login: string, enabled: boolean, organization = false) =>
   useQuery({
-    queryKey: ['account-repos', login.toLowerCase()],
-    queryFn: () => api<AccountReposResponse>(`/accounts/${login}/repos`),
+    queryKey: ['account-repos', login.toLowerCase(), organization],
+    queryFn: () =>
+      api<AccountReposResponse>(`/accounts/${login}/repos${organization ? '?kind=organization' : ''}`),
     enabled,
     staleTime: 10 * 60_000,
   });

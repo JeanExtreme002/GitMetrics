@@ -18,7 +18,7 @@ import { type RawRepo, toSummary } from './repos.js';
 export const MAX_SOURCES = 1000;
 
 const REPO = `
-  databaseId name nameWithOwner description isPrivate isFork isArchived stargazerCount forkCount
+  databaseId name nameWithOwner description isPrivate visibility isFork isArchived stargazerCount forkCount
   pushedAt createdAt url owner { login avatarUrl } primaryLanguage { name }
   watchers { totalCount } issues(states: OPEN) { totalCount }
   repositoryTopics(first: 10) { nodes { topic { name } } }`;
@@ -48,7 +48,7 @@ query ($login: String!) {
     repos: repositories(first: 6, ownerAffiliations: OWNER, orderBy: { field: PUSHED_AT, direction: DESC }) {
       nodes { ${REPO} }
     }
-    top: repositories(first: 5, ownerAffiliations: OWNER, isFork: false, orderBy: { field: STARGAZERS, direction: DESC }) {
+    top: repositories(first: 3, ownerAffiliations: OWNER, isFork: false, orderBy: { field: STARGAZERS, direction: DESC }) {
       nodes { ${REPO} }
     }
   }
@@ -71,6 +71,7 @@ interface RawGraphRepo {
   nameWithOwner: string;
   description: string | null;
   isPrivate: boolean;
+  visibility?: 'PUBLIC' | 'PRIVATE' | 'INTERNAL';
   isFork: boolean;
   isArchived: boolean;
   stargazerCount: number;
@@ -135,6 +136,7 @@ export const fromGraph = (r: RawGraphRepo): RepoSummary => ({
   fullName: r.nameWithOwner,
   description: r.description,
   private: r.isPrivate,
+  visibility: r.visibility === 'INTERNAL' ? 'internal' : r.isPrivate ? 'private' : 'public',
   fork: r.isFork,
   archived: r.isArchived,
   stars: r.stargazerCount,
@@ -234,9 +236,19 @@ export async function getAccountTotals(gh: GitHubClient, login: string): Promise
   return nodes.length === total ? buildTotals(nodes) : null;
 }
 
-/** The repositories an account shows to you, most recently pushed first, up to a thousand. */
-export async function getAccountRepos(gh: GitHubClient, login: string): Promise<AccountReposResponse> {
-  const pages = await gh.pages<RawRepo[]>(`/users/${login}/repos`, { type: 'owner', sort: 'pushed' });
+/**
+ * The repositories an account shows to you, most recently pushed first, up to a thousand. An
+ * organization's are listed as the organization's: every one you can see, public, internal and
+ * private, where the user listing would show its public ones alone.
+ */
+export async function getAccountRepos(
+  gh: GitHubClient,
+  login: string,
+  organization = false,
+): Promise<AccountReposResponse> {
+  const pages = organization
+    ? await gh.pages<RawRepo[]>(`/orgs/${login}/repos`, { type: 'all', sort: 'pushed' })
+    : await gh.pages<RawRepo[]>(`/users/${login}/repos`, { type: 'owner', sort: 'pushed' });
   const repos = pages.flat();
   return { repos: repos.map(toSummary), complete: repos.length < MAX_SOURCES };
 }

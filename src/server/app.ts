@@ -454,11 +454,12 @@ export function createApp(options: AppOptions = {}) {
   app.get('/api/accounts/:login/repos', async (c) => {
     const login = c.req.param('login');
     if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    const organization = c.req.query('kind') === 'organization';
     return c.json(
       await memory.wrap(
-        `${config.auth!.login}:account-repos:${login.toLowerCase()}`,
+        `${config.auth!.login}:account-repos:${organization ? 'org' : 'user'}:${login.toLowerCase()}`,
         10 * MINUTE,
-        () => getAccountRepos(github()!, login),
+        () => getAccountRepos(github()!, login, organization),
         c.req.query('refresh') === '1',
       ),
     );

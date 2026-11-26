@@ -25,7 +25,7 @@ import { useAccountRepos, useOwners, useRepos } from '../lib/queries';
 type Kind = 'sources' | 'forks' | 'archived' | 'all';
 type Sort = 'stars' | 'pushed' | 'name';
 
-type Visibility = 'public' | 'private';
+type Visibility = RepoSummary['visibility'];
 
 const PAGE = 30;
 const NO_LANGUAGE = '__none__';
@@ -77,9 +77,9 @@ function RepoTable({
                       <Text size="sm" fw={600} truncate>
                         {showOwner ? repo.fullName : repo.name}
                       </Text>
-                      {repo.private && (
+                      {repo.visibility !== 'public' && (
                         <Badge size="xs" variant="outline" color="gray">
-                          Private
+                          {repo.visibility === 'internal' ? 'Internal' : 'Private'}
                         </Badge>
                       )}
                       {repo.fork && (
@@ -128,9 +128,13 @@ function RepoTable({
 
 /**
  * Every repository you can reach, or one account's. `owner` fixes the account, as on an
- * organization's own Repositories page, where there's no account to pick.
+ * organization's own Repositories page, where there's no account to pick; an `organization`'s are
+ * read as its own list, every one you can see, rather than the part of your list that it owns.
  */
-export function Repositories({ owner: fixed }: { owner?: string } = {}) {
+export function Repositories({
+  owner: fixed,
+  organization = false,
+}: { owner?: string; organization?: boolean } = {}) {
   const repos = useRepos();
   const owners = useOwners();
   const [params, setParams] = useSearchParams();
@@ -144,11 +148,14 @@ export function Repositories({ owner: fixed }: { owner?: string } = {}) {
   const [limit, setLimit] = useState(PAGE);
 
   // An account outside your own list (opened from its page): its own repositories, read apart.
+  // An organization's own page reads its own list: yours holds only the repositories you were given
+  // access to, not its public and internal ones.
   const external =
-    Boolean(repos.data) &&
-    owner !== 'all' &&
-    !owners.some((o) => o.login.toLowerCase() === owner.toLowerCase());
-  const outside = useAccountRepos(owner, external);
+    (organization && owner !== 'all') ||
+    (Boolean(repos.data) &&
+      owner !== 'all' &&
+      !owners.some((o) => o.login.toLowerCase() === owner.toLowerCase()));
+  const outside = useAccountRepos(owner, external, organization);
   const source = useMemo(
     () => (external ? (outside.data?.repos ?? []) : (repos.data?.repos ?? [])),
     [external, outside.data, repos.data],
@@ -171,14 +178,17 @@ export function Repositories({ owner: fixed }: { owner?: string } = {}) {
     [source, external, owner, kind],
   );
   const visibilities = useMemo(() => {
-    const priv = byKind.filter((r) => r.private).length;
+    const count = (v: Visibility) => byKind.filter((r) => r.visibility === v).length;
+    const internal = count('internal');
     return [
-      { value: 'public', label: `Public (${num(byKind.length - priv)})` },
-      { value: 'private', label: `Private (${num(priv)})` },
+      { value: 'public', label: `Public (${num(count('public'))})` },
+      { value: 'private', label: `Private (${num(count('private'))})` },
+      // Only organizations in an enterprise have internal repositories.
+      ...(internal ? [{ value: 'internal', label: `Internal (${num(internal)})` }] : []),
     ];
   }, [byKind]);
   const scoped = useMemo(
-    () => byKind.filter((r) => !visibility || r.private === (visibility === 'private')),
+    () => byKind.filter((r) => !visibility || r.visibility === visibility),
     [byKind, visibility],
   );
 
@@ -231,11 +241,13 @@ export function Repositories({ owner: fixed }: { owner?: string } = {}) {
         title="Repositories"
         icon={<IconBook2 size={26} stroke={1.6} />}
         description={
-          external
-            ? `The public repositories of ${owner}${outside.data?.complete ? '' : ', the 1,000 pushed to most recently'}.`
-            : fixed
-              ? `Everything ${owner} owns that you can see.`
-              : 'Everything you own, plus what you can reach through your organizations.'
+          organization
+            ? `Everything ${owner} owns that you can see${outside.data?.complete === false ? ', the 1,000 pushed to most recently' : ''}.`
+            : external
+              ? `The public repositories of ${owner}${outside.data?.complete ? '' : ', the 1,000 pushed to most recently'}.`
+              : fixed
+                ? `Everything ${owner} owns that you can see.`
+                : 'Everything you own, plus what you can reach through your organizations.'
         }
       />
 

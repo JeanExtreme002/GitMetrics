@@ -1,5 +1,6 @@
 import type { OverviewResponse, RepoDetails, RepoSummary } from '../../shared/types.js';
 import { type GitHubClient, optional } from '../github.js';
+import { mapLimit } from '../util.js';
 
 export interface RawRepo {
   id: number;
@@ -27,6 +28,10 @@ export interface RawRepo {
   visibility?: string;
 }
 
+/** A repository's visibility as GitHub names it, from older answers too, which only say private. */
+const visibilityOf = (repo: { private: boolean; visibility?: string }): RepoSummary['visibility'] =>
+  repo.visibility === 'internal' ? 'internal' : repo.private ? 'private' : 'public';
+
 export const toSummary = (repo: RawRepo): RepoSummary => ({
   id: repo.id,
   owner: repo.owner.login,
@@ -34,6 +39,7 @@ export const toSummary = (repo: RawRepo): RepoSummary => ({
   fullName: repo.full_name,
   description: repo.description,
   private: repo.private,
+  visibility: visibilityOf(repo),
   fork: repo.fork,
   archived: repo.archived,
   stars: repo.stargazers_count,
@@ -58,16 +64,46 @@ export const toDetails = (repo: RawRepo): RepoDetails => ({
   homepage: repo.homepage || null,
   sizeKb: repo.size,
   subscribers: repo.subscribers_count ?? 0,
-  visibility: repo.visibility ?? (repo.private ? 'private' : 'public'),
 });
 
+/** Repositories read from one list: ten pages of a hundred. */
+const MAX_LIST_PAGES = 10;
+
+/**
+ * Every repository you can reach: your own, and every one you can see in your organizations. The
+ * user listing alone leaves out an organization's public and internal repositories, those you see
+ * without having been given access, so each organization's own list is read too and merged in.
+ */
 export async function listRepos(gh: GitHubClient): Promise<RepoSummary[]> {
-  const repos = await gh.paginate<RawRepo>(
-    '/user/repos',
-    { affiliation: 'owner,organization_member', sort: 'pushed' },
-    { maxPages: 10 },
+  const [mine, orgs] = await Promise.all([
+    gh.paginate<RawRepo>(
+      '/user/repos',
+      { affiliation: 'owner,organization_member', sort: 'pushed' },
+      { maxPages: MAX_LIST_PAGES },
+    ),
+    // Organizations that can't be listed add nothing: the user listing still gives what it has.
+    optional(gh.paginate<{ login: string }>('/user/orgs', {}, { maxPages: 3 }), []),
+  ]);
+  // An organization that refuses (single sign-on not authorized for this token, say) keeps what
+  // the user listing gave of it.
+  const theirs = await mapLimit(orgs, 4, async (org) =>
+    (
+      await optional(
+        gh.pages<RawRepo[]>(
+          `/orgs/${org.login}/repos`,
+          { type: 'all', sort: 'pushed' },
+          { maxPages: MAX_LIST_PAGES },
+        ),
+        [],
+      )
+    ).flat(),
   );
-  return repos.map(toSummary);
+  const byId = new Map<number, RawRepo>();
+  for (const repo of [...mine, ...theirs.flat()]) byId.set(repo.id, repo);
+  // Pushed to most recently first, as GitHub sorts each list.
+  return [...byId.values()]
+    .sort((a, b) => (b.pushed_at ?? '').localeCompare(a.pushed_at ?? ''))
+    .map(toSummary);
 }
 
 /** How many GitHub search results the quick search shows. */

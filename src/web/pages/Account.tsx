@@ -485,7 +485,7 @@ export function Account() {
             <Languages account={account} totals={sums} />
           </Box>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
+        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col lines-between">
           {/* Its most starred, each opening its Stars page, as the home page's ranking does. */}
           <SectionTitle title="Most starred" />
           {account.top.length ? (

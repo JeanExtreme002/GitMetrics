@@ -365,11 +365,13 @@
 }
 
 /* Languages (home and account pages): lines between the rows only, none above the first or below the last. */
-.lines-between .rank-list {
+.lines-between .rank-list,
+.rank-list.lines-between {
   border-top: none;
 }
 
-.lines-between .legend-row:last-child {
+.lines-between .legend-row:last-child,
+.lines-between .account-row:last-child {
   border-bottom: none;
 }
 
