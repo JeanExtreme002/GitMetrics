@@ -661,19 +661,6 @@ function SeverityBar({ severity, className }: { severity: SeverityCounts; classN
 
 /** The open alerts by severity: one bar, and each severity's count and share. */
 function Severities({ query, open }: { query: UseQueryResult<AlertDetailsResponse>; open: number }) {
-  if (query.isLoading) {
-    return (
-      <Box mt={36}>
-        <Text fw={600} size="sm" mb="xs">
-          By severity
-        </Text>
-        <Skeleton height={10} radius="xl" />
-        <Text size="xs" c="dimmed" mt="sm">
-          Reading the severity of each alert…
-        </Text>
-      </Box>
-    );
-  }
   const severity = query.data?.severity;
   if (!severity) {
     return (
@@ -1086,6 +1073,40 @@ function Stale({ stale, active }: { stale: QualityResponse['stale']; active: num
   );
 }
 
+/**
+ * Where the details go while every alert is read: the same layout, empty, so the page fills in at
+ * once rather than a section at a time.
+ */
+function AlertsLoading() {
+  const block = (title: string, height: number) => (
+    <Box>
+      <Text fw={600} size="sm" mb="sm">
+        {title}
+      </Text>
+      <Skeleton height={height} radius="md" />
+    </Box>
+  );
+  return (
+    <Box aria-busy="true">
+      <Box mt={36}>
+        <Text fw={600} size="sm" mb="xs">
+          By severity
+        </Text>
+        <Skeleton height={10} radius="xl" />
+        <Text size="xs" c="dimmed" mt="sm">
+          Reading every alert, to tell how severe and how old they are…
+        </Text>
+      </Box>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing={48} mt={36}>
+        {block("How long they've been open", 200)}
+        {block('By ecosystem', 200)}
+        {block('Most alerts', 260)}
+        {block('Most vulnerable packages', 260)}
+      </SimpleGrid>
+    </Box>
+  );
+}
+
 /** Opens the organization's own Dependabot alerts on GitHub. */
 function GitHubButton({ href }: { href: string }) {
   return (
@@ -1187,6 +1208,8 @@ function Alerts({ login, alerts }: { login: string; alerts: SecurityResponse['al
           <IconShieldCheck size={22} stroke={1.6} color={cssColor('teal.5')} />
           <Text size="sm">No open alerts on any of them.</Text>
         </Group>
+      ) : severities.isLoading ? (
+        <AlertsLoading />
       ) : (
         <>
           <Severities query={severities} open={alerts.open} />
