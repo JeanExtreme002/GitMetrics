@@ -24,6 +24,7 @@ const assets = path.join(root, 'assets');
 
 /** Public pages only: nothing private ends up in a picture. */
 const REPO = '/r/JeanExtreme002/FlightRadarAPI';
+const OVERVIEW = '/r/microsoft/vscode';
 const PULL = '/r/microsoft/vscode/pull/345729';
 
 /** The pages in the grid, each with its caption and the range its chart shows. */
@@ -75,10 +76,16 @@ async function waitForServer(url, child) {
   throw new Error('GitMetrics did not start in time.');
 }
 
-/** Opens a page in dark mode and waits until it has loaded everything it shows. */
-async function open(browser, base, url, viewport) {
+/**
+ * Opens a page in dark mode and waits until it has loaded everything it shows. `storage` holds
+ * other choices the app keeps in localStorage, set before the page loads.
+ */
+async function open(browser, base, url, viewport, storage = {}) {
   const page = await browser.newPage({ viewport, colorScheme: 'dark', deviceScaleFactor: 2 });
-  await page.addInitScript(() => localStorage.setItem('mantine-color-scheme-value', 'dark'));
+  await page.addInitScript((saved) => {
+    localStorage.setItem('mantine-color-scheme-value', 'dark');
+    for (const [key, value] of Object.entries(saved)) localStorage.setItem(key, value);
+  }, storage);
   await page.goto(base + url);
   await settle(page);
   return page;
@@ -209,7 +216,14 @@ async function main() {
     if (!auth.ok) throw new Error('Could not sign in with the GitHub CLI. Sign in first with: gh auth login');
     step('Signed in with the GitHub CLI.');
 
-    const overview = await open(browser, base, REPO, { width: 1440, height: 1000 });
+    // The overview's chart on commits rather than stars: Mantine keeps the choice as JSON.
+    const overview = await open(
+      browser,
+      base,
+      OVERVIEW,
+      { width: 1440, height: 1000 },
+      { 'gitmetrics:overview-chart': JSON.stringify('commits') },
+    );
     const overviewShot = await overview.screenshot();
     await overview.close();
 
