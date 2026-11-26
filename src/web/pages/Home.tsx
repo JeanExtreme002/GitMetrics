@@ -290,7 +290,7 @@ export function Home() {
         <Grid.Col span={{ base: 12, md: 7 }} pr={{ md: 'xl' }}>
           <TopRepositories repos={sources} />
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
+        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col lines-between">
           <Languages repos={sources} owned={mine.length} />
         </Grid.Col>
       </Grid>

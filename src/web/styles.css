@@ -348,7 +348,7 @@
   border-top: none;
 }
 
-/* Languages on an account page: lines between the rows only, none above the first or below the last. */
+/* Languages (home and account pages): lines between the rows only, none above the first or below the last. */
 .lines-between .rank-list {
   border-top: none;
 }
