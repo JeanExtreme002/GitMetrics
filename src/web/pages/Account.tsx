@@ -114,7 +114,12 @@ function Owns({ account }: { account: AccountResponse }) {
   const [active, setActive] = useState<string | null>(null);
   const slices = [
     { name: 'Of its own', value: r.sources, color: 'blue.5', hint: 'Repositories that are not forks' },
-    { name: 'Forks', value: r.forks, color: 'grape.4', hint: 'Copies of other repositories' },
+    {
+      name: 'Forks of others',
+      value: r.forks,
+      color: 'grape.4',
+      hint: "Its copies of other people's repositories",
+    },
   ];
   const share = (value: number) => (r.total ? value / r.total : 0);
   const bars = [
