@@ -334,7 +334,7 @@
   background: var(--mantine-color-yellow-6);
 }
 
-/* On an account page, What it owns and Languages read without lines between their rows. */
+/* On an account page, What it owns reads without lines between its rows. */
 .no-lines .rank-list {
   border-top: none;
 }
@@ -346,6 +346,15 @@
 
 .no-lines .owns-bar {
   border-top: none;
+}
+
+/* Languages on an account page: lines between the rows only, none above the first or below the last. */
+.lines-between .rank-list {
+  border-top: none;
+}
+
+.lines-between .legend-row:last-child {
+  border-bottom: none;
 }
 
 /* Archived and private on an account page: a label and its share, over a bar of the whole. */

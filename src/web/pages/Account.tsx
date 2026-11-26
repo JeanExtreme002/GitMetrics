@@ -477,7 +477,7 @@ export function Account() {
 
       <Grid gap="md" mt="xl">
         <Grid.Col span={{ base: 12, md: 7 }} pr={{ md: 'xl' }}>
-          <Box className="no-lines">
+          <Box className="lines-between">
             <Languages account={account} totals={sums} />
           </Box>
         </Grid.Col>
