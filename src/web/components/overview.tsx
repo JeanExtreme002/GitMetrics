@@ -3,7 +3,7 @@ import { Anchor, Box, Group, Text, Timeline } from '@mantine/core';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { RepoSummary } from '../../shared/types';
-import { percent, relative } from '../lib/format';
+import { num, percent, relative } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { repoPath } from './repo';
 
@@ -46,17 +46,17 @@ export function LanguagesDonut({
   caption,
   counts,
   colorOf = languageColor,
-  ordered = false,
+  unit = 'repositories',
 }: {
   title: string;
   caption: string;
   counts: [string, number][];
   /** Each name's color: the languages' own colors unless given. */
   colorOf?: (name: string) => string;
-  /** Kept in the order given, as for a timeline, instead of the largest first. */
-  ordered?: boolean;
+  /** What's counted, under the total and in the tooltip. */
+  unit?: string;
 }) {
-  const sorted = ordered ? counts : [...counts].sort((a, b) => b[1] - a[1]);
+  const sorted = [...counts].sort((a, b) => b[1] - a[1]);
   const other = sorted.slice(5).reduce((s, [, c]) => s + c, 0);
   const items: [string, number][] = [
     ...sorted.slice(0, 5),
@@ -85,14 +85,14 @@ export function LanguagesDonut({
             pieProps={{ cornerRadius: 2, isAnimationActive: false }}
             strokeWidth={0}
             tooltipDataSource="segment"
-            valueFormatter={(v) => `${v} repositories`}
+            valueFormatter={(v) => `${num(v)} ${unit}`}
           />{' '}
           <div className="donut-label">
             <Text fz={30} fw={600} lh={1} className="tabular">
-              {total}
+              {num(total)}
             </Text>
             <Text size="xs" c="dimmed" mt={4}>
-              repositories
+              {unit}
             </Text>
           </div>
         </Box>{' '}
@@ -109,7 +109,7 @@ export function LanguagesDonut({
                 {name}
               </Text>
               <Text size="sm" c="dimmed" ta="right" className="tabular">
-                {percent(count / total)}
+                {count > 0 && count / total < 0.005 ? '<1%' : percent(count / total)}
               </Text>
             </div>
           ))}

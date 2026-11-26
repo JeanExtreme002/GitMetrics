@@ -416,7 +416,38 @@ a.bar-link:hover {
   background: var(--mantine-color-default-hover);
 }
 
-/* An untouched repository: a mark colored by how long, its name, last push and language. */
+/* Open alerts by how long they've been open: one column per span, the longest the most alerts. */
+.age-columns {
+  display: grid;
+  gap: 18px;
+  align-items: end;
+}
+
+.age-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.age-track {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  max-width: 64px;
+  height: 160px;
+}
+
+.age-fill {
+  flex: none;
+  width: 100%;
+  min-height: 3px;
+  border-radius: 6px 6px 2px 2px;
+}
+
+/* An untouched repository: a dot colored by how long, its name, last push and language. */
 .stale-tile {
   display: flex;
   align-items: center;
@@ -433,9 +464,11 @@ a.bar-link:hover {
 
 .stale-mark {
   flex: none;
-  width: 4px;
-  height: 30px;
-  border-radius: 99px;
+  align-self: flex-start;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
 }
 
 /* Open alerts split by severity: one bar for all of them, and one within each repository's. */

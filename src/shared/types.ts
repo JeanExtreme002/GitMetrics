@@ -132,6 +132,11 @@ export interface PeopleResponse {
   total: number;
   /** False when there were more than could be read. */
   complete: boolean;
+  /**
+   * The owners of the enterprise the organization belongs to; empty without one, null when GitHub
+   * doesn't show them to you.
+   */
+  enterpriseOwners: AccountPerson[] | null;
 }
 
 /** An organization's teams you can see. */
@@ -222,7 +227,7 @@ export interface AlertDetailsResponse {
     oldestCritical: { fullName: string; createdAt: string; package: string } | null;
     /** Alerts by ecosystem, most first. */
     ecosystems: { name: string; alerts: number }[];
-    /** The packages with the most alerts, up to ten. */
+    /** The packages with the most alerts, up to thirty. */
     packages: AlertPackage[];
   } | null;
 }

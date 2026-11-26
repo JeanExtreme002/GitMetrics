@@ -39,6 +39,8 @@ async function readPages<T>(
   query: string,
   variables: Record<string, unknown>,
   pick: (data: unknown) => Page<T> | null | undefined,
+  /** Only all of it is any use, as for totals: stop as soon as there's more than can be read. */
+  allOrNothing = false,
 ): Promise<{ items: T[]; total: number; complete: boolean; found: boolean }> {
   const items: T[] = [];
   let after: string | null = null;
@@ -48,8 +50,9 @@ async function readPages<T>(
     const connection = pick(data);
     if (!connection) return { items, total, complete: false, found: false };
     total = connection.totalCount;
-    // More than can be read: no use reading the rest.
-    if (total > MAX_PAGES * 100) return { items, total, complete: false, found: true };
+    // More than can be read: no use reading the rest when only all of it would do. A list still
+    // shows what was read, saying there's more.
+    if (allOrNothing && total > MAX_PAGES * 100) return { items, total, complete: false, found: true };
     items.push(...(connection.nodes ?? connection.edges ?? []));
     after = connection.pageInfo.hasNextPage ? connection.pageInfo.endCursor : null;
     if (!after) break;
@@ -60,49 +63,120 @@ async function readPages<T>(
 // People ------------------------------------------------------------------------------------------
 
 const PEOPLE = `
-query ($login: String!, $after: String) {
+query ($login: String!) {
   organization(login: $login) {
     viewerIsAMember
-    membersWithRole(first: 100, after: $after) {
-      totalCount
-      pageInfo { hasNextPage endCursor }
-      edges { role node { login name avatarUrl } }
-    }
+    membersWithRole { totalCount }
   }
 }`;
 
-interface PeopleEdge {
-  role: 'ADMIN' | 'MEMBER' | null;
-  node: { login: string; name: string | null; avatarUrl: string };
+interface RawMember {
+  login: string;
+  avatar_url: string;
 }
 
-/** An organization's members, admins first; null when no organization has that login. */
-export async function getPeople(gh: GitHubClient, login: string): Promise<PeopleResponse | null> {
-  let member = false;
-  const read = await readPages<PeopleEdge>(gh, PEOPLE, { login }, (data) => {
-    const org = (
-      data as { organization: { viewerIsAMember: boolean; membersWithRole: Page<PeopleEdge> } | null }
-    ).organization;
-    if (org) member = org.viewerIsAMember;
-    return org?.membersWithRole;
+/** Names asked about in one query, each login under its own alias. */
+const NAMES_AT_ONCE = 100;
+
+/**
+ * The names of these users, by login, a batch per query, a few at once. A batch that fails leaves
+ * its people with their logins alone: names are for show, not counted.
+ */
+async function userNames(gh: GitHubClient, logins: string[]): Promise<Map<string, string>> {
+  const batches: string[][] = [];
+  for (let i = 0; i < logins.length; i += NAMES_AT_ONCE) batches.push(logins.slice(i, i + NAMES_AT_ONCE));
+  const names = new Map<string, string>();
+  await mapLimit(batches, 5, async (batch) => {
+    const variables: Record<string, string> = {};
+    const fields = batch.map((login, i) => {
+      variables[`l${i}`] = login;
+      return `u${i}: user(login: $l${i}) { name }`;
+    });
+    const params = batch.map((_, i) => `$l${i}: String!`).join(', ');
+    try {
+      const data = await gh.graphql<Record<string, { name: string | null } | null>>(
+        `query (${params}) { ${fields.join(' ')} }`,
+        variables,
+      );
+      batch.forEach((login, i) => {
+        const name = data[`u${i}`]?.name?.trim();
+        if (name) names.set(login, name);
+      });
+    } catch {
+      // Logins alone for this batch.
+    }
   });
-  if (!read.found) return null;
+  return names;
+}
+
+/**
+ * An organization's members, admins first; null when no organization has that login. The list and
+ * its admins come a page per request, all at once, and their names in batches: a big organization
+ * reads in seconds instead of page after page.
+ */
+export async function getPeople(gh: GitHubClient, login: string): Promise<PeopleResponse | null> {
+  const [summary, enterpriseOwners] = await Promise.all([
+    gh.graphql<{
+      organization: { viewerIsAMember: boolean; membersWithRole: { totalCount: number } } | null;
+    }>(PEOPLE, { login }),
+    getEnterpriseOwners(gh, login),
+  ]);
+  const org = summary.organization;
+  if (!org) return null;
+  const member = org.viewerIsAMember;
+  // To someone outside, GitHub lists its public members alone; roles are its to show members only.
+  const [pages, adminPages] = await Promise.all([
+    gh.pages<RawMember[]>(`/orgs/${login}/members`),
+    member ? gh.pages<RawMember[]>(`/orgs/${login}/members`, { role: 'admin' }) : Promise.resolve([]),
+  ]);
+  const list = pages.flat();
+  const admins = new Set(adminPages.flat().map((m) => m.login));
+  const names = await userNames(
+    gh,
+    list.map((m) => m.login),
+  );
   return {
     member,
-    // Roles are GitHub's to show only to members.
-    people: read.items
-      .map((e) => ({
-        login: e.node.login,
-        name: e.node.name || null,
-        avatarUrl: e.node.avatarUrl,
-        role: member ? (e.role === 'ADMIN' ? ('admin' as const) : ('member' as const)) : null,
+    people: list
+      .map((m) => ({
+        login: m.login,
+        name: names.get(m.login) ?? null,
+        avatarUrl: m.avatar_url,
+        role: member ? (admins.has(m.login) ? ('admin' as const) : ('member' as const)) : null,
       }))
       .sort(
         (a, b) => Number(b.role === 'admin') - Number(a.role === 'admin') || a.login.localeCompare(b.login),
       ),
-    total: read.total,
-    complete: read.complete,
+    total: org.membersWithRole.totalCount,
+    complete: list.length === org.membersWithRole.totalCount,
+    enterpriseOwners,
   };
+}
+
+const ENTERPRISE_OWNERS = `
+query ($login: String!) {
+  organization(login: $login) {
+    enterpriseOwners(first: 100) { totalCount nodes { login name avatarUrl } }
+  }
+}`;
+
+/**
+ * The owners of the enterprise an organization belongs to, by login; empty without an enterprise,
+ * null when GitHub doesn't show them (an error, or more than were read).
+ */
+async function getEnterpriseOwners(gh: GitHubClient, login: string): Promise<AccountPerson[] | null> {
+  try {
+    const data = await gh.graphql<{
+      organization: { enterpriseOwners: { totalCount: number; nodes: AccountPerson[] } | null } | null;
+    }>(ENTERPRISE_OWNERS, { login });
+    const owners = data.organization?.enterpriseOwners;
+    if (!owners || owners.nodes.length !== owners.totalCount) return null;
+    return owners.nodes
+      .map((p) => ({ login: p.login, name: p.name || null, avatarUrl: p.avatarUrl }))
+      .sort((a, b) => a.login.localeCompare(b.login));
+  } catch {
+    return null;
+  }
 }
 
 // Teams -------------------------------------------------------------------------------------------
@@ -468,7 +542,7 @@ export function buildAlertDetails(
         repositories: p.repositories.size,
       }))
       .sort((a, b) => b.alerts - a.alerts || b.repositories - a.repositories || a.name.localeCompare(b.name))
-      .slice(0, 10),
+      .slice(0, 30),
   };
 }
 
@@ -511,6 +585,7 @@ export async function readOrgRepos(gh: GitHubClient, login: string): Promise<Raw
     (data) =>
       (data as { repositoryOwner: { repositories: Page<RawHealthRepo> } | null }).repositoryOwner
         ?.repositories,
+    true,
   );
   return read.found && read.complete ? read.items : null;
 }

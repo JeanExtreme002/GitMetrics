@@ -8,6 +8,7 @@ import {
   Group,
   Select,
   SimpleGrid,
+  Stack,
   Skeleton,
   Text,
   TextInput,
@@ -15,6 +16,7 @@ import {
 } from '@mantine/core';
 import {
   IconBook2,
+  IconBuilding,
   IconChecklist,
   IconCircleDot,
   IconExternalLink,
@@ -121,8 +123,8 @@ function PersonRow({ person, right }: { person: AccountPerson; right?: ReactNode
   );
 }
 
-/** A person as a tile: a round avatar, the name, and the login under it. */
-function PersonTile({ person }: { person: AccountPerson }) {
+/** A person as a tile: a round avatar, the name, and the login under it, with a tag if given. */
+function PersonTile({ person, tag }: { person: AccountPerson; tag?: string }) {
   return (
     <Anchor component={Link} to={`/a/${person.login}`} underline="never" c="inherit" className="person-tile">
       <Avatar src={person.avatarUrl} alt={person.login} size={40} radius="xl" />
@@ -130,20 +132,33 @@ function PersonTile({ person }: { person: AccountPerson }) {
         <Text size="sm" fw={500} truncate>
           {person.name ?? person.login}
         </Text>
-        <Text size="xs" c="dimmed" truncate>
-          @{person.login}
-        </Text>
+        <Group gap={6} wrap="nowrap" miw={0}>
+          <Text size="xs" c="dimmed" truncate>
+            @{person.login}
+          </Text>
+          {tag && (
+            <Badge size="xs" variant="light" color="gray" radius="sm" tt="none" style={{ flex: 'none' }}>
+              {tag}
+            </Badge>
+          )}
+        </Group>
       </Box>
     </Anchor>
   );
 }
 
-function PeopleGrid({ people }: { people: AccountPerson[] }) {
+function PeopleGrid({
+  people,
+  tagOf,
+}: {
+  people: AccountPerson[];
+  tagOf?: (login: string) => string | undefined;
+}) {
   if (!people.length) return null;
   return (
     <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 4 }} spacing={4} verticalSpacing={4}>
       {people.map((p) => (
-        <PersonTile key={p.login} person={p} />
+        <PersonTile key={p.login} person={p} tag={tagOf?.(p.login)} />
       ))}
     </SimpleGrid>
   );
@@ -218,8 +233,20 @@ export function People() {
     );
   }, [query.data, search]);
   const admins = query.data?.people.filter((p) => p.role === 'admin').length ?? 0;
+  const owners = query.data?.enterpriseOwners ?? [];
+  const ownerLogins = new Set(owners.map((o) => o.login));
+  const memberLogins = new Set(query.data?.people.map((p) => p.login));
+  const term = search.trim().toLowerCase();
+  // Everyone in their own section, tagged if they own the enterprise too; the enterprise owners apart
+  // only when they aren't among its people, so no one shows twice and each count matches its section.
+  const shownOwners = owners.filter(
+    (p) =>
+      !memberLogins.has(p.login) &&
+      (!term || p.login.toLowerCase().includes(term) || (p.name ?? '').toLowerCase().includes(term)),
+  );
   const shownAdmins = shown.filter((p) => p.role === 'admin');
   const shownMembers = shown.filter((p) => p.role !== 'admin');
+  const ownerTag = (login: string) => (ownerLogins.has(login) ? 'Enterprise owner' : undefined);
 
   return (
     <>
@@ -228,19 +255,31 @@ export function People() {
         icon={<IconUsers size={26} stroke={1.6} />}
         description={
           query.data && !query.data.member
-            ? 'Its public members. Members of the organization also see everyone else.'
-            : 'Everyone in the organization, admins first.'
+            ? 'Its public members, the ones who chose to show they belong to it. Its members see everyone.'
+            : 'Who belongs to the organization, and the role each one has in it.'
         }
         stats={
           query.data && (
             <Counters>
-              <Counter icon={IconUsers} value={num(query.data.total)} label="Members" />
+              <Counter
+                icon={IconUsers}
+                value={num(query.data.total)}
+                label={query.data.member ? 'Members' : 'Public members'}
+              />
               {query.data.member && (
                 <Counter
                   icon={IconShieldCheck}
                   value={num(admins)}
                   label="Admins"
                   hint="Members who can manage the organization"
+                />
+              )}
+              {owners.length > 0 && (
+                <Counter
+                  icon={IconBuilding}
+                  value={num(owners.length)}
+                  label="Enterprise owners"
+                  hint="They own the enterprise account the organization belongs to"
                 />
               )}
             </Counters>
@@ -267,20 +306,30 @@ export function People() {
                 Showing the first {num(data.people.length)} of its {num(data.total)} members.
               </Text>
             )}
+            {shownOwners.length > 0 && (
+              <Box mb={36}>
+                <SectionTitle
+                  title="Enterprise owners"
+                  caption={
+                    data.member
+                      ? "They own the enterprise account the organization belongs to, but aren't members of it"
+                      : "They own the enterprise account the organization belongs to, and aren't among its public members"
+                  }
+                />
+                <PeopleGrid people={shownOwners} />
+              </Box>
+            )}
             {shownAdmins.length > 0 && (
               <Box mb={36}>
                 <SectionTitle title="Admins" caption="They manage the organization" />
-                <PeopleGrid people={shownAdmins} />
+                <PeopleGrid people={shownAdmins} tagOf={ownerTag} />
               </Box>
             )}
             {(shownMembers.length > 0 || shown.length === 0) && (
-              <SectionTitle
-                title={data.member ? 'Members' : 'Public members'}
-                caption={data.member ? undefined : 'Members who chose to show they belong to it'}
-              />
+              <SectionTitle title={data.member ? 'Members' : 'Public members'} />
             )}
-            <PeopleGrid people={shownMembers.slice(0, limit)} />
-            {shown.length === 0 && (
+            <PeopleGrid people={shownMembers.slice(0, limit)} tagOf={ownerTag} />
+            {shown.length === 0 && shownOwners.length === 0 && (
               <Text size="sm" c="dimmed" py="md">
                 No one matches.
               </Text>
@@ -552,16 +601,15 @@ const LICENSE_COLORS = ['blue.5', 'teal.5', 'grape.4', 'yellow.5', 'orange.5'];
 
 /** Its active repositories by their last push, in time order. */
 function Activity({ activity, of }: { activity: QualityResponse['activity']; of: number }) {
-  const shown = ACTIVITY.filter((a) => activity[a.key] > 0);
-  const colors = new Map(shown.map((a) => [a.label, cssColor(a.color)]));
+  const shown = ACTIVITY.filter((a) => a.key !== 'never' || activity.never > 0);
   return (
-    <LanguagesDonut
-      title="Activity"
-      caption={`Its ${num(of)} active repositories by their last push`}
-      counts={shown.map((a) => [a.label, activity[a.key]])}
-      colorOf={(name) => colors.get(name) ?? cssColor('gray.5')}
-      ordered
-    />
+    <Box>
+      <SectionTitle title="Activity" caption={`Its ${num(of)} active repositories by their last push`} />
+      <Columns
+        label="Active repositories by their last push"
+        items={shown.map((a) => ({ key: a.key, label: a.label, value: activity[a.key], color: a.color }))}
+      />
+    </Box>
   );
 }
 
@@ -691,102 +739,82 @@ const ALERT_AGE: {
   { key: 'older', label: 'Over a year', color: 'red.6' },
 ];
 
-/** A share as a percentage, saying "<1%" rather than "0%" for a few out of many. */
-const share = (value: number, of: number) =>
-  value > 0 && of && value / of < 0.005 ? '<1%' : percent(of ? value / of : 0);
-
-/** A label, its count and share, and a bar: the rows of the alert details. */
-function CountBar({
+/** Counts over time spans, in time order: a column each, its count just above it. */
+function Columns({
+  items,
   label,
-  value,
-  of,
-  max,
-  color,
 }: {
-  label: ReactNode;
-  value: number;
-  of: number;
-  max: number;
-  color: string;
+  items: { key: string; label: string; value: number; color: string }[];
+  label: string;
 }) {
+  const total = items.reduce((sum, c) => sum + c.value, 0);
+  const max = Math.max(1, ...items.map((c) => c.value));
   return (
-    <Box className="owns-bar">
-      <Group justify="space-between" wrap="nowrap">
-        <Text size="sm" truncate>
-          {label}
-        </Text>
-        <Group gap={10} wrap="nowrap" className="tabular">
-          <Text size="sm" fw={600}>
-            {num(value)}
+    <div
+      className="age-columns"
+      style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}
+      role="img"
+      aria-label={label}
+    >
+      {items.map((c) => (
+        <div key={c.key} className="age-column">
+          <div className="age-track">
+            <Text size="sm" fw={600} className="tabular" mb={6}>
+              {num(c.value)}
+            </Text>
+            <div
+              className="age-fill"
+              style={{ height: `${(c.value / max) * 130}px`, background: cssColor(c.color) }}
+            />
+          </div>
+          <Text size="xs" c="dimmed" mt={8} ta="center" lh={1.3}>
+            {c.label}
+            <br />
+            {total ? percent(c.value / total) : '0%'}
           </Text>
-          <Text size="sm" c="dimmed" w={38} ta="right">
-            {share(value, of)}
-          </Text>
-        </Group>
-      </Group>
-      <div className="rank-track">
-        <div
-          className="rank-fill"
-          style={{ width: `${max ? (value / max) * 100 : 0}%`, background: cssColor(color) }}
-        />
-      </div>
-    </Box>
+        </div>
+      ))}
+    </div>
   );
 }
 
-/** How long the alerts have been open, and where they come from. */
-function AlertAgeAndEcosystems({
-  details,
-  open,
-}: {
-  details: NonNullable<AlertDetailsResponse['details']>;
-  open: number;
-}) {
-  const ageMax = Math.max(...ALERT_AGE.map((a) => details.age[a.key]));
-  const ecosystems = details.ecosystems.slice(0, 6);
-  const ecoMax = ecosystems[0]?.alerts ?? 0;
+const ECOSYSTEM_COLORS = ['red.5', 'blue.5', 'teal.5', 'grape.4', 'yellow.5'];
+
+/** How long the alerts have been open, in time order, and where they come from. */
+function AlertAgeAndEcosystems({ details }: { details: NonNullable<AlertDetailsResponse['details']> }) {
+  const names = details.ecosystems.map((e) => ecosystem(e.name));
   return (
     <Grid gap="md" mt={36}>
       <Grid.Col span={{ base: 12, md: 6 }} pr={{ md: 'xl' }}>
-        <Text fw={600} size="sm">
-          How long they&apos;ve been open
-        </Text>
-        <Text size="xs" c="dimmed" mt={2} mb="sm">
-          {details.oldestCritical
-            ? `The oldest critical one, in ${details.oldestCritical.package} on ${details.oldestCritical.fullName.split('/')[1]}, was opened ${relative(details.oldestCritical.createdAt)}`
-            : 'Since each alert was opened'}
-        </Text>
-        <Box className="no-lines">
-          {ALERT_AGE.map((a) => (
-            <CountBar
-              key={a.key}
-              label={a.label}
-              value={details.age[a.key]}
-              of={open}
-              max={ageMax}
-              color={a.color}
-            />
-          ))}
+        <Box className="lines-between">
+          <SectionTitle
+            title="How long they've been open"
+            caption={
+              details.oldestCritical
+                ? `The oldest critical one, in ${details.oldestCritical.package} on ${details.oldestCritical.fullName.split('/')[1]}, was opened ${relative(details.oldestCritical.createdAt)}`
+                : 'Since each alert was opened'
+            }
+          />
+          <Columns
+            label="Open alerts by how long they've been open"
+            items={ALERT_AGE.map((a) => ({
+              key: a.key,
+              label: a.label,
+              value: details.age[a.key],
+              color: a.color,
+            }))}
+          />
         </Box>
       </Grid.Col>
       <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
-        <Text fw={600} size="sm">
-          By ecosystem
-        </Text>
-        <Text size="xs" c="dimmed" mt={2} mb="sm">
-          Where the vulnerable packages come from
-        </Text>
-        <Box className="no-lines">
-          {ecosystems.map((e) => (
-            <CountBar
-              key={e.name}
-              label={ecosystem(e.name)}
-              value={e.alerts}
-              of={open}
-              max={ecoMax}
-              color="red.5"
-            />
-          ))}
+        <Box className="lines-between">
+          <LanguagesDonut
+            title="By ecosystem"
+            caption="Where the vulnerable packages come from"
+            counts={details.ecosystems.map((e) => [ecosystem(e.name), e.alerts])}
+            colorOf={(name) => cssColor(ECOSYSTEM_COLORS[names.indexOf(name) % ECOSYSTEM_COLORS.length]!)}
+            unit="alerts"
+          />
         </Box>
       </Grid.Col>
     </Grid>
@@ -854,20 +882,72 @@ function BarLink({
   );
 }
 
-/** The packages behind the most alerts: where an update does the most good. */
-function VulnerablePackages({ packages }: { packages: AlertPackage[] }) {
-  if (!packages.length) return null;
-  const max = packages[0]!.alerts;
+/** Lists start this long, and grow by as much with each "Show more". */
+const LIST_STEP = 6;
+
+function ListMore({ shown, total, onMore }: { shown: number; total: number; onMore: () => void }) {
+  if (shown >= total) return null;
+  return (
+    <Button variant="subtle" color="gray" size="xs" mt="xs" onClick={onMore}>
+      Show more ({num(total - shown)} left)
+    </Button>
+  );
+}
+
+/** The repositories with the most alerts, each bar split by severity once those are read. */
+function MostAlerts({
+  repositories,
+  severityOf,
+}: {
+  repositories: NonNullable<SecurityResponse['alerts']>['repositories'];
+  severityOf: Map<string, SeverityCounts | null>;
+}) {
+  const [limit, setLimit] = useState(LIST_STEP);
+  const max = Math.max(1, repositories[0]?.open ?? 1);
   return (
     <>
-      <Text fw={600} size="sm" mt={36}>
+      <Text fw={600} size="sm">
+        Most alerts
+      </Text>
+      <Text size="xs" c="dimmed" mt={2} mb="sm">
+        The repositories with the most; each opens its alerts on GitHub
+      </Text>
+      <Stack gap={2}>
+        {repositories.slice(0, limit).map((r) => (
+          <BarLink
+            key={r.fullName}
+            href={`https://github.com/${r.fullName}/security/dependabot`}
+            title={`Open the Dependabot alerts of ${r.fullName} on GitHub`}
+            label={r.fullName.split('/')[1]!}
+            value={r.open}
+            width={r.open / max}
+            bar={
+              severityOf.get(r.fullName) ? (
+                <SeverityBar severity={severityOf.get(r.fullName)!} className="severity-fill" />
+              ) : undefined
+            }
+          />
+        ))}
+      </Stack>
+      <ListMore shown={limit} total={repositories.length} onMore={() => setLimit((l) => l + LIST_STEP)} />
+    </>
+  );
+}
+
+/** The packages behind the most alerts: where an update does the most good. */
+function VulnerablePackages({ packages }: { packages: AlertPackage[] }) {
+  const [limit, setLimit] = useState(LIST_STEP);
+  const max = packages[0]?.alerts ?? 1;
+  return (
+    <>
+      <Text fw={600} size="sm">
         Most vulnerable packages
       </Text>
       <Text size="xs" c="dimmed" mt={2} mb="sm">
         The packages behind the most alerts: where an update does the most good
       </Text>
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40} verticalSpacing={2}>
-        {packages.map((p) => (
+      <Stack gap={2}>
+        {packages.slice(0, limit).map((p) => (
           <BarLink
             key={`${p.ecosystem}:${p.name}`}
             label={p.name}
@@ -876,7 +956,8 @@ function VulnerablePackages({ packages }: { packages: AlertPackage[] }) {
             width={p.alerts / max}
           />
         ))}
-      </SimpleGrid>
+      </Stack>
+      <ListMore shown={limit} total={packages.length} onMore={() => setLimit((l) => l + LIST_STEP)} />
     </>
   );
 }
@@ -1080,8 +1161,7 @@ function Alerts({ login, alerts }: { login: string; alerts: SecurityResponse['al
   }
   const affected = alerts.repositories.length;
   const clean = alerts.readable - affected;
-  const max = Math.max(1, alerts.repositories[0]?.open ?? 1);
-  const list = alerts.repositories.slice(0, 10);
+  const packages = severities.data?.details?.packages;
   return (
     <Box>
       <SectionTitle
@@ -1108,38 +1188,17 @@ function Alerts({ login, alerts }: { login: string; alerts: SecurityResponse['al
       ) : (
         <>
           <Severities query={severities} open={alerts.open} />
-          {severities.data?.details && (
-            <AlertAgeAndEcosystems details={severities.data.details} open={alerts.open} />
-          )}
-          <Text fw={600} size="sm" mt={36}>
-            Most alerts
-          </Text>
-          <Text size="xs" c="dimmed" mt={2} mb="sm">
-            Each opens its alerts on GitHub
-          </Text>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40} verticalSpacing={2}>
-            {list.map((r) => (
-              <BarLink
-                key={r.fullName}
-                href={`https://github.com/${r.fullName}/security/dependabot`}
-                title={`Open the Dependabot alerts of ${r.fullName} on GitHub`}
-                label={r.fullName.split('/')[1]!}
-                value={r.open}
-                width={r.open / max}
-                bar={
-                  severityOf.get(r.fullName) ? (
-                    <SeverityBar severity={severityOf.get(r.fullName)!} className="severity-fill" />
-                  ) : undefined
-                }
-              />
-            ))}
-          </SimpleGrid>
-          {affected > 10 && (
-            <Text size="xs" c="dimmed" mt="sm">
-              And {num(affected - 10)} more repositories with open alerts.
-            </Text>
-          )}
-          {severities.data?.details && <VulnerablePackages packages={severities.data.details.packages} />}
+          {severities.data?.details && <AlertAgeAndEcosystems details={severities.data.details} />}
+          <Grid gap="md" mt={36}>
+            <Grid.Col span={{ base: 12, md: packages?.length ? 6 : 12 }} pr={{ md: 'xl' }}>
+              <MostAlerts repositories={alerts.repositories} severityOf={severityOf} />
+            </Grid.Col>
+            {packages && packages.length > 0 && (
+              <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
+                <VulnerablePackages packages={packages} />
+              </Grid.Col>
+            )}
+          </Grid>
         </>
       )}
     </Box>

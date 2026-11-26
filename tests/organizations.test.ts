@@ -159,17 +159,43 @@ describe('quality and security', () => {
 });
 
 describe('people and teams', () => {
-  const person = (login: string, role: 'ADMIN' | 'MEMBER') => ({
-    role,
-    node: { login, name: login === 'zed' ? 'Zed' : '', avatarUrl: `https://avatars/${login}` },
-  });
-  const people = [person('bo', 'MEMBER'), person('zed', 'ADMIN'), person('al', 'MEMBER')];
+  /**
+   * A GitHub with these members (and these admins among them, as members see them), their names,
+   * and these enterprise owners: what the People page reads.
+   */
+  const github = ({
+    member = true,
+    admins = ['zed'],
+    total = 3,
+    owners = null as unknown,
+    failNames = false,
+  } = {}) => {
+    const logins = ['bo', 'zed', 'al'];
+    const asked: string[] = [];
+    const gh = {
+      graphql: async (query: string, variables: Record<string, string>) => {
+        if (query.includes('enterpriseOwners')) return { organization: { enterpriseOwners: owners } };
+        if (query.includes('membersWithRole'))
+          return { organization: { viewerIsAMember: member, membersWithRole: { totalCount: total } } };
+        if (failNames) throw new Error('timeout');
+        // Names: one alias per login.
+        const answer: Record<string, unknown> = {};
+        for (const [key, login] of Object.entries(variables))
+          answer[`u${key.slice(1)}`] = { name: login === 'zed' ? ' Zed ' : null };
+        return answer;
+      },
+      pages: async (path: string, query: { role?: string } = {}) => {
+        asked.push(`${path}${query.role ? `?role=${query.role}` : ''}`);
+        const list = query.role === 'admin' ? admins : logins;
+        return [list.map((login) => ({ login, avatar_url: `https://avatars/${login}` }))];
+      },
+    } as unknown as GitHubClient;
+    return { gh, asked };
+  };
 
-  it('lists every member, admins first, with roles only for members', async () => {
-    const asMember = paged(people, (page) => ({
-      organization: { viewerIsAMember: true, membersWithRole: page },
-    }));
-    expect(await getPeople(asMember.gh, 'acme')).toEqual({
+  it('lists every member, admins first, with their names and, for members, their roles', async () => {
+    const { gh, asked } = github();
+    expect(await getPeople(gh, 'acme')).toEqual({
       member: true,
       people: [
         { login: 'zed', name: 'Zed', avatarUrl: 'https://avatars/zed', role: 'admin' },
@@ -178,25 +204,42 @@ describe('people and teams', () => {
       ],
       total: 3,
       complete: true,
+      enterpriseOwners: null,
     });
-    const outside = paged(people, (page) => ({
-      organization: { viewerIsAMember: false, membersWithRole: page },
-    }));
+    expect(asked).toEqual(['/orgs/acme/members', '/orgs/acme/members?role=admin']);
+
+    // Outside it: its public members, no roles, and admins aren't asked for.
+    const outside = github({ member: false });
     const seen = await getPeople(outside.gh, 'acme');
-    expect(seen?.member).toBe(false);
     expect(seen?.people.map((p) => p.role)).toEqual([null, null, null]);
+    expect(outside.asked).toEqual(['/orgs/acme/members']);
   });
 
-  it('says when there were more members than read, and is null with no organization', async () => {
-    const big = paged(
-      people,
-      (page) => ({ organization: { viewerIsAMember: true, membersWithRole: page } }),
-      5000,
-    );
-    expect(await getPeople(big.gh, 'acme')).toMatchObject({ total: 5000, complete: false });
+  it('keeps the logins when names fail, says when there were more than read, and is null without an organization', async () => {
+    expect((await getPeople(github({ failNames: true }).gh, 'acme'))?.people[0]).toMatchObject({
+      login: 'zed',
+      name: null,
+    });
+    // Still the ones read, not none: the page says how many of them it shows.
+    const many = await getPeople(github({ total: 5000 }).gh, 'acme');
+    expect(many).toMatchObject({ total: 5000, complete: false });
+    expect(many?.people).toHaveLength(3);
     const none = { graphql: async () => ({ organization: null }) } as unknown as GitHubClient;
     expect(await getPeople(none, 'octo')).toBeNull();
     expect(await getTeams(none, 'octo')).toBeNull();
+  });
+
+  it("reads the owners of the organization's enterprise, when GitHub shows them all", async () => {
+    const owner = (login: string) => ({ login, name: '', avatarUrl: '' });
+    const owners = async (value: unknown) =>
+      (await getPeople(github({ owners: value }).gh, 'acme'))?.enterpriseOwners;
+    expect(await owners({ totalCount: 2, nodes: [owner('zed'), owner('al')] })).toEqual([
+      { login: 'al', name: null, avatarUrl: '' },
+      { login: 'zed', name: null, avatarUrl: '' },
+    ]);
+    // No enterprise: none. More than were read: left out rather than part of them.
+    expect(await owners({ totalCount: 0, nodes: [] })).toEqual([]);
+    expect(await owners({ totalCount: 3, nodes: [owner('al')] })).toBeNull();
   });
 
   it('lists teams biggest first', async () => {
