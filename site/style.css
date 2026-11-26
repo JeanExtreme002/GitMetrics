@@ -188,6 +188,59 @@ img {
   text-align: center;
 }
 
+/* A grid of dots behind the top, as on the app's sign-in screen, fading out at its edges. */
+.dots {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 760px;
+  background-image: radial-gradient(rgba(240, 246, 252, 0.13) 1px, transparent 1px);
+  background-position: center top;
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 85% at 50% 30%, #000 30%, transparent 75%);
+  pointer-events: none;
+}
+
+/* When the page opens, the headline jumps toward you: it starts smaller and further back, grows a
+   touch past its size and settles, while its two parts clear one after the other. The parts stay
+   inline, so the headline wraps as it always did on small screens. */
+.hero h1 {
+  animation: jump 1350ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+.h1-line {
+  animation: clear 1100ms ease-out both;
+}
+
+.h1-line + .h1-line {
+  animation-delay: 240ms;
+}
+
+@keyframes jump {
+  0% {
+    transform: perspective(800px) translate3d(0, 22px, -140px);
+  }
+
+  65% {
+    transform: perspective(800px) translate3d(0, -3px, 18px);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes clear {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
 h1 {
   max-width: 760px;
   margin: 22px auto 0;
@@ -1005,6 +1058,11 @@ code {
     scroll-behavior: auto;
   }
 
+  .hero h1,
+  .h1-line {
+    animation: none;
+  }
+
   .button,
   .copy,
   .release,
@@ -1022,6 +1080,9 @@ code {
 /* Get started page */
 .doc {
   padding: 72px 0 56px;
+  /* The sign-in picture reaches past the column with its shadow's transparent room; on medium
+     screens that room would scroll the page sideways. */
+  overflow-x: clip;
 }
 
 .doc-inner {
@@ -1037,6 +1098,11 @@ code {
 .doc-header h1 {
   margin: 10px 0 0;
   font-size: clamp(30px, 4vw, 42px);
+}
+
+/* Words that read as one phrase stay on one line, so a title breaks between phrases. */
+.keep {
+  white-space: nowrap;
 }
 
 .doc-header .lead {
@@ -1067,10 +1133,11 @@ code {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(255, 106, 92, 0.45);
   border-radius: 50%;
-  background: var(--bg);
-  color: var(--text);
+  /* A faint orange over the page's own color, so the line behind never shows through. */
+  background: linear-gradient(rgba(229, 56, 59, 0.12), rgba(229, 56, 59, 0.12)), var(--bg);
+  color: #ff6a5c;
   font-size: 13px;
   font-weight: 650;
   content: counter(step);
