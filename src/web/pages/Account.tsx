@@ -37,7 +37,8 @@ import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { RepoCard, repoPath } from '../components/repo';
 import { EmptyState, ErrorState, MiniStat, PageSkeleton, RefreshButton } from '../components/ui';
 import { ApiError, api } from '../lib/api';
-import { compact, date, num, percent } from '../lib/format';
+import { cleanText, compact, date, num, percent, relative } from '../lib/format';
+import { languageColor } from '../lib/languages';
 import { accountKey, useAccount, useAccountTotals, useAuth } from '../lib/queries';
 
 /** A theme color (like blue.5) as a CSS value. */
@@ -490,10 +491,42 @@ export function Account() {
                   c="inherit"
                   className="account-row account-link"
                 >
-                  <Text size="sm" fw={500} truncate>
-                    {repo.name}
-                  </Text>
-                  <Group gap={5} wrap="nowrap" style={{ flex: 'none' }}>
+                  {/* Its name and what it is, then its language, forks and last push. */}
+                  <Box miw={0} style={{ flex: 1 }}>
+                    <Text size="sm" fw={500} truncate>
+                      {repo.name}
+                    </Text>
+                    {repo.description && (
+                      <Text size="xs" c="dimmed" truncate mt={2}>
+                        {cleanText(repo.description)}
+                      </Text>
+                    )}
+                    <Group gap="md" wrap="nowrap" mt={6}>
+                      {repo.language && (
+                        <Group gap={5} wrap="nowrap" miw={0}>
+                          <span
+                            className="lang-dot"
+                            style={{ background: languageColor(repo.language), margin: 0 }}
+                          />
+                          <Text size="xs" c="dimmed" truncate>
+                            {repo.language}
+                          </Text>
+                        </Group>
+                      )}
+                      <Group gap={4} wrap="nowrap">
+                        <IconGitFork size={13} stroke={1.8} color="var(--mantine-color-dimmed)" />
+                        <Text size="xs" c="dimmed" className="tabular">
+                          {compact(repo.forks)}
+                        </Text>
+                      </Group>
+                      {repo.pushedAt && (
+                        <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                          {relative(repo.pushedAt)}
+                        </Text>
+                      )}
+                    </Group>
+                  </Box>
+                  <Group gap={5} wrap="nowrap" style={{ flex: 'none', alignSelf: 'flex-start' }}>
                     <IconStar size={14} stroke={1.8} color="var(--mantine-color-yellow-6)" />
                     <Text size="sm" fw={600} className="tabular">
                       {compact(repo.stars)}
