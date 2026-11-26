@@ -63,6 +63,7 @@ export function LanguagesDonut({
     ...(other ? [['Other', other] as [string, number]] : []),
   ];
   const total = items.reduce((s, [, c]) => s + c, 0) || 1;
+  const max = Math.max(1, ...items.map(([, c]) => c));
   const color = (name: string) => (name === 'Other' ? '#8c959f' : colorOf(name));
   const [active, setActive] = useState<string | null>(null);
 
@@ -96,11 +97,11 @@ export function LanguagesDonut({
             </Text>
           </div>
         </Box>{' '}
-        <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+        <div className="rank-list no-lines" style={{ flex: 1, minWidth: 0 }}>
           {items.map(([name, count]) => (
             <div
               key={name}
-              className="legend-row"
+              className="legend-row label-legend-row"
               onMouseEnter={() => setActive(name)}
               onMouseLeave={() => setActive(null)}
             >
@@ -108,9 +109,21 @@ export function LanguagesDonut({
               <Text size="sm" truncate>
                 {name}
               </Text>
-              <Text size="sm" c="dimmed" ta="right" className="tabular">
-                {count > 0 && count / total < 0.005 ? '<1%' : percent(count / total)}
-              </Text>
+              <Group gap={10} wrap="nowrap" className="tabular">
+                <Text size="sm" fw={600}>
+                  {num(count)}
+                </Text>
+                <Text size="sm" c="dimmed" w={38} ta="right">
+                  {count > 0 && count / total < 0.005 ? '<1%' : percent(count / total)}
+                </Text>
+              </Group>
+              {/* Its size next to the largest, in its color. */}
+              <div className="rank-track legend-bar">
+                <div
+                  className="rank-fill"
+                  style={{ width: `${(count / max) * 100}%`, background: color(name) }}
+                />
+              </div>
             </div>
           ))}
         </div>
