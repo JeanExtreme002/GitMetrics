@@ -20,6 +20,7 @@ import {
   IconBook2,
   IconBrandX,
   IconBuilding,
+  IconBuildingCommunity,
   IconCalendar,
   IconGitFork,
   IconLink,
@@ -215,33 +216,43 @@ function Owns({ account }: { account: AccountResponse }) {
   );
 }
 
-/** The organizations a user shows publicly, each opening its own page. */
+/**
+ * The organizations a user shows publicly, among the facts under the name: how many, and their
+ * faces, each opening its own page.
+ */
 function Organizations({ account }: { account: AccountResponse }) {
-  if (!account.organizations.length) return null;
+  const orgs = account.organizations;
   return (
-    <Box mt={36}>
-      <SectionTitle title="Organizations" caption="The ones it shows on its profile" />
-      <div className="rank-list">
-        {account.organizations.map((o) => (
-          <Anchor
-            key={o.login}
-            component={Link}
-            to={`/a/${o.login}`}
-            underline="never"
-            c="inherit"
-            className="account-row account-link"
-          >
-            <Group gap={10} wrap="nowrap" miw={0}>
-              <Avatar src={o.avatarUrl} size={22} radius="sm" />
-              <Text size="sm" truncate>
-                {o.login}
-              </Text>
-            </Group>
-            <IconArrowRight size={14} stroke={1.7} color="var(--mantine-color-dimmed)" />
-          </Anchor>
-        ))}
-      </div>
-    </Box>
+    <Group gap={8} wrap="nowrap" miw={0}>
+      <IconBuildingCommunity size={15} stroke={1.7} style={{ flex: 'none' }} />
+      <Text size="sm" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+        <Text component="span" inherit fw={600} c="var(--mantine-color-text)" className="tabular">
+          {num(orgs.length)}
+        </Text>{' '}
+        {orgs.length === 1 ? 'organization' : 'organizations'}
+      </Text>
+      <Tooltip.Group openDelay={150} closeDelay={80}>
+        <Avatar.Group spacing={6}>
+          {orgs.slice(0, 8).map((o) => (
+            <Tooltip key={o.login} label={o.login}>
+              <Avatar
+                component={Link}
+                to={`/a/${o.login}`}
+                src={o.avatarUrl}
+                alt={o.login}
+                size={22}
+                radius="sm"
+              />
+            </Tooltip>
+          ))}
+          {orgs.length > 8 && (
+            <Avatar size={22} radius="sm">
+              +{orgs.length - 8}
+            </Avatar>
+          )}
+        </Avatar.Group>
+      </Tooltip.Group>
+    </Group>
   );
 }
 
@@ -370,6 +381,7 @@ export function Account() {
     <Fact key="joined" icon={IconCalendar}>
       On GitHub since {date(account.createdAt)}
     </Fact>,
+    account.organizations.length > 0 && <Organizations key="orgs" account={account} />,
   ].filter(Boolean);
 
   return (
@@ -495,7 +507,6 @@ export function Account() {
               None of its repositories has a star yet.
             </Text>
           )}
-          <Organizations account={account} />
         </Grid.Col>
       </Grid>
     </>
