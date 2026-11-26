@@ -617,7 +617,7 @@ function Changes({ pull }: { pull: PullDetail }) {
         title="Where the change is"
         caption={`Lines changed per folder${shared ? ` under ${shared}` : ''}, across all ${num(pull.changedFiles)} ${pull.changedFiles === 1 ? 'file' : 'files'}`}
       />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {folders.map((f) => {
           const lines = f.additions + f.deletions;
           return (
@@ -692,7 +692,7 @@ function Recurring({ owner, repo, number }: { owner: string; repo: string; numbe
           />
         }
       />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {!churn &&
           Array.from({ length: 4 }, (_, i) => (
             <div key={i} className="pr-recurring">
@@ -787,7 +787,7 @@ function Checks({ pull }: { pull: PullDetail }) {
   return (
     <Box>
       <SectionHeader title="Checks" caption={`On the latest commit: ${caption}`} />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {list.slice(0, shown).map((x) => (
           // A check with a page opens it, where its log is: what you look for when one fails.
           <Box
