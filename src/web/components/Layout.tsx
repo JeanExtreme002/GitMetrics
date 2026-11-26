@@ -46,6 +46,7 @@ import {
   IconWorld,
   IconCircleDot,
   IconHeart,
+  IconChecklist,
   IconShieldCheck,
   IconUsersGroup,
 } from '@tabler/icons-react';
@@ -60,6 +61,7 @@ import { useRecentRepos } from '../lib/recent';
 import { snoozed, type Dismissed } from '../lib/update';
 import {
   sectionQuery,
+  accountPageKey,
   useAccount,
   useAccountSearch,
   useAuth,
@@ -70,7 +72,7 @@ import {
 } from '../lib/queries';
 import { parseAccountQuery } from '../lib/accounts';
 import { parsePullQuery } from '../lib/pulls';
-import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
+import type { OverviewResponse, SearchResponse, SecurityResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
 
@@ -234,12 +236,19 @@ function RepoNavigation({
 function OrgNavigation({ login, onNavigate }: { login: string; onNavigate: () => void }) {
   const { data } = useAccount(login);
   const base = `/a/${data?.login ?? login}`;
+  const security = useQuery<{ security: SecurityResponse | null }>({
+    queryKey: accountPageKey(login, 'security'),
+    enabled: false,
+  });
+  const securityCount = security.data?.security?.alerts?.open;
   const items: (NavItem & { count?: number | null })[] = [
     { to: '', label: 'Overview', icon: icon(IconLayoutDashboard) },
     { to: 'repositories', label: 'Repositories', icon: icon(IconBook2), count: data?.repositories.total },
     { to: 'people', label: 'People', icon: icon(IconUsers), count: data?.members },
     ...(data?.teams ? [{ to: 'teams', label: 'Teams', icon: icon(IconUsersGroup), count: data.teams }] : []),
-    { to: 'health', label: 'Security & quality', icon: icon(IconShieldCheck) },
+    { to: 'quality', label: 'Quality', icon: icon(IconChecklist) },
+    // The count only once the page has read it: asking for it here would make the sidebar slow.
+    { to: 'security', label: 'Security', icon: icon(IconShieldCheck), count: securityCount },
     ...(data && data.sponsoring + data.sponsors > 0
       ? [{ to: 'sponsors', label: 'Sponsors', icon: icon(IconHeart), count: data.sponsoring + data.sponsors }]
       : []),
@@ -311,24 +320,6 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         onClick={onNavigate}
       />
 
-      <GroupLabel>Pinned</GroupLabel>
-      {pinned.length ? (
-        pinned.map((r) => (
-          <NavItemLink
-            key={r.id}
-            to={repoPath(r)}
-            label={r.name}
-            icon={<span className="lang-dot" style={{ background: languageColor(r.language) }} />}
-            right={<Count>{compact(r.stars)}</Count>}
-            onClick={onNavigate}
-          />
-        ))
-      ) : (
-        <Text size="xs" c="dimmed" px="sm" lh={1.5}>
-          Use the pin on any repository to keep it one click away.
-        </Text>
-      )}
-
       {owners.length > 1 && (
         <>
           <GroupLabel>Accounts</GroupLabel>
@@ -348,6 +339,24 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
             />
           ))}
         </>
+      )}
+
+      <GroupLabel>Pinned</GroupLabel>
+      {pinned.length ? (
+        pinned.map((r) => (
+          <NavItemLink
+            key={r.id}
+            to={repoPath(r)}
+            label={r.name}
+            icon={<span className="lang-dot" style={{ background: languageColor(r.language) }} />}
+            right={<Count>{compact(r.stars)}</Count>}
+            onClick={onNavigate}
+          />
+        ))
+      ) : (
+        <Text size="xs" c="dimmed" px="sm" lh={1.5}>
+          Use the pin on any repository to keep it one click away.
+        </Text>
       )}
 
       {recentShown.length > 0 && (

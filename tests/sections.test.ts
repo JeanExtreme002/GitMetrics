@@ -512,15 +512,29 @@ describe('repository pages, end to end', () => {
     expect(search.accounts).toEqual([{ login: 'octo', avatarUrl: '', kind: 'user' }]);
 
     expect((await send('/api/accounts/nobody')).status).toBe(404);
-    // An organization's pages answer for any account; health always, the rest only when found.
-    expect((await send('/api/accounts/octo/health')).status).toBe(200);
+    // An organization's pages answer for any account; quality and security always, the rest only
+    // when found.
+    expect(await (await send('/api/accounts/octo/quality')).json()).toEqual({ quality: null });
+    expect(await (await send('/api/accounts/octo/security')).json()).toEqual({ security: null });
+    expect(await (await send('/api/accounts/octo/alerts')).json()).toEqual({
+      severity: { critical: 0, high: 0, moderate: 0, low: 0 },
+      repositories: [],
+      details: {
+        age: { month: 0, quarter: 0, year: 0, older: 0 },
+        oldestCritical: null,
+        ecosystems: [],
+        packages: [],
+      },
+    });
     expect((await send('/api/accounts/nobody/sponsors')).status).toBe(404);
     expect((await send('/api/accounts/octo/projects')).status).toBe(404);
     for (const path of [
       '/api/accounts/bad..name',
       '/api/accounts/-x/totals',
       '/api/accounts/-x/people',
-      '/api/accounts/bad..name/health',
+      '/api/accounts/octo/teams/bad..name',
+      '/api/accounts/bad..name/quality',
+      '/api/accounts/bad..name/security',
       '/api/search/accounts?q=two%20words',
     ]) {
       expect((await send(path)).status, path).toBe(400);

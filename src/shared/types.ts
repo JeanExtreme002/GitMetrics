@@ -160,7 +160,7 @@ export interface QualityMeasure {
  * How well kept and how safe an account's repositories are, or null when it owns more than can be
  * read. Measured over its active repositories: its own (not forks), not archived.
  */
-export interface HealthResponse {
+export interface QualityResponse {
   /** Its own repositories, not forks. */
   sources: number;
   archived: number;
@@ -171,6 +171,14 @@ export interface HealthResponse {
   licenses: { name: string; count: number }[];
   /** Active repositories by their last push. */
   activity: { month: number; quarter: number; year: number; older: number; never: number };
+  /** Active repositories not pushed to in over a year, or never: the longest untouched first. */
+  stale: { fullName: string; pushedAt: string | null; description: string | null; language: string | null }[];
+}
+
+/** Open Dependabot alerts over an organization's active repositories, where GitHub shows them. */
+export interface SecurityResponse {
+  /** Its own repositories that aren't archived. */
+  active: number;
   /**
    * Open Dependabot alerts, counted only on the active repositories you can write to: GitHub shows
    * them to people with write access alone. Null when there are none of those.
@@ -181,6 +189,41 @@ export interface HealthResponse {
     open: number;
     /** Those with open alerts, most first. */
     repositories: { fullName: string; open: number }[];
+  } | null;
+}
+
+/** How severe GitHub rates a vulnerability, from most to least. */
+export const SEVERITIES = ['critical', 'high', 'moderate', 'low'] as const;
+export type Severity = (typeof SEVERITIES)[number];
+export type SeverityCounts = Record<Severity, number>;
+
+/** Where a vulnerable package comes from, as GitHub names it: NPM, PIP, MAVEN… */
+export interface AlertPackage {
+  name: string;
+  ecosystem: string;
+  /** Its open alerts, and the repositories they're in. */
+  alerts: number;
+  repositories: number;
+}
+
+/**
+ * An organization's open Dependabot alerts in detail, read apart from the rest of its security and
+ * quality as it takes longer: every alert of every repository that has some.
+ */
+export interface AlertDetailsResponse {
+  /** By how severe GitHub rates the vulnerability; null unless every alert was read. */
+  severity: SeverityCounts | null;
+  repositories: { fullName: string; severity: SeverityCounts | null }[];
+  /** Null unless every alert was read, so what's shown is exact. */
+  details: {
+    /** By how long ago each was opened. */
+    age: { month: number; quarter: number; year: number; older: number };
+    /** The critical alert open longest, if any. */
+    oldestCritical: { fullName: string; createdAt: string; package: string } | null;
+    /** Alerts by ecosystem, most first. */
+    ecosystems: { name: string; alerts: number }[];
+    /** The packages with the most alerts, up to ten. */
+    packages: AlertPackage[];
   } | null;
 }
 

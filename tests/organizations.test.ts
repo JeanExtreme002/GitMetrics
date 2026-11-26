@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { GitHubClient } from '../src/server/github';
 import {
   alertable,
-  buildHealth,
-  getHealth,
+  buildAlertDetails,
+  getAlertDetails,
+  buildQuality,
+  buildSecurity,
+  getSecurity,
+  readOrgRepos,
+  getMemberTeams,
   getPeople,
   getSponsors,
   getTeams,
@@ -46,26 +51,23 @@ const paged = <T>(items: T[], wrap: (page: unknown) => unknown, total = items.le
   return { gh, calls: () => calls };
 };
 
-describe('security and quality', () => {
+describe('quality and security', () => {
   it('measures the active repositories, leaving out forks and archived ones', () => {
-    const health = buildHealth(
-      [
-        repo('a'),
-        repo('b', {
-          description: '  ',
-          licenseInfo: null,
-          repositoryTopics: { totalCount: 0 },
-          pushedAt: daysAgo(60),
-        }),
-        repo('c', { licenseInfo: { spdxId: 'NOASSERTION', name: 'Other' }, pushedAt: daysAgo(200) }),
-        repo('d', { hasIssuesEnabled: false, pushedAt: daysAgo(900) }),
-        repo('e', { pushedAt: null }),
-        repo('old', { isArchived: true, licenseInfo: null }),
-        repo('fork', { isFork: true, licenseInfo: null }),
-      ],
-      new Map(),
-      NOW,
-    );
+    const repos = [
+      repo('a'),
+      repo('b', {
+        description: '  ',
+        licenseInfo: null,
+        repositoryTopics: { totalCount: 0 },
+        pushedAt: daysAgo(60),
+      }),
+      repo('c', { licenseInfo: { spdxId: 'NOASSERTION', name: 'Other' }, pushedAt: daysAgo(200) }),
+      repo('d', { hasIssuesEnabled: false, pushedAt: daysAgo(900) }),
+      repo('e', { pushedAt: null }),
+      repo('old', { isArchived: true, licenseInfo: null }),
+      repo('fork', { isFork: true, licenseInfo: null }),
+    ];
+    const health = buildQuality(repos, NOW);
     expect(health).toMatchObject({ sources: 6, archived: 1, active: 5 });
     expect(health.quality).toEqual([
       { key: 'license', count: 4 },
@@ -80,8 +82,13 @@ describe('security and quality', () => {
       { name: 'None', count: 1 },
     ]);
     expect(health.activity).toEqual({ month: 1, quarter: 1, year: 1, older: 1, never: 1 });
+    // Untouched for over a year, or never pushed to, the longest untouched first.
+    expect(health.stale).toEqual([
+      { fullName: 'acme/e', pushedAt: null, description: 'Does things', language: null },
+      { fullName: 'acme/d', pushedAt: daysAgo(900), description: 'Does things', language: null },
+    ]);
     // No repository you can write to: no alerts to show, rather than a misleading zero.
-    expect(health.alerts).toBeNull();
+    expect(buildSecurity(repos, new Map())).toEqual({ active: 5, alerts: null });
   });
 
   it('counts alerts only where GitHub shows them: active repositories you can write to', () => {
@@ -95,7 +102,7 @@ describe('security and quality', () => {
       repo('fork', { viewerPermission: 'ADMIN', isFork: true }),
     ];
     expect(alertable(repos).map((r) => r.nameWithOwner)).toEqual(['acme/a', 'acme/b', 'acme/c']);
-    const health = buildHealth(
+    const security = buildSecurity(
       repos,
       new Map([
         ['acme/a', 3],
@@ -103,9 +110,8 @@ describe('security and quality', () => {
         ['acme/c', 7],
         ['acme/read', 99],
       ]),
-      NOW,
     );
-    expect(health.alerts).toEqual({
+    expect(security.alerts).toEqual({
       readable: 3,
       open: 10,
       repositories: [
@@ -140,12 +146,15 @@ describe('security and quality', () => {
   it('is left out past what can be read, and for no such account', async () => {
     const wrap = (page: unknown) => ({ repositoryOwner: { repositories: page } });
     const big = paged([repo('a')], wrap, 1001);
-    expect(await getHealth(big.gh, 'acme')).toBeNull();
+    expect(await readOrgRepos(big.gh, 'acme')).toBeNull();
     expect(big.calls()).toBe(1);
     const none = { graphql: async () => ({ repositoryOwner: null }) } as unknown as GitHubClient;
-    expect(await getHealth(none, 'nobody')).toBeNull();
+    expect(await readOrgRepos(none, 'nobody')).toBeNull();
     const all = paged([repo('a'), repo('b'), repo('c')], wrap);
-    expect(await getHealth(all.gh, 'acme')).toMatchObject({ active: 3, alerts: null });
+    const repos = await readOrgRepos(all.gh, 'acme');
+    expect(repos).toHaveLength(3);
+    // Read-only everywhere: the alerts aren't asked for at all.
+    expect(await getSecurity(all.gh, repos!)).toEqual({ active: 3, alerts: null });
   });
 });
 
@@ -214,6 +223,133 @@ describe('people and teams', () => {
       description: null,
       repositories: 4,
     });
+  });
+});
+
+describe('alert severities', () => {
+  /** A GitHub answering each repository's alerts in pages of two, with these severities. */
+  const github = (alerts: Record<string, string[]>) => {
+    const calls: string[] = [];
+    const gh = {
+      graphql: async (
+        _query: string,
+        { owner, name, after }: { owner: string; name: string; after: string | null },
+      ) => {
+        const all = alerts[`${owner}/${name}`]!;
+        const start = after ? Number(after) : 0;
+        calls.push(`${name}@${start}`);
+        return {
+          repository: {
+            vulnerabilityAlerts: {
+              pageInfo: { hasNextPage: start + 2 < all.length, endCursor: String(start + 2) },
+              nodes: all.slice(start, start + 2).map((severity) => ({
+                createdAt: daysAgo(10),
+                securityVulnerability: { severity, package: { name: 'lodash', ecosystem: 'NPM' } },
+              })),
+            },
+          },
+        };
+      },
+    } as unknown as GitHubClient;
+    return { gh, calls };
+  };
+
+  it('reads every page of each repository, the one with most alerts first, and adds them up', async () => {
+    const { gh, calls } = github({
+      'acme/a': ['LOW'],
+      'acme/b': ['CRITICAL', 'HIGH', 'HIGH', 'MODERATE', 'LOW'],
+    });
+    const result = await getAlertDetails(gh, [
+      { fullName: 'acme/a', open: 1 },
+      { fullName: 'acme/b', open: 5 },
+    ]);
+    expect(calls[0]).toBe('b@0');
+    expect(calls.filter((c) => c.startsWith('b@'))).toEqual(['b@0', 'b@2', 'b@4']);
+    expect(result.severity).toEqual({ critical: 1, high: 2, moderate: 1, low: 2 });
+    expect(result.details?.packages).toEqual([
+      { name: 'lodash', ecosystem: 'NPM', alerts: 6, repositories: 2 },
+    ]);
+    expect(result.repositories.find((r) => r.fullName === 'acme/b')?.severity).toEqual({
+      critical: 1,
+      high: 2,
+      moderate: 1,
+      low: 1,
+    });
+  });
+
+  it('tells how old the alerts are, where they come from, and which packages have the most', () => {
+    const alert = (
+      fullName: string,
+      days: number,
+      severity: 'critical' | 'high' | 'low',
+      pkg: string,
+      ecosystem = 'NPM',
+    ) => ({
+      fullName,
+      createdAt: daysAgo(days),
+      severity,
+      package: pkg,
+      ecosystem,
+    });
+    const details = buildAlertDetails(
+      [
+        alert('acme/a', 5, 'high', 'axios'),
+        alert('acme/b', 60, 'critical', 'axios'),
+        alert('acme/b', 400, 'critical', 'lodash'),
+        alert('acme/c', 200, 'low', 'urllib3', 'PIP'),
+        alert('acme/c', 900, 'high', 'axios'),
+      ],
+      NOW,
+    );
+    expect(details.age).toEqual({ month: 1, quarter: 1, year: 1, older: 2 });
+    expect(details.oldestCritical).toEqual({
+      fullName: 'acme/b',
+      createdAt: daysAgo(400),
+      package: 'lodash',
+    });
+    expect(details.ecosystems).toEqual([
+      { name: 'NPM', alerts: 4 },
+      { name: 'PIP', alerts: 1 },
+    ]);
+    expect(details.packages[0]).toEqual({ name: 'axios', ecosystem: 'NPM', alerts: 3, repositories: 3 });
+  });
+
+  it("leaves the split out when a repository's alerts couldn't all be read", async () => {
+    // Three alerts counted, two found when reading them: they changed in between.
+    const { gh } = github({ 'acme/a': ['HIGH'], 'acme/b': ['LOW', 'LOW'] });
+    const result = await getAlertDetails(gh, [
+      { fullName: 'acme/a', open: 1 },
+      { fullName: 'acme/b', open: 3 },
+    ]);
+    expect(result.severity).toBeNull();
+    expect(result.details).toBeNull();
+    expect(result.repositories.find((r) => r.fullName === 'acme/a')?.severity).toMatchObject({ high: 1 });
+    expect(result.repositories.find((r) => r.fullName === 'acme/b')?.severity).toBeNull();
+  });
+});
+
+describe("a member's teams", () => {
+  it('asks GitHub for the teams of that member only, by slug', async () => {
+    let asked: Record<string, unknown> = {};
+    const gh = {
+      graphql: async (query: string, variables: Record<string, unknown>) => {
+        asked = variables;
+        expect(query).toContain('userLogins: [$member]');
+        return {
+          organization: {
+            teams: {
+              totalCount: 2,
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [{ slug: 'web' }, { slug: 'ops' }],
+            },
+          },
+        };
+      },
+    } as unknown as GitHubClient;
+    expect(await getMemberTeams(gh, 'acme', 'bo')).toEqual({ teams: ['web', 'ops'], complete: true });
+    expect(asked).toMatchObject({ login: 'acme', member: 'bo' });
+    const none = { graphql: async () => ({ organization: null }) } as unknown as GitHubClient;
+    expect(await getMemberTeams(none, 'octo', 'bo')).toBeNull();
   });
 });
 

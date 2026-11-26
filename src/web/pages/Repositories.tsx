@@ -37,7 +37,15 @@ const ORDER_LABELS: Record<Sort, [string, string]> = {
   name: ['A to Z', 'Z to A'],
 };
 
-function RepoTable({ repos, showOwner }: { repos: RepoSummary[]; showOwner: boolean }) {
+function RepoTable({
+  repos,
+  showOwner,
+  showAvatar,
+}: {
+  repos: RepoSummary[];
+  showOwner: boolean;
+  showAvatar: boolean;
+}) {
   const navigate = useNavigate();
   return (
     <Table.ScrollContainer minWidth={680}>
@@ -63,7 +71,7 @@ function RepoTable({ repos, showOwner }: { repos: RepoSummary[]; showOwner: bool
             <Table.Tr key={repo.id} className="clickable-row" onClick={() => navigate(repoPath(repo))}>
               <Table.Td>
                 <Group gap="sm" wrap="nowrap">
-                  {showOwner && <Avatar src={repo.ownerAvatarUrl} size={24} radius="sm" />}
+                  {showAvatar && <Avatar src={repo.ownerAvatarUrl} size={24} radius="sm" />}
                   <Box miw={0}>
                     <Group gap={6} wrap="nowrap">
                       <Text size="sm" fw={600} truncate>
@@ -128,7 +136,7 @@ export function Repositories({ owner: fixed }: { owner?: string } = {}) {
   const [params, setParams] = useSearchParams();
   const owner = fixed ?? params.get('owner') ?? 'all';
   const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<Kind>('sources');
+  const [kind, setKind] = useState<Kind>('all');
   const [sort, setSort] = useState<Sort>('pushed');
   const [reversed, setReversed] = useState(false);
   const [language, setLanguage] = useState<string | null>(null);
@@ -288,10 +296,10 @@ export function Repositories({ owner: fixed }: { owner?: string } = {}) {
             setLimit(PAGE);
           }}
           data={[
+            { label: 'All', value: 'all' },
             { label: 'Sources', value: 'sources' },
             { label: 'Forks', value: 'forks' },
             { label: 'Archived', value: 'archived' },
-            { label: 'All', value: 'all' },
           ]}
         />
       </Group>
@@ -334,7 +342,12 @@ export function Repositories({ owner: fixed }: { owner?: string } = {}) {
       </Group>
       <Paper p={0} style={{ overflow: 'hidden' }}>
         {filtered.length ? (
-          <RepoTable repos={filtered.slice(0, limit)} showOwner={owner === 'all'} />
+          <RepoTable
+            repos={filtered.slice(0, limit)}
+            showOwner={owner === 'all'}
+            // The account's logo even when filtered by it; an organization's own page has it in its sidebar.
+            showAvatar={!fixed}
+          />
         ) : (
           <Text c="dimmed" ta="center" p="xl" size="sm">
             No repository matches these filters.

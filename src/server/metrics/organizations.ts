@@ -1,11 +1,15 @@
 import type {
   AccountPerson,
-  HealthResponse,
+  QualityResponse,
+  SecurityResponse,
   PeopleResponse,
   QualityMeasure,
+  AlertDetailsResponse,
+  SeverityCounts,
   SponsorsResponse,
   TeamsResponse,
 } from '../../shared/types.js';
+import { SEVERITIES } from '../../shared/types.js';
 import type { GitHubClient } from '../github.js';
 import { mapLimit } from '../util.js';
 
@@ -157,6 +161,36 @@ export async function getTeams(gh: GitHubClient, login: string): Promise<TeamsRe
   };
 }
 
+const MEMBER_TEAMS = `
+query ($login: String!, $member: String!, $after: String) {
+  organization(login: $login) {
+    teams(first: 100, after: $after, userLogins: [$member]) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      nodes { slug }
+    }
+  }
+}`;
+
+/**
+ * The teams a member belongs to, by slug, out of those you can see; null when there's no such
+ * organization. GitHub filters them itself, so it's one small read whatever the organization's size.
+ */
+export async function getMemberTeams(
+  gh: GitHubClient,
+  login: string,
+  member: string,
+): Promise<{ teams: string[]; complete: boolean } | null> {
+  const read = await readPages<{ slug: string }>(
+    gh,
+    MEMBER_TEAMS,
+    { login, member },
+    (data) => (data as { organization: { teams: Page<{ slug: string }> } | null }).organization?.teams,
+  );
+  if (!read.found) return null;
+  return { teams: read.items.map((t) => t.slug), complete: read.complete };
+}
+
 // Security and quality ----------------------------------------------------------------------------
 
 const HEALTH = `
@@ -166,7 +200,7 @@ query ($login: String!, $after: String) {
       totalCount
       pageInfo { hasNextPage endCursor }
       nodes {
-        nameWithOwner isFork isArchived pushedAt description viewerPermission
+        nameWithOwner isFork isArchived pushedAt description viewerPermission primaryLanguage { name }
         hasIssuesEnabled
         licenseInfo { spdxId name }
         repositoryTopics(first: 1) { totalCount }
@@ -184,6 +218,7 @@ export interface RawHealthRepo {
   viewerPermission: 'ADMIN' | 'MAINTAIN' | 'WRITE' | 'TRIAGE' | 'READ' | null;
   hasIssuesEnabled: boolean;
   licenseInfo: { spdxId: string | null; name: string } | null;
+  primaryLanguage?: { name: string } | null;
   repositoryTopics: { totalCount: number };
 }
 
@@ -196,15 +231,8 @@ export const alertable = (repos: RawHealthRepo[]) =>
     (r) => !r.isFork && !r.isArchived && r.viewerPermission && SEES_ALERTS.has(r.viewerPermission),
   );
 
-/**
- * Measures repositories that were all read. `alerts` holds the open Dependabot alerts of each one
- * you can see them on, by full name.
- */
-export function buildHealth(
-  repos: RawHealthRepo[],
-  alerts: Map<string, number>,
-  now = new Date(),
-): HealthResponse {
+/** How well kept an organization's repositories are, measured over all of them. */
+export function buildQuality(repos: RawHealthRepo[], now = new Date()): QualityResponse {
   const sources = repos.filter((r) => !r.isFork);
   const active = sources.filter((r) => !r.isArchived);
   const has: Record<QualityMeasure['key'], (r: RawHealthRepo) => boolean> = {
@@ -234,11 +262,21 @@ export function buildHealth(
     else if (days <= 365) activity.year++;
     else activity.older++;
   }
-  const readable = alertable(repos);
-  const withAlerts = readable
-    .map((r) => ({ fullName: r.nameWithOwner, open: alerts.get(r.nameWithOwner) ?? 0 }))
-    .filter((r) => r.open > 0)
-    .sort((a, b) => b.open - a.open || a.fullName.localeCompare(b.fullName));
+  // Untouched for over a year, or never pushed to: candidates for archiving.
+  const stale = active
+    .filter((r) => {
+      const days = age(r);
+      return days === null || days > 365;
+    })
+    .map((r) => ({
+      fullName: r.nameWithOwner,
+      pushedAt: r.pushedAt,
+      description: r.description?.trim() || null,
+      language: r.primaryLanguage?.name ?? null,
+    }))
+    .sort(
+      (a, b) => (a.pushedAt ?? '').localeCompare(b.pushedAt ?? '') || a.fullName.localeCompare(b.fullName),
+    );
   return {
     sources: sources.length,
     archived: sources.length - active.length,
@@ -256,6 +294,25 @@ export function buildHealth(
           a.name.localeCompare(b.name),
       ),
     activity,
+    stale,
+  };
+}
+
+const noSeverity = (): SeverityCounts => ({ critical: 0, high: 0, moderate: 0, low: 0 });
+
+/**
+ * Open Dependabot alerts over an organization's active repositories. `alerts` holds each one's
+ * count, by full name, for those you can see them on.
+ */
+export function buildSecurity(repos: RawHealthRepo[], alerts: Map<string, number>): SecurityResponse {
+  const active = repos.filter((r) => !r.isFork && !r.isArchived).length;
+  const readable = alertable(repos);
+  const withAlerts = readable
+    .map((r) => ({ fullName: r.nameWithOwner, open: alerts.get(r.nameWithOwner) ?? 0 }))
+    .filter((r) => r.open > 0)
+    .sort((a, b) => b.open - a.open || a.fullName.localeCompare(b.fullName));
+  return {
+    active,
     alerts: readable.length
       ? {
           readable: readable.length,
@@ -269,10 +326,7 @@ export function buildHealth(
 /** Repositories asked about in one query, each under its own alias. */
 const ALERTS_AT_ONCE = 25;
 
-/**
- * Open Dependabot alerts of each repository, a batch per query, a few queries at once. They're
- * asked apart from the rest, as counting them is slow, and only where GitHub shows them.
- */
+/** How many open alerts each repository has: a batch of repositories per query, a few at once. */
 export async function openAlerts(gh: GitHubClient, fullNames: string[]): Promise<Map<string, number>> {
   const batches: string[][] = [];
   for (let i = 0; i < fullNames.length; i += ALERTS_AT_ONCE)
@@ -295,8 +349,161 @@ export async function openAlerts(gh: GitHubClient, fullNames: string[]): Promise
   return counts;
 }
 
-/** Security and quality over every repository an account owns; null past what can be read. */
-export async function getHealth(gh: GitHubClient, login: string): Promise<HealthResponse | null> {
+const SEVERITY_PAGE = `
+query ($owner: String!, $name: String!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    vulnerabilityAlerts(states: OPEN, first: 100, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes { createdAt securityVulnerability { severity package { name ecosystem } } }
+    }
+  }
+}`;
+
+interface Alert {
+  fullName: string;
+  createdAt: string;
+  severity: keyof SeverityCounts;
+  package: string;
+  ecosystem: string;
+}
+
+interface RawAlert {
+  createdAt: string;
+  securityVulnerability: { severity: string; package: { name: string; ecosystem: string } } | null;
+}
+
+/**
+ * Every open alert of a repository, read page by page; null unless all of the `open` alerts were
+ * read whole, so what's added up from them is exact or not shown.
+ */
+async function readAlerts(gh: GitHubClient, fullName: string, open: number): Promise<Alert[] | null> {
+  const [owner, name] = fullName.split('/') as [string, string];
+  const alerts: Alert[] = [];
+  let after: string | null = null;
+  do {
+    const data: {
+      repository: {
+        vulnerabilityAlerts: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          nodes: (RawAlert | null)[];
+        } | null;
+      } | null;
+    } = await gh.graphql(SEVERITY_PAGE, { owner, name, after });
+    const page = data.repository?.vulnerabilityAlerts;
+    if (!page) return null;
+    for (const node of page.nodes) {
+      const vulnerability = node?.securityVulnerability;
+      const severity = vulnerability?.severity.toLowerCase();
+      if (!node || !vulnerability || !severity || !(SEVERITIES as readonly string[]).includes(severity)) {
+        return null;
+      }
+      alerts.push({
+        fullName,
+        createdAt: node.createdAt,
+        severity: severity as keyof SeverityCounts,
+        package: vulnerability.package.name,
+        ecosystem: vulnerability.package.ecosystem,
+      });
+    }
+    after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (after);
+  return alerts.length === open ? alerts : null;
+}
+
+const countSeverities = (alerts: Alert[]) => {
+  const counts = noSeverity();
+  for (const a of alerts) counts[a.severity]++;
+  return counts;
+};
+
+/** What the alerts say together: how old they are, where they come from, and which packages. */
+export function buildAlertDetails(
+  alerts: Alert[],
+  now = new Date(),
+): NonNullable<AlertDetailsResponse['details']> {
+  const age = { month: 0, quarter: 0, year: 0, older: 0 };
+  const ecosystems = new Map<string, number>();
+  const packages = new Map<
+    string,
+    { name: string; ecosystem: string; alerts: number; repositories: Set<string> }
+  >();
+  let oldestCritical: Alert | null = null;
+  for (const a of alerts) {
+    const days = (now.getTime() - new Date(a.createdAt).getTime()) / DAY_MS;
+    if (days <= 30) age.month++;
+    else if (days <= 90) age.quarter++;
+    else if (days <= 365) age.year++;
+    else age.older++;
+    ecosystems.set(a.ecosystem, (ecosystems.get(a.ecosystem) ?? 0) + 1);
+    const key = `${a.ecosystem}:${a.package}`;
+    const found = packages.get(key) ?? {
+      name: a.package,
+      ecosystem: a.ecosystem,
+      alerts: 0,
+      repositories: new Set(),
+    };
+    found.alerts++;
+    found.repositories.add(a.fullName);
+    packages.set(key, found);
+    if (a.severity === 'critical' && (!oldestCritical || a.createdAt < oldestCritical.createdAt))
+      oldestCritical = a;
+  }
+  return {
+    age,
+    oldestCritical: oldestCritical
+      ? {
+          fullName: oldestCritical.fullName,
+          createdAt: oldestCritical.createdAt,
+          package: oldestCritical.package,
+        }
+      : null,
+    ecosystems: [...ecosystems.entries()]
+      .map(([name, count]) => ({ name, alerts: count }))
+      .sort((a, b) => b.alerts - a.alerts || a.name.localeCompare(b.name)),
+    packages: [...packages.values()]
+      .map((p) => ({
+        name: p.name,
+        ecosystem: p.ecosystem,
+        alerts: p.alerts,
+        repositories: p.repositories.size,
+      }))
+      .sort((a, b) => b.alerts - a.alerts || b.repositories - a.repositories || a.name.localeCompare(b.name))
+      .slice(0, 10),
+  };
+}
+
+/**
+ * Every open alert of the repositories that have some, each repository's read page by page, those
+ * with the most first, as their pages take longest. Totals and details are null unless every
+ * repository's alerts were all read, so what's shown is exact.
+ */
+export async function getAlertDetails(
+  gh: GitHubClient,
+  repositories: { fullName: string; open: number }[],
+  now = new Date(),
+): Promise<AlertDetailsResponse> {
+  const order = [...repositories].sort((a, b) => b.open - a.open);
+  const read = await mapLimit(order, 8, async (r) => ({
+    fullName: r.fullName,
+    alerts: r.open ? await readAlerts(gh, r.fullName, r.open) : [],
+  }));
+  const complete = read.every((r) => r.alerts);
+  const all = complete ? read.flatMap((r) => r.alerts!) : [];
+  return {
+    severity: complete ? countSeverities(all) : null,
+    repositories: read.map((r) => ({
+      fullName: r.fullName,
+      severity: r.alerts ? countSeverities(r.alerts) : null,
+    })),
+    details: complete ? buildAlertDetails(all, now) : null,
+  };
+}
+
+/**
+ * Every repository an account owns, with what its quality and security are measured from; null
+ * when there's no such account or more than can be read, rather than measures of only part.
+ */
+export async function readOrgRepos(gh: GitHubClient, login: string): Promise<RawHealthRepo[] | null> {
   const read = await readPages<RawHealthRepo>(
     gh,
     HEALTH,
@@ -305,12 +512,16 @@ export async function getHealth(gh: GitHubClient, login: string): Promise<Health
       (data as { repositoryOwner: { repositories: Page<RawHealthRepo> } | null }).repositoryOwner
         ?.repositories,
   );
-  if (!read.found || !read.complete) return null;
+  return read.found && read.complete ? read.items : null;
+}
+
+/** Open Dependabot alerts over those repositories, counted where GitHub shows them. */
+export async function getSecurity(gh: GitHubClient, repos: RawHealthRepo[]): Promise<SecurityResponse> {
   const alerts = await openAlerts(
     gh,
-    alertable(read.items).map((r) => r.nameWithOwner),
+    alertable(repos).map((r) => r.nameWithOwner),
   );
-  return buildHealth(read.items, alerts);
+  return buildSecurity(repos, alerts);
 }
 
 // Sponsors ----------------------------------------------------------------------------------------

@@ -14,7 +14,16 @@ import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getAccount, getAccountRepos, getAccountTotals, searchAccounts } from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
-import { getHealth, getPeople, getSponsors, getTeams } from './metrics/organizations.js';
+import {
+  getAlertDetails,
+  buildQuality,
+  getSecurity,
+  readOrgRepos,
+  getMemberTeams,
+  getPeople,
+  getSponsors,
+  getTeams,
+} from './metrics/organizations.js';
 import { getCommits } from './metrics/commits.js';
 import { getContributors } from './metrics/contributors.js';
 import { getFiles } from './metrics/files.js';
@@ -355,13 +364,29 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // An organization's people and teams, and any account's security and quality and sponsors.
+  // The teams one member of an organization belongs to; before the pages below, whose
+  // pattern would take it for the teams page.
+  app.get('/api/accounts/:login/teams/:member', async (c) => {
+    const { login, member } = c.req.param();
+    if (!ACCOUNT.test(login) || !ACCOUNT.test(member)) {
+      return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    }
+    const result = await memory.wrap(
+      `${config.auth!.login}:member-teams:${login.toLowerCase()}:${member.toLowerCase()}`,
+      10 * MINUTE,
+      () => getMemberTeams(github()!, login, member),
+      c.req.query('refresh') === '1',
+    );
+    if (!result) return c.json({ error: 'No organization has this name.', status: 404 }, 404);
+    return c.json(result);
+  });
+
   const ORG_PAGES: Record<string, (gh: GitHubClient, login: string) => Promise<unknown>> = {
     people: getPeople,
     teams: getTeams,
-    health: getHealth,
     sponsors: getSponsors,
   };
-  app.get('/api/accounts/:login/:page{people|teams|health|sponsors}', async (c) => {
+  app.get('/api/accounts/:login/:page{people|teams|sponsors}', async (c) => {
     const { login, page } = c.req.param() as { login: string; page: string };
     if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
     const result = await memory.wrap(
@@ -370,11 +395,59 @@ export function createApp(options: AppOptions = {}) {
       () => ORG_PAGES[page]!(github()!, login),
       c.req.query('refresh') === '1',
     );
-    // Health is null for an account with too many repositories to read: an answer, not a miss.
-    if (result === null && page !== 'health') {
-      return c.json({ error: 'No organization has this name.', status: 404 }, 404);
-    }
-    return c.json(page === 'health' ? { health: result } : result);
+    if (result === null) return c.json({ error: 'No organization has this name.', status: 404 }, 404);
+    return c.json(result);
+  });
+
+  // An organization's quality and security pages measure the same repositories: read once for both.
+  const orgRepos = (login: string, refresh: boolean) =>
+    memory.wrap(
+      `${config.auth!.login}:org-repos:${login.toLowerCase()}`,
+      10 * MINUTE,
+      () => readOrgRepos(github()!, login),
+      refresh,
+    );
+  const orgSecurity = (login: string, refresh: boolean) =>
+    memory.wrap(
+      `${config.auth!.login}:org-security:${login.toLowerCase()}`,
+      10 * MINUTE,
+      async () => {
+        const repos = await orgRepos(login, refresh);
+        return repos ? getSecurity(github()!, repos) : null;
+      },
+      refresh,
+    );
+
+  // Null for an account with too many repositories to read: an answer, not a miss.
+  app.get('/api/accounts/:login/quality', async (c) => {
+    const login = c.req.param('login');
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    const repos = await orgRepos(login, c.req.query('refresh') === '1');
+    return c.json({ quality: repos ? buildQuality(repos) : null });
+  });
+
+  app.get('/api/accounts/:login/security', async (c) => {
+    const login = c.req.param('login');
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    return c.json({ security: await orgSecurity(login, c.req.query('refresh') === '1') });
+  });
+
+  // Open Dependabot alerts in detail, read after the security page's counts as they take longer:
+  // from the repositories it found alerts on.
+  app.get('/api/accounts/:login/alerts', async (c) => {
+    const login = c.req.param('login');
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    const refresh = c.req.query('refresh') === '1';
+    const security = await orgSecurity(login, false);
+    const repositories = security?.alerts?.repositories ?? [];
+    return c.json(
+      await memory.wrap(
+        `${config.auth!.login}:account-alerts:${login.toLowerCase()}`,
+        10 * MINUTE,
+        () => getAlertDetails(github()!, repositories),
+        refresh,
+      ),
+    );
   });
 
   // The repositories of an account outside your own list.

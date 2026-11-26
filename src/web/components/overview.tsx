@@ -46,14 +46,17 @@ export function LanguagesDonut({
   caption,
   counts,
   colorOf = languageColor,
+  ordered = false,
 }: {
   title: string;
   caption: string;
   counts: [string, number][];
   /** Each name's color: the languages' own colors unless given. */
   colorOf?: (name: string) => string;
+  /** Kept in the order given, as for a timeline, instead of the largest first. */
+  ordered?: boolean;
 }) {
-  const sorted = [...counts].sort((a, b) => b[1] - a[1]);
+  const sorted = ordered ? counts : [...counts].sort((a, b) => b[1] - a[1]);
   const other = sorted.slice(5).reduce((s, [, c]) => s + c, 0);
   const items: [string, number][] = [
     ...sorted.slice(0, 5),

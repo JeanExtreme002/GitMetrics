@@ -6,31 +6,61 @@ import {
   Button,
   Grid,
   Group,
+  Select,
   SimpleGrid,
+  Skeleton,
   Text,
   TextInput,
   Tooltip,
 } from '@mantine/core';
 import {
   IconBook2,
+  IconChecklist,
+  IconCircleDot,
+  IconExternalLink,
+  IconFileDescription,
   IconFolders,
   IconHeart,
+  IconLicense,
   IconLock,
   IconSearch,
   IconShieldCheck,
-  IconShieldExclamation,
+  IconTags,
   IconUsers,
   IconUsersGroup,
 } from '@tabler/icons-react';
+import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router';
-import type { AccountPerson, HealthResponse, QualityMeasure } from '../../shared/types';
+import { Link, useParams, useSearchParams } from 'react-router';
+import {
+  SEVERITIES,
+  type AccountPerson,
+  type AlertDetailsResponse,
+  type AlertPackage,
+  type QualityResponse,
+  type SecurityResponse,
+  type QualityMeasure,
+  type Severity,
+  type SeverityCounts,
+} from '../../shared/types';
 import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { Counter, Counters, EmptyState, ErrorState, PageHeader, PageSkeleton } from '../components/ui';
 import { api } from '../lib/api';
-import { compact, num, percent } from '../lib/format';
-import { accountPageKey, useAccount, useHealth, usePeople, useSponsors, useTeams } from '../lib/queries';
+import { compact, num, percent, relative } from '../lib/format';
+import {
+  accountPageKey,
+  useAccount,
+  useAlertDetails,
+  useMemberTeams,
+  usePeople,
+  useQuality,
+  useSecurity,
+  useSponsors,
+  useTeams,
+} from '../lib/queries';
+import { repoPath } from '../components/repo';
+import { languageColor } from '../lib/languages';
 import { Repositories } from './Repositories';
 
 /*
@@ -91,6 +121,34 @@ function PersonRow({ person, right }: { person: AccountPerson; right?: ReactNode
   );
 }
 
+/** A person as a tile: a round avatar, the name, and the login under it. */
+function PersonTile({ person }: { person: AccountPerson }) {
+  return (
+    <Anchor component={Link} to={`/a/${person.login}`} underline="never" c="inherit" className="person-tile">
+      <Avatar src={person.avatarUrl} alt={person.login} size={40} radius="xl" />
+      <Box miw={0}>
+        <Text size="sm" fw={500} truncate>
+          {person.name ?? person.login}
+        </Text>
+        <Text size="xs" c="dimmed" truncate>
+          @{person.login}
+        </Text>
+      </Box>
+    </Anchor>
+  );
+}
+
+function PeopleGrid({ people }: { people: AccountPerson[] }) {
+  if (!people.length) return null;
+  return (
+    <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 4 }} spacing={4} verticalSpacing={4}>
+      {people.map((p) => (
+        <PersonTile key={p.login} person={p} />
+      ))}
+    </SimpleGrid>
+  );
+}
+
 /** A box to find something in a long list, and the count of what matches. */
 function Finder({
   value,
@@ -98,7 +156,9 @@ function Finder({
   placeholder,
   shown,
   noun,
+  extra,
 }: {
+  extra?: ReactNode;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
@@ -115,7 +175,8 @@ function Finder({
         style={{ flex: '1 1 260px' }}
         maw={420}
       />
-      <Text size="sm" c="dimmed">
+      {extra}
+      <Text size="sm" c="dimmed" ml="auto">
         {num(shown)} {shown === 1 ? noun[0] : noun[1]}
       </Text>
     </Group>
@@ -157,6 +218,8 @@ export function People() {
     );
   }, [query.data, search]);
   const admins = query.data?.people.filter((p) => p.role === 'admin').length ?? 0;
+  const shownAdmins = shown.filter((p) => p.role === 'admin');
+  const shownMembers = shown.filter((p) => p.role !== 'admin');
 
   return (
     <>
@@ -204,32 +267,25 @@ export function People() {
                 Showing the first {num(data.people.length)} of its {num(data.total)} members.
               </Text>
             )}
-            <SimpleGrid
-              cols={{ base: 1, sm: 2, lg: 3 }}
-              spacing={0}
-              verticalSpacing={0}
-              className="people-grid"
-            >
-              {shown.slice(0, limit).map((p) => (
-                <PersonRow
-                  key={p.login}
-                  person={p}
-                  right={
-                    p.role === 'admin' && (
-                      <Badge variant="light" color="gray" tt="none" radius="sm" style={{ flex: 'none' }}>
-                        Admin
-                      </Badge>
-                    )
-                  }
-                />
-              ))}
-            </SimpleGrid>
+            {shownAdmins.length > 0 && (
+              <Box mb={36}>
+                <SectionTitle title="Admins" caption="They manage the organization" />
+                <PeopleGrid people={shownAdmins} />
+              </Box>
+            )}
+            {(shownMembers.length > 0 || shown.length === 0) && (
+              <SectionTitle
+                title={data.member ? 'Members' : 'Public members'}
+                caption={data.member ? undefined : 'Members who chose to show they belong to it'}
+              />
+            )}
+            <PeopleGrid people={shownMembers.slice(0, limit)} />
             {shown.length === 0 && (
               <Text size="sm" c="dimmed" py="md">
-                No member matches.
+                No one matches.
               </Text>
             )}
-            <ShowMore left={shown.length - limit} onClick={() => setLimit((l) => l + PAGE)} />
+            <ShowMore left={shownMembers.length - limit} onClick={() => setLimit((l) => l + PAGE)} />
           </>
         )}
       </Loaded>
@@ -245,16 +301,35 @@ export function Teams() {
   const { refresh, refreshing } = useRefresh(login, 'teams');
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(PAGE);
+  // A member picked to see only their teams, kept in the address so it can be shared or linked to.
+  const [params, setParams] = useSearchParams();
+  const member = params.get('member');
+  const people = usePeople(login);
+  const memberTeams = useMemberTeams(login, member);
   const shown = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const of = member ? new Set(memberTeams.data?.teams ?? []) : null;
     return (query.data?.teams ?? []).filter(
       (t) =>
-        !term ||
-        t.name.toLowerCase().includes(term) ||
-        (t.description ?? '').toLowerCase().includes(term) ||
-        (t.parent ?? '').toLowerCase().includes(term),
+        (!of || of.has(t.slug)) &&
+        (!term ||
+          t.name.toLowerCase().includes(term) ||
+          (t.description ?? '').toLowerCase().includes(term) ||
+          (t.parent ?? '').toLowerCase().includes(term)),
     );
-  }, [query.data, search]);
+  }, [query.data, search, member, memberTeams.data]);
+  const memberOptions = useMemo(
+    () =>
+      (people.data?.people ?? []).map((p) => ({
+        value: p.login,
+        label: p.name && p.name !== p.login ? `${p.name} (@${p.login})` : `@${p.login}`,
+      })),
+    [people.data],
+  );
+  const avatarOf = useMemo(
+    () => new Map((people.data?.people ?? []).map((p) => [p.login, p.avatarUrl])),
+    [people.data],
+  );
   const secret = query.data?.teams.filter((t) => t.secret).length ?? 0;
 
   return (
@@ -298,7 +373,58 @@ export function Teams() {
                 placeholder="Find a team"
                 shown={shown.length}
                 noun={['team', 'teams']}
+                extra={
+                  <Select
+                    placeholder={people.isLoading ? 'Loading members…' : 'Teams of a member'}
+                    data={
+                      member && !memberOptions.some((o) => o.value === member)
+                        ? [{ value: member, label: `@${member}` }, ...memberOptions]
+                        : memberOptions
+                    }
+                    value={member}
+                    onChange={(value) => {
+                      setParams(value ? { member: value } : {}, { replace: true });
+                      setLimit(PAGE);
+                    }}
+                    searchable
+                    clearable
+                    limit={50}
+                    nothingFoundMessage="No member matches"
+                    comboboxProps={{ width: 360, position: 'bottom-start' }}
+                    leftSection={
+                      member ? (
+                        <Avatar
+                          src={avatarOf.get(member) ?? `https://github.com/${member}.png`}
+                          size={20}
+                          radius="xl"
+                        />
+                      ) : (
+                        <IconUsers size={16} stroke={1.6} />
+                      )
+                    }
+                    renderOption={({ option }) => (
+                      <Group gap={10} wrap="nowrap">
+                        <Avatar src={avatarOf.get(option.value)} size={22} radius="xl" />
+                        <Text size="sm" truncate>
+                          {option.label}
+                        </Text>
+                      </Group>
+                    )}
+                    style={{ flex: '0 1 300px' }}
+                    miw={220}
+                  />
+                }
               />
+              {member && memberTeams.isLoading && (
+                <Text size="sm" c="dimmed" py="md">
+                  Finding the teams of @{member}…
+                </Text>
+              )}
+              {member && memberTeams.error && (
+                <Text size="sm" c="red" py="md">
+                  Couldn&apos;t read the teams of @{member}.
+                </Text>
+              )}
               <div className="rank-list">
                 {shown.slice(0, limit).map((t) => (
                   <Anchor
@@ -348,9 +474,11 @@ export function Teams() {
                   </Anchor>
                 ))}
               </div>
-              {shown.length === 0 && (
+              {shown.length === 0 && (!member || memberTeams.data) && (
                 <Text size="sm" c="dimmed" py="md">
-                  No team matches.
+                  {member && !search.trim() && memberTeams.data
+                    ? `@${member} isn't in any team you can see.`
+                    : 'No team matches.'}
                 </Text>
               )}
               <ShowMore left={shown.length - limit} onClick={() => setLimit((l) => l + PAGE)} />
@@ -364,155 +492,691 @@ export function Teams() {
 
 // Security and quality ----------------------------------------------------------------------------
 
-const QUALITY: Record<QualityMeasure['key'], { label: string; hint: string }> = {
-  license: { label: 'A license', hint: 'People know how they may use it' },
-  description: { label: 'A description', hint: 'Its purpose, shown in lists and search' },
-  topics: { label: 'Topics', hint: 'Found when people browse a subject' },
-  issues: { label: 'Issues open', hint: 'People can report problems and ask for things' },
+const QUALITY: Record<QualityMeasure['key'], { label: string; hint: string; icon: typeof IconLicense }> = {
+  license: { label: 'Licensed', hint: 'People know how they may use it', icon: IconLicense },
+  description: {
+    label: 'Described',
+    hint: 'Its purpose, shown in lists and search',
+    icon: IconFileDescription,
+  },
+  topics: { label: 'With topics', hint: 'Found when people browse a subject', icon: IconTags },
+  issues: {
+    label: 'Issues open',
+    hint: 'People can report problems and ask for things',
+    icon: IconCircleDot,
+  },
 };
 
-const ACTIVITY: { key: keyof HealthResponse['activity']; label: string; color: string }[] = [
-  { key: 'month', label: 'Last 30 days', color: 'teal.5' },
-  { key: 'quarter', label: '1 to 3 months ago', color: 'teal.3' },
-  { key: 'year', label: '3 to 12 months ago', color: 'yellow.5' },
-  { key: 'older', label: 'Over a year ago', color: 'orange.5' },
-  { key: 'never', label: 'Never pushed to', color: 'gray.5' },
+const ACTIVITY: { key: keyof QualityResponse['activity']; label: string; color: string }[] = [
+  { key: 'month', label: 'Past month', color: 'teal.5' },
+  { key: 'quarter', label: '1–3 months', color: 'teal.3' },
+  { key: 'year', label: '3–12 months', color: 'yellow.5' },
+  { key: 'older', label: 'Over a year', color: 'orange.5' },
+  { key: 'never', label: 'Never pushed', color: 'gray.5' },
 ];
 
-const LICENSE_COLORS = ['blue.5', 'teal.5', 'grape.4', 'yellow.5', 'orange.5'];
+/** How well a share reads: most of them, about half, or few. */
+const levelColor = (ratio: number) => (ratio >= 0.75 ? 'teal.5' : ratio >= 0.4 ? 'yellow.5' : 'orange.5');
 
-/** A share of the active repositories, as a label, its count and share, and a bar. */
-function Share({
-  label,
-  hint,
-  value,
-  of,
-  color,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  of: number;
-  color: string;
-}) {
-  const ratio = of ? value / of : 0;
+/** One quality measure: its share of the active repositories, large, and how many that is. */
+function QualityStat({ measure, of }: { measure: QualityMeasure; of: number }) {
+  const { label, hint, icon: Icon } = QUALITY[measure.key];
+  const ratio = of ? measure.count / of : 0;
   return (
     <Tooltip label={hint} position="top-start">
-      <Box className="owns-bar">
-        <Group justify="space-between" wrap="nowrap">
-          <Text size="sm">{label}</Text>
-          <Group gap={10} wrap="nowrap" className="tabular">
-            <Text size="sm" fw={600}>
-              {num(value)}
-            </Text>
-            <Text size="sm" c="dimmed" w={38} ta="right">
-              {percent(ratio)}
-            </Text>
-          </Group>
+      <Box className="quality-stat">
+        <Group gap={6} wrap="nowrap">
+          <Icon size={15} stroke={1.7} color="var(--mantine-color-dimmed)" />
+          <Text size="sm" c="dimmed">
+            {label}
+          </Text>
         </Group>
-        <div className="rank-track">
-          <div className="rank-fill" style={{ width: `${ratio * 100}%`, background: cssColor(color) }} />
+        <Text fz={34} fw={650} lh={1.1} mt={8} className="tabular">
+          {percent(ratio)}
+        </Text>
+        <div className="rank-track" style={{ marginTop: 12 }}>
+          <div
+            className="rank-fill"
+            style={{ width: `${ratio * 100}%`, background: cssColor(levelColor(ratio)) }}
+          />
         </div>
+        <Text size="xs" c="dimmed" mt={8}>
+          {num(measure.count)} of {num(of)} repositories
+        </Text>
       </Box>
     </Tooltip>
   );
 }
 
-function Alerts({ alerts }: { alerts: HealthResponse['alerts'] }) {
-  if (!alerts) {
+const LICENSE_COLORS = ['blue.5', 'teal.5', 'grape.4', 'yellow.5', 'orange.5'];
+
+/** Its active repositories by their last push, in time order. */
+function Activity({ activity, of }: { activity: QualityResponse['activity']; of: number }) {
+  const shown = ACTIVITY.filter((a) => activity[a.key] > 0);
+  const colors = new Map(shown.map((a) => [a.label, cssColor(a.color)]));
+  return (
+    <LanguagesDonut
+      title="Activity"
+      caption={`Its ${num(of)} active repositories by their last push`}
+      counts={shown.map((a) => [a.label, activity[a.key]])}
+      colorOf={(name) => colors.get(name) ?? cssColor('gray.5')}
+      ordered
+    />
+  );
+}
+
+/** The licenses its licensed repositories use, the most used first. */
+function Licenses({ licenses, of }: { licenses: QualityResponse['licenses']; of: number }) {
+  const used = licenses.filter((l) => l.name !== 'None');
+  const licensed = used.reduce((sum, l) => sum + l.count, 0);
+  if (!licensed) {
     return (
       <Box>
-        <SectionTitle title="Dependabot alerts" />
+        <SectionTitle title="Licenses" caption={`Of its ${num(of)} active repositories`} />
         <Text size="sm" c="dimmed">
-          GitHub shows a repository&apos;s Dependabot alerts only to people who can write to it, and you
-          can&apos;t write to any of its active repositories.
+          None of them has a license GitHub can find.
         </Text>
       </Box>
     );
   }
-  const max = Math.max(1, alerts.repositories[0]?.open ?? 1);
   return (
-    <Box>
-      <SectionTitle
-        title="Dependabot alerts"
-        caption={`Open on the ${num(alerts.readable)} active repositories you can write to, the only ones GitHub shows alerts for`}
-      />
-      <Group gap={10} align="baseline" mb="md">
-        <Text fz={32} fw={650} lh={1} className="tabular" c={alerts.open ? 'red.5' : undefined}>
-          {num(alerts.open)}
+    <LanguagesDonut
+      title="Licenses"
+      caption={`The ${num(licensed)} of its ${num(of)} active repositories that have one`}
+      counts={used.map((l) => [l.name, l.count])}
+      colorOf={(name) =>
+        cssColor(LICENSE_COLORS[used.findIndex((l) => l.name === name) % LICENSE_COLORS.length]!)
+      }
+    />
+  );
+}
+
+const SEVERITY: Record<Severity, { label: string; color: string }> = {
+  critical: { label: 'Critical', color: 'red.8' },
+  high: { label: 'High', color: 'orange.6' },
+  moderate: { label: 'Moderate', color: 'yellow.5' },
+  low: { label: 'Low', color: 'gray.5' },
+};
+
+/** A bar split by severity, each part as long as its share. */
+function SeverityBar({ severity, className }: { severity: SeverityCounts; className: string }) {
+  return (
+    <div className={className}>
+      {SEVERITIES.filter((key) => severity[key] > 0).map((key) => (
+        <span key={key} style={{ flexGrow: severity[key], background: cssColor(SEVERITY[key].color) }} />
+      ))}
+    </div>
+  );
+}
+
+/** The open alerts by severity: one bar, and each severity's count and share. */
+function Severities({ query, open }: { query: UseQueryResult<AlertDetailsResponse>; open: number }) {
+  if (query.isLoading) {
+    return (
+      <Box mt={36}>
+        <Text fw={600} size="sm" mb="xs">
+          By severity
         </Text>
-        <Text size="sm" c="dimmed">
-          open {alerts.open === 1 ? 'alert' : 'alerts'} in {num(alerts.repositories.length)}{' '}
-          {alerts.repositories.length === 1 ? 'repository' : 'repositories'}
+        <Skeleton height={10} radius="xl" />
+        <Text size="xs" c="dimmed" mt="sm">
+          Reading the severity of each alert…
+        </Text>
+      </Box>
+    );
+  }
+  const severity = query.data?.severity;
+  if (!severity) {
+    return (
+      <Text size="xs" c="dimmed" mt={36}>
+        {query.error
+          ? "Couldn't read the alerts' severities."
+          : 'The alerts changed while their severities were read, so they are left out. Refresh to read them again.'}
+      </Text>
+    );
+  }
+  return (
+    <Box mt={36}>
+      <Text fw={600} size="sm" mb="xs">
+        By severity
+      </Text>
+      <SeverityBar severity={severity} className="severity-split" />
+      <SimpleGrid cols={4} spacing="md" mt="md">
+        {SEVERITIES.map((key) => (
+          <Box key={key}>
+            <Group gap={7} wrap="nowrap">
+              <span className="lang-dot" style={{ background: cssColor(SEVERITY[key].color), margin: 0 }} />
+              <Text size="xs" c="dimmed" truncate>
+                {SEVERITY[key].label}
+              </Text>
+            </Group>
+            <Group gap={8} align="baseline" mt={6} wrap="nowrap">
+              <Text fz={22} fw={650} lh={1} className="tabular">
+                {num(severity[key])}
+              </Text>
+              <Text size="xs" c="dimmed" className="tabular" visibleFrom="xs">
+                {percent(open ? severity[key] / open : 0)}
+              </Text>
+            </Group>
+          </Box>
+        ))}
+      </SimpleGrid>
+    </Box>
+  );
+}
+
+const ECOSYSTEMS: Record<string, string> = {
+  NPM: 'npm',
+  PIP: 'pip',
+  MAVEN: 'Maven',
+  NUGET: 'NuGet',
+  RUBYGEMS: 'RubyGems',
+  COMPOSER: 'Composer',
+  GO: 'Go',
+  RUST: 'Rust',
+  ERLANG: 'Erlang',
+  ACTIONS: 'Actions',
+  PUB: 'Pub',
+  SWIFT: 'Swift',
+};
+const ecosystem = (name: string) => ECOSYSTEMS[name] ?? name.charAt(0) + name.slice(1).toLowerCase();
+
+const ALERT_AGE: {
+  key: keyof NonNullable<AlertDetailsResponse['details']>['age'];
+  label: string;
+  color: string;
+}[] = [
+  { key: 'month', label: 'Under a month', color: 'teal.5' },
+  { key: 'quarter', label: '1–3 months', color: 'yellow.5' },
+  { key: 'year', label: '3–12 months', color: 'orange.5' },
+  { key: 'older', label: 'Over a year', color: 'red.6' },
+];
+
+/** A share as a percentage, saying "<1%" rather than "0%" for a few out of many. */
+const share = (value: number, of: number) =>
+  value > 0 && of && value / of < 0.005 ? '<1%' : percent(of ? value / of : 0);
+
+/** A label, its count and share, and a bar: the rows of the alert details. */
+function CountBar({
+  label,
+  value,
+  of,
+  max,
+  color,
+}: {
+  label: ReactNode;
+  value: number;
+  of: number;
+  max: number;
+  color: string;
+}) {
+  return (
+    <Box className="owns-bar">
+      <Group justify="space-between" wrap="nowrap">
+        <Text size="sm" truncate>
+          {label}
+        </Text>
+        <Group gap={10} wrap="nowrap" className="tabular">
+          <Text size="sm" fw={600}>
+            {num(value)}
+          </Text>
+          <Text size="sm" c="dimmed" w={38} ta="right">
+            {share(value, of)}
+          </Text>
+        </Group>
+      </Group>
+      <div className="rank-track">
+        <div
+          className="rank-fill"
+          style={{ width: `${max ? (value / max) * 100 : 0}%`, background: cssColor(color) }}
+        />
+      </div>
+    </Box>
+  );
+}
+
+/** How long the alerts have been open, and where they come from. */
+function AlertAgeAndEcosystems({
+  details,
+  open,
+}: {
+  details: NonNullable<AlertDetailsResponse['details']>;
+  open: number;
+}) {
+  const ageMax = Math.max(...ALERT_AGE.map((a) => details.age[a.key]));
+  const ecosystems = details.ecosystems.slice(0, 6);
+  const ecoMax = ecosystems[0]?.alerts ?? 0;
+  return (
+    <Grid gap="md" mt={36}>
+      <Grid.Col span={{ base: 12, md: 6 }} pr={{ md: 'xl' }}>
+        <Text fw={600} size="sm">
+          How long they&apos;ve been open
+        </Text>
+        <Text size="xs" c="dimmed" mt={2} mb="sm">
+          {details.oldestCritical
+            ? `The oldest critical one, in ${details.oldestCritical.package} on ${details.oldestCritical.fullName.split('/')[1]}, was opened ${relative(details.oldestCritical.createdAt)}`
+            : 'Since each alert was opened'}
+        </Text>
+        <Box className="no-lines">
+          {ALERT_AGE.map((a) => (
+            <CountBar
+              key={a.key}
+              label={a.label}
+              value={details.age[a.key]}
+              of={open}
+              max={ageMax}
+              color={a.color}
+            />
+          ))}
+        </Box>
+      </Grid.Col>
+      <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
+        <Text fw={600} size="sm">
+          By ecosystem
+        </Text>
+        <Text size="xs" c="dimmed" mt={2} mb="sm">
+          Where the vulnerable packages come from
+        </Text>
+        <Box className="no-lines">
+          {ecosystems.map((e) => (
+            <CountBar
+              key={e.name}
+              label={ecosystem(e.name)}
+              value={e.alerts}
+              of={open}
+              max={ecoMax}
+              color="red.5"
+            />
+          ))}
+        </Box>
+      </Grid.Col>
+    </Grid>
+  );
+}
+
+/** A row of the alert lists: a name and its count over a bar, no lines between rows. */
+function BarLink({
+  label,
+  detail,
+  value,
+  width,
+  bar,
+  href,
+  title,
+}: {
+  label: string;
+  detail?: string;
+  value: number;
+  /** The bar's length, from 0 to 1. */
+  width: number;
+  /** What fills the bar; plain red unless given. */
+  bar?: ReactNode;
+  href?: string;
+  title?: string;
+}) {
+  const body = (
+    <>
+      <Group justify="space-between" wrap="nowrap" gap="sm">
+        <Group gap={8} wrap="nowrap" miw={0} align="baseline">
+          <Text size="sm" fw={500} truncate>
+            {label}
+          </Text>
+          {detail && (
+            <Text size="xs" c="dimmed" truncate>
+              {detail}
+            </Text>
+          )}
+        </Group>
+        <Text size="sm" fw={600} className="tabular" style={{ flex: 'none' }}>
+          {num(value)}
         </Text>
       </Group>
-      {alerts.repositories.length > 0 && (
-        <div className="rank-list">
-          {alerts.repositories.slice(0, 10).map((r) => (
-            <Anchor
-              key={r.fullName}
-              href={`https://github.com/${r.fullName}/security/dependabot`}
-              target="_blank"
-              rel="noreferrer"
-              underline="never"
-              c="inherit"
-              className="alert-row account-link"
-            >
-              <Text size="sm" fw={500} truncate>
-                {r.fullName.split('/')[1]}
-              </Text>
-              <div className="rank-track">
-                <div
-                  className="rank-fill"
-                  style={{ width: `${(r.open / max) * 100}%`, background: cssColor('red.5') }}
-                />
-              </div>
-              <Text size="sm" fw={600} ta="right" className="tabular">
-                {num(r.open)}
-              </Text>
-            </Anchor>
-          ))}
+      <div className="rank-track">
+        <div style={{ width: `${width * 100}%`, height: '100%' }}>
+          {bar ?? <div className="rank-fill" style={{ width: '100%', background: cssColor('red.5') }} />}
         </div>
-      )}
-      {alerts.repositories.length > 10 && (
-        <Text size="xs" c="dimmed" mt="xs">
-          And {num(alerts.repositories.length - 10)} more repositories with open alerts.
-        </Text>
+      </div>
+    </>
+  );
+  return href ? (
+    <Anchor
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      underline="never"
+      c="inherit"
+      className="bar-link"
+      title={title}
+    >
+      {body}
+    </Anchor>
+  ) : (
+    <Box className="bar-link bar-static">{body}</Box>
+  );
+}
+
+/** The packages behind the most alerts: where an update does the most good. */
+function VulnerablePackages({ packages }: { packages: AlertPackage[] }) {
+  if (!packages.length) return null;
+  const max = packages[0]!.alerts;
+  return (
+    <>
+      <Text fw={600} size="sm" mt={36}>
+        Most vulnerable packages
+      </Text>
+      <Text size="xs" c="dimmed" mt={2} mb="sm">
+        The packages behind the most alerts: where an update does the most good
+      </Text>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40} verticalSpacing={2}>
+        {packages.map((p) => (
+          <BarLink
+            key={`${p.ecosystem}:${p.name}`}
+            label={p.name}
+            detail={`${ecosystem(p.ecosystem)} · ${num(p.repositories)} ${p.repositories === 1 ? 'repository' : 'repositories'}`}
+            value={p.alerts}
+            width={p.alerts / max}
+          />
+        ))}
+      </SimpleGrid>
+    </>
+  );
+}
+
+const YEAR_MS = 365 * 86_400_000;
+
+/** A date as its month and year, as "Feb 2022": exact where "2 years ago" rounds. */
+const monthYear = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+/** How long untouched, by whole years: the three groups the section is split in. */
+const STALE_GROUPS = [
+  { key: 'one', label: '1–2 years', color: 'yellow.5', test: (years: number) => years < 2 },
+  { key: 'two', label: '2–3 years', color: 'orange.5', test: (years: number) => years >= 2 && years < 3 },
+  { key: 'more', label: 'Over 3 years', color: 'red.6', test: (years: number) => years >= 3 },
+] as const;
+
+const yearsSince = (iso: string | null) =>
+  iso ? (Date.now() - new Date(iso).getTime()) / YEAR_MS : Infinity;
+const staleColor = (iso: string | null) =>
+  STALE_GROUPS.find((g) => g.test(yearsSince(iso)))?.color ?? 'red.6';
+
+/** Active repositories nobody has pushed to in over a year: candidates for archiving. */
+function Stale({ stale, active }: { stale: QualityResponse['stale']; active: number }) {
+  const [all, setAll] = useState(false);
+  if (!stale.length) return null;
+  const shown = all ? stale : stale.slice(0, 12);
+  const counts = STALE_GROUPS.map((g) => ({
+    ...g,
+    count: stale.filter((r) => g.test(yearsSince(r.pushedAt))).length,
+  }));
+  return (
+    <Box mt={48}>
+      <SectionTitle
+        title="Not pushed to in over a year"
+        caption={`${num(stale.length)} of its ${num(active)} active repositories, ${percent(stale.length / active)}: candidates for archiving`}
+      />
+      <SimpleGrid cols={3} spacing={0} className="quality-strip alert-strip">
+        {counts.map((g) => (
+          <Box key={g.key} className="quality-stat">
+            <Group gap={7} wrap="nowrap">
+              <span className="lang-dot" style={{ background: cssColor(g.color), margin: 0 }} />
+              <Text size="sm" c="dimmed" truncate>
+                {g.label}
+              </Text>
+            </Group>
+            <Text fw={650} lh={1.1} mt={8} className="tabular alert-value">
+              {num(g.count)}
+            </Text>
+          </Box>
+        ))}
+      </SimpleGrid>
+      <div
+        className="severity-split"
+        style={{ marginTop: 18 }}
+        role="img"
+        aria-label="Untouched repositories by years"
+      >
+        {counts
+          .filter((g) => g.count > 0)
+          .map((g) => (
+            <Tooltip key={g.key} label={`${g.label}: ${num(g.count)}`}>
+              <span style={{ flexGrow: g.count, background: cssColor(g.color) }} />
+            </Tooltip>
+          ))}
+      </div>
+
+      <Text fw={600} size="sm" mt={36} mb="sm">
+        Longest untouched
+      </Text>
+      <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 4 }} spacing={4} verticalSpacing={4}>
+        {shown.map((r) => {
+          const [owner, name] = r.fullName.split('/') as [string, string];
+          return (
+            <Tooltip
+              key={r.fullName}
+              label={r.description ?? 'No description'}
+              multiline
+              maw={320}
+              openDelay={300}
+            >
+              <Anchor
+                component={Link}
+                to={repoPath({ owner, name })}
+                underline="never"
+                c="inherit"
+                className="stale-tile"
+              >
+                <span className="stale-mark" style={{ background: cssColor(staleColor(r.pushedAt)) }} />
+                <Box miw={0}>
+                  <Text size="sm" fw={500} truncate>
+                    {name}
+                  </Text>
+                  <Group gap={6} wrap="nowrap" mt={2}>
+                    <Text size="xs" c="dimmed" style={{ flex: 'none' }}>
+                      {r.pushedAt ? monthYear(r.pushedAt) : 'Never pushed'}
+                    </Text>
+                    {r.language && (
+                      <>
+                        <span
+                          className="lang-dot"
+                          style={{ background: languageColor(r.language), margin: 0 }}
+                        />
+                        <Text size="xs" c="dimmed" truncate>
+                          {r.language}
+                        </Text>
+                      </>
+                    )}
+                  </Group>
+                </Box>
+              </Anchor>
+            </Tooltip>
+          );
+        })}
+      </SimpleGrid>
+      {stale.length > 12 && (
+        <Group justify="center" mt="md">
+          <Button variant="default" onClick={() => setAll((v) => !v)}>
+            {all ? 'Show fewer' : `Show all ${num(stale.length)}`}
+          </Button>
+        </Group>
       )}
     </Box>
   );
 }
 
-export function Health() {
+/** Opens the organization's own Dependabot alerts on GitHub. */
+function GitHubButton({ href }: { href: string }) {
+  return (
+    <Button
+      variant="default"
+      size="xs"
+      component="a"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      leftSection={<MarkGithubIcon size={14} />}
+      rightSection={<IconExternalLink size={13} stroke={1.8} />}
+    >
+      View on GitHub
+    </Button>
+  );
+}
+
+/** One figure of the alerts summary: a large number and what it counts. */
+function AlertStat({
+  value,
+  label,
+  color,
+  of,
+}: {
+  value: number;
+  label: string;
+  color?: string;
+  of?: number;
+}) {
+  return (
+    <Box className="quality-stat">
+      <Text size="sm" c="dimmed">
+        {label}
+      </Text>
+      <Group gap={6} align="baseline" mt={8} wrap="nowrap">
+        <Text fw={650} lh={1.1} c={color} className="tabular alert-value">
+          {num(value)}
+        </Text>
+        {of != null && (
+          <Text size="sm" c="dimmed" className="tabular">
+            of {num(of)}
+          </Text>
+        )}
+      </Group>
+    </Box>
+  );
+}
+
+function Alerts({ login, alerts }: { login: string; alerts: SecurityResponse['alerts'] }) {
+  const severities = useAlertDetails(login, Boolean(alerts?.open));
+  const severityOf = useMemo(
+    () => new Map((severities.data?.repositories ?? []).map((r) => [r.fullName, r.severity])),
+    [severities.data],
+  );
+  const action = <GitHubButton href={`https://github.com/orgs/${login}/security/alerts/dependabot`} />;
+  if (!alerts) {
+    return (
+      <Box>
+        <SectionTitle title="Dependabot alerts" />
+        <Group gap="sm" wrap="nowrap" align="flex-start">
+          <IconLock
+            size={18}
+            stroke={1.6}
+            color="var(--mantine-color-dimmed)"
+            style={{ flex: 'none', marginTop: 2 }}
+          />
+          <Text size="sm" c="dimmed">
+            GitHub shows a repository&apos;s Dependabot alerts only to people who can write to it, and you
+            can&apos;t write to any of its active repositories.
+          </Text>
+        </Group>
+      </Box>
+    );
+  }
+  const affected = alerts.repositories.length;
+  const clean = alerts.readable - affected;
+  const max = Math.max(1, alerts.repositories[0]?.open ?? 1);
+  const list = alerts.repositories.slice(0, 10);
+  return (
+    <Box>
+      <SectionTitle
+        title="Dependabot alerts"
+        caption={`On the ${num(alerts.readable)} active repositories you can write to, the only ones GitHub shows alerts for`}
+        action={action}
+      />
+      <SimpleGrid cols={3} spacing={0} verticalSpacing="lg" className="quality-strip alert-strip">
+        <AlertStat value={alerts.open} label="Open alerts" color={alerts.open ? 'red.5' : 'teal.5'} />
+        <AlertStat value={affected} of={alerts.readable} label="Repositories with alerts" />
+        <AlertStat
+          value={clean}
+          of={alerts.readable}
+          label="Without alerts"
+          color={clean ? 'teal.5' : undefined}
+        />
+      </SimpleGrid>
+
+      {affected === 0 ? (
+        <Group gap="sm" wrap="nowrap" mt="xl">
+          <IconShieldCheck size={22} stroke={1.6} color={cssColor('teal.5')} />
+          <Text size="sm">No open alerts on any of them.</Text>
+        </Group>
+      ) : (
+        <>
+          <Severities query={severities} open={alerts.open} />
+          {severities.data?.details && (
+            <AlertAgeAndEcosystems details={severities.data.details} open={alerts.open} />
+          )}
+          <Text fw={600} size="sm" mt={36}>
+            Most alerts
+          </Text>
+          <Text size="xs" c="dimmed" mt={2} mb="sm">
+            Each opens its alerts on GitHub
+          </Text>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={40} verticalSpacing={2}>
+            {list.map((r) => (
+              <BarLink
+                key={r.fullName}
+                href={`https://github.com/${r.fullName}/security/dependabot`}
+                title={`Open the Dependabot alerts of ${r.fullName} on GitHub`}
+                label={r.fullName.split('/')[1]!}
+                value={r.open}
+                width={r.open / max}
+                bar={
+                  severityOf.get(r.fullName) ? (
+                    <SeverityBar severity={severityOf.get(r.fullName)!} className="severity-fill" />
+                  ) : undefined
+                }
+              />
+            ))}
+          </SimpleGrid>
+          {affected > 10 && (
+            <Text size="xs" c="dimmed" mt="sm">
+              And {num(affected - 10)} more repositories with open alerts.
+            </Text>
+          )}
+          {severities.data?.details && <VulnerablePackages packages={severities.data.details.packages} />}
+        </>
+      )}
+    </Box>
+  );
+}
+
+/** Shown when an organization owns more repositories than can be read exactly. */
+const tooMany = (
+  <EmptyState
+    icon={<IconShieldCheck size={28} />}
+    title="Too many repositories to measure"
+    description="It owns more than 1,000 repositories, more than can be read exactly, so this page is left out."
+  />
+);
+
+export function Quality() {
   const { login = '' } = useParams();
-  const query = useHealth(login);
-  const { refresh, refreshing } = useRefresh(login, 'health');
-  const health = query.data?.health;
+  const query = useQuality(login);
+  const { refresh, refreshing } = useRefresh(login, 'quality');
+  const quality = query.data?.quality;
 
   return (
     <>
       <PageHeader
-        title="Security & quality"
-        icon={<IconShieldCheck size={26} stroke={1.6} />}
-        description="How well kept its repositories are, how alive, and what Dependabot found in them."
+        title="Quality"
+        icon={<IconChecklist size={26} stroke={1.6} />}
+        description="How well kept its repositories are, how alive, and which ones nobody touches anymore."
         stats={
-          health && (
+          quality && (
             <Counters>
               <Counter
                 icon={IconFolders}
-                value={num(health.active)}
+                value={num(quality.active)}
                 label="Active"
                 hint="Its own repositories, not forks, not archived: what this page measures"
               />
-              <Counter icon={IconBook2} value={num(health.archived)} label="Archived" />
-              {health.alerts && (
-                <Counter
-                  icon={IconShieldExclamation}
-                  value={compact(health.alerts.open)}
-                  label="Open alerts"
-                  hint="Dependabot alerts on the repositories you can write to"
-                />
-              )}
+              <Counter icon={IconBook2} value={num(quality.archived)} label="Archived" />
             </Counters>
           )
         }
@@ -520,91 +1184,76 @@ export function Health() {
         refreshing={refreshing}
       />
       <Loaded query={query}>
-        {({ health: h }) =>
+        {({ quality: h }) =>
           !h ? (
-            <EmptyState
-              icon={<IconShieldCheck size={28} />}
-              title="Too many repositories to measure"
-              description="It owns more than 1,000 repositories, more than can be read exactly, so this page is left out."
-            />
+            tooMany
           ) : h.active === 0 ? (
-            <EmptyState icon={<IconShieldCheck size={28} />} title="No active repositories to measure" />
+            <EmptyState icon={<IconChecklist size={28} />} title="No active repositories to measure" />
           ) : (
             <>
-              <Grid gap="md">
+              <SectionTitle title="Quality" caption={`Across its ${num(h.active)} active repositories`} />
+              <SimpleGrid
+                cols={{ base: 2, md: 4 }}
+                spacing={0}
+                verticalSpacing="lg"
+                className="quality-strip"
+              >
+                {h.quality.map((q) => (
+                  <QualityStat key={q.key} measure={q} of={h.active} />
+                ))}
+              </SimpleGrid>
+
+              <Grid gap="md" mt={48}>
                 <Grid.Col span={{ base: 12, md: 6 }} pr={{ md: 'xl' }}>
-                  <SectionTitle
-                    title="Quality"
-                    caption={`How many of its ${num(h.active)} active repositories have…`}
-                  />
-                  <Box className="no-lines">
-                    {h.quality.map((q) => (
-                      <Share
-                        key={q.key}
-                        label={QUALITY[q.key].label}
-                        hint={QUALITY[q.key].hint}
-                        value={q.count}
-                        of={h.active}
-                        color="blue.5"
-                      />
-                    ))}
+                  <Box className="lines-between">
+                    <Activity activity={h.activity} of={h.active} />
                   </Box>
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
-                  <SectionTitle title="Activity" caption="Its active repositories by their last push" />
-                  {/* One bar for all of them, split by how long ago they were pushed to. */}
-                  <div className="activity-split" role="img" aria-label="Active repositories by last push">
-                    {ACTIVITY.filter((a) => h.activity[a.key] > 0).map((a) => (
-                      <Tooltip key={a.key} label={`${a.label}: ${num(h.activity[a.key])}`}>
-                        <span style={{ flexGrow: h.activity[a.key], background: cssColor(a.color) }} />
-                      </Tooltip>
-                    ))}
-                  </div>
-                  <Box mt="md" className="lines-between">
-                    <div className="rank-list">
-                      {ACTIVITY.filter((a) => a.key !== 'never' || h.activity.never > 0).map((a) => (
-                        <div key={a.key} className="legend-row">
-                          <span className="lang-dot" style={{ background: cssColor(a.color), margin: 0 }} />
-                          <Text size="sm">{a.label}</Text>
-                          <Group gap={10} wrap="nowrap" className="tabular">
-                            <Text size="sm" fw={600}>
-                              {num(h.activity[a.key])}
-                            </Text>
-                            <Text size="sm" c="dimmed" w={38} ta="right">
-                              {percent(h.activity[a.key] / h.active)}
-                            </Text>
-                          </Group>
-                        </div>
-                      ))}
-                    </div>
+                  <Box className="lines-between">
+                    <Licenses licenses={h.licenses} of={h.active} />
                   </Box>
                 </Grid.Col>
               </Grid>
 
-              <Grid gap="md" mt={44}>
-                <Grid.Col span={{ base: 12, md: 6 }} pr={{ md: 'xl' }}>
-                  <Box className="lines-between">
-                    <LanguagesDonut
-                      title="Licenses"
-                      caption={`Of its ${num(h.active)} active repositories`}
-                      counts={h.licenses.map((l) => [l.name, l.count])}
-                      colorOf={(name) =>
-                        name === 'None'
-                          ? cssColor('dark.3')
-                          : cssColor(
-                              LICENSE_COLORS[
-                                h.licenses.findIndex((l) => l.name === name) % LICENSE_COLORS.length
-                              ]!,
-                            )
-                      }
-                    />
-                  </Box>
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
-                  <Alerts alerts={h.alerts} />
-                </Grid.Col>
-              </Grid>
+              <Stale stale={h.stale} active={h.active} />
             </>
+          )
+        }
+      </Loaded>
+    </>
+  );
+}
+
+export function Security() {
+  const { login = '' } = useParams();
+  const query = useSecurity(login);
+  const securityRefresh = useRefresh(login, 'security');
+  const alertsRefresh = useRefresh(login, 'alerts');
+  // The details are read from the repositories the counts found alerts on: after them, then.
+  const refresh = async () => {
+    await securityRefresh.refresh();
+    await alertsRefresh.refresh();
+  };
+  const refreshing = securityRefresh.refreshing || alertsRefresh.refreshing;
+
+  return (
+    <>
+      <PageHeader
+        title="Security"
+        icon={<IconShieldCheck size={26} stroke={1.6} />}
+        description="What Dependabot found in its repositories: how many alerts, how severe, how old, and in which packages."
+        onRefresh={refresh}
+        refreshing={refreshing}
+      />
+      <Loaded query={query}>
+        {({ security }) =>
+          !security ? (
+            tooMany
+          ) : security.active === 0 ? (
+            <EmptyState icon={<IconShieldCheck size={28} />} title="No active repositories to measure" />
+          ) : (
+            <Alerts login={login} alerts={security.alerts} />
           )
         }
       </Loaded>

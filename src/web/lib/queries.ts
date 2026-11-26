@@ -2,12 +2,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import type {
+  AlertDetailsResponse,
   AccountHit,
   AccountReposResponse,
   AccountResponse,
   AccountTotals,
   AuthStatus,
-  HealthResponse,
+  QualityResponse,
+  SecurityResponse,
   PeopleResponse,
   SponsorsResponse,
   TeamsResponse,
@@ -250,5 +252,24 @@ const accountPage =
     });
 export const usePeople = accountPage<PeopleResponse>('people');
 export const useTeams = accountPage<TeamsResponse>('teams');
-export const useHealth = accountPage<{ health: HealthResponse | null }>('health');
+export const useQuality = accountPage<{ quality: QualityResponse | null }>('quality');
+export const useSecurity = accountPage<{ security: SecurityResponse | null }>('security');
 export const useSponsors = accountPage<SponsorsResponse>('sponsors');
+
+/** Open Dependabot alerts by severity, asked once the page has found some. */
+export const useAlertDetails = (login: string, enabled: boolean) =>
+  useQuery({
+    queryKey: accountPageKey(login, 'alerts'),
+    queryFn: () => api<AlertDetailsResponse>(`/accounts/${login}/alerts`),
+    enabled,
+    staleTime: 10 * 60_000,
+  });
+
+/** The teams one member of an organization belongs to, by slug. */
+export const useMemberTeams = (login: string, member: string | null) =>
+  useQuery({
+    queryKey: ['member-teams', login.toLowerCase(), member?.toLowerCase()],
+    queryFn: () => api<{ teams: string[]; complete: boolean }>(`/accounts/${login}/teams/${member}`),
+    enabled: Boolean(member),
+    staleTime: 10 * 60_000,
+  });
