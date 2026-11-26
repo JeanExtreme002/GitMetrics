@@ -240,13 +240,13 @@ function Organizations({ account }: { account: AccountResponse }) {
                 to={`/a/${o.login}`}
                 src={o.avatarUrl}
                 alt={o.login}
-                size={22}
-                radius="sm"
+                size={20}
+                radius="xl"
               />
             </Tooltip>
           ))}
           {orgs.length > 8 && (
-            <Avatar size={22} radius="sm">
+            <Avatar size={20} radius="xl">
               +{orgs.length - 8}
             </Avatar>
           )}
