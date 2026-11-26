@@ -334,6 +334,20 @@
   background: var(--mantine-color-yellow-6);
 }
 
+/* On an account page, What it owns and Languages read without lines between their rows. */
+.no-lines .rank-list {
+  border-top: none;
+}
+
+.no-lines .legend-row {
+  padding-block: 7px;
+  border-bottom: none;
+}
+
+.no-lines .owns-bar {
+  border-top: none;
+}
+
 /* Archived and private on an account page: a label and its share, over a bar of the whole. */
 .owns-bar {
   padding: 9px 4px 11px;

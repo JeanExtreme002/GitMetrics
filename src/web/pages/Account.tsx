@@ -469,13 +469,17 @@ export function Account() {
           )}
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}>
-          <Owns account={account} />
+          <Box className="no-lines">
+            <Owns account={account} />
+          </Box>
         </Grid.Col>
       </Grid>
 
       <Grid gap="md" mt="xl">
         <Grid.Col span={{ base: 12, md: 7 }} pr={{ md: 'xl' }}>
-          <Languages account={account} totals={sums} />
+          <Box className="no-lines">
+            <Languages account={account} totals={sums} />
+          </Box>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
           {/* Its most starred, each opening its Stars page, as the home page's ranking does. */}
