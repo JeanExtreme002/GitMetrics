@@ -31,10 +31,14 @@ query ($login: String!) {
       name bio company location websiteUrl twitterUsername createdAt
       followers { totalCount } following { totalCount }
       organizations(first: 30) { nodes { login avatarUrl } }
+      sponsoring { totalCount } sponsors { totalCount }
     }
     ... on Organization {
       name description location websiteUrl twitterUsername createdAt isVerified
       membersWithRole { totalCount }
+      viewerIsAMember
+      teams { totalCount }
+      sponsoring { totalCount } sponsors { totalCount }
     }
     all: repositories(ownerAffiliations: OWNER) { totalCount }
     forks: repositories(ownerAffiliations: OWNER, isFork: true) { totalCount }
@@ -111,6 +115,10 @@ export interface RawAccount {
   followers?: { totalCount: number };
   following?: { totalCount: number };
   membersWithRole?: { totalCount: number };
+  viewerIsAMember?: boolean;
+  teams?: { totalCount: number };
+  sponsoring?: { totalCount: number };
+  sponsors?: { totalCount: number };
   organizations?: { nodes: { login: string; avatarUrl: string }[] };
   all: { totalCount: number };
   forks: { totalCount: number };
@@ -160,6 +168,10 @@ export function buildAccount(raw: RawAccount): AccountResponse {
     followers: user ? (raw.followers?.totalCount ?? 0) : null,
     following: user ? (raw.following?.totalCount ?? 0) : null,
     members: user ? null : (raw.membersWithRole?.totalCount ?? null),
+    member: user ? null : Boolean(raw.viewerIsAMember),
+    teams: user ? null : (raw.teams?.totalCount ?? 0),
+    sponsoring: raw.sponsoring?.totalCount ?? 0,
+    sponsors: raw.sponsors?.totalCount ?? 0,
     organizations: user ? (raw.organizations?.nodes ?? []) : [],
     repositories: {
       total: raw.all.totalCount,

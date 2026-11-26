@@ -385,6 +385,39 @@
   background: var(--mantine-color-default-hover);
 }
 
+/* People side by side: each column keeps its own hairlines, with room between the columns. */
+.people-grid {
+  column-gap: 28px !important;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.people-grid .account-row {
+  min-height: 58px;
+}
+
+/* A repository with open alerts: its name, a bar of how many, and the count. */
+.alert-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 200px) 1fr 52px;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+/* One bar for all the active repositories, split by how long ago each was pushed to. */
+.activity-split {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 99px;
+}
+
+.activity-split > span {
+  min-width: 3px;
+}
+
 .legend-row {
   display: grid;
   grid-template-columns: 10px 1fr auto;

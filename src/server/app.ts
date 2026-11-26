@@ -14,6 +14,7 @@ import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getAccount, getAccountRepos, getAccountTotals, searchAccounts } from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
+import { getHealth, getPeople, getSponsors, getTeams } from './metrics/organizations.js';
 import { getCommits } from './metrics/commits.js';
 import { getContributors } from './metrics/contributors.js';
 import { getFiles } from './metrics/files.js';
@@ -351,6 +352,29 @@ export function createApp(options: AppOptions = {}) {
       c.req.query('refresh') === '1',
     );
     return c.json({ totals });
+  });
+
+  // An organization's people and teams, and any account's security and quality and sponsors.
+  const ORG_PAGES: Record<string, (gh: GitHubClient, login: string) => Promise<unknown>> = {
+    people: getPeople,
+    teams: getTeams,
+    health: getHealth,
+    sponsors: getSponsors,
+  };
+  app.get('/api/accounts/:login/:page{people|teams|health|sponsors}', async (c) => {
+    const { login, page } = c.req.param() as { login: string; page: string };
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    const result = await memory.wrap(
+      `${config.auth!.login}:account-${page}:${login.toLowerCase()}`,
+      10 * MINUTE,
+      () => ORG_PAGES[page]!(github()!, login),
+      c.req.query('refresh') === '1',
+    );
+    // Health is null for an account with too many repositories to read: an answer, not a miss.
+    if (result === null && page !== 'health') {
+      return c.json({ error: 'No organization has this name.', status: 404 }, 404);
+    }
+    return c.json(page === 'health' ? { health: result } : result);
   });
 
   // The repositories of an account outside your own list.

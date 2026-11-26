@@ -118,11 +118,15 @@ function RepoTable({ repos, showOwner }: { repos: RepoSummary[]; showOwner: bool
   );
 }
 
-export function Repositories() {
+/**
+ * Every repository you can reach, or one account's. `owner` fixes the account, as on an
+ * organization's own Repositories page, where there's no account to pick.
+ */
+export function Repositories({ owner: fixed }: { owner?: string } = {}) {
   const repos = useRepos();
   const owners = useOwners();
   const [params, setParams] = useSearchParams();
-  const owner = params.get('owner') ?? 'all';
+  const owner = fixed ?? params.get('owner') ?? 'all';
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<Kind>('sources');
   const [sort, setSort] = useState<Sort>('pushed');
@@ -221,7 +225,9 @@ export function Repositories() {
         description={
           external
             ? `The public repositories of ${owner}${outside.data?.complete ? '' : ', the 1,000 pushed to most recently'}.`
-            : 'Everything you own, plus what you can reach through your organizations.'
+            : fixed
+              ? `Everything ${owner} owns that you can see.`
+              : 'Everything you own, plus what you can reach through your organizations.'
         }
       />
 
@@ -237,17 +243,19 @@ export function Repositories() {
           style={{ flex: 1 }}
           miw={170}
         />
-        <Select
-          value={owner}
-          onChange={setOwner}
-          allowDeselect={false}
-          w={190}
-          data={[
-            { value: 'all', label: `All accounts (${num(repos.data.repos.length)})` },
-            ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
-            ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
-          ]}
-        />
+        {!fixed && (
+          <Select
+            value={owner}
+            onChange={setOwner}
+            allowDeselect={false}
+            w={190}
+            data={[
+              { value: 'all', label: `All accounts (${num(repos.data.repos.length)})` },
+              ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
+              ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
+            ]}
+          />
+        )}
         <Select
           value={language && languages.some((l) => l.value === language) ? language : null}
           onChange={(v) => {

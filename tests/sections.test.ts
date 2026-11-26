@@ -512,9 +512,15 @@ describe('repository pages, end to end', () => {
     expect(search.accounts).toEqual([{ login: 'octo', avatarUrl: '', kind: 'user' }]);
 
     expect((await send('/api/accounts/nobody')).status).toBe(404);
+    // An organization's pages answer for any account; health always, the rest only when found.
+    expect((await send('/api/accounts/octo/health')).status).toBe(200);
+    expect((await send('/api/accounts/nobody/sponsors')).status).toBe(404);
+    expect((await send('/api/accounts/octo/projects')).status).toBe(404);
     for (const path of [
       '/api/accounts/bad..name',
       '/api/accounts/-x/totals',
+      '/api/accounts/-x/people',
+      '/api/accounts/bad..name/health',
       '/api/search/accounts?q=two%20words',
     ]) {
       expect((await send(path)).status, path).toBe(400);

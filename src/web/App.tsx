@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { MyPulls } from './pages/MyPulls';
 import { Account } from './pages/Account';
+import { AccountRepositories, Health, People, Sponsors, Teams } from './pages/Organization';
 import { Repositories } from './pages/Repositories';
 import { NotFound } from './pages/NotFound';
 import { Settings } from './pages/Settings';
@@ -40,6 +41,11 @@ const router = createBrowserRouter([
           { index: true, element: <Home /> },
           { path: 'repositories', element: <Repositories /> },
           { path: 'a/:login', element: <Account /> },
+          { path: 'a/:login/repositories', element: <AccountRepositories /> },
+          { path: 'a/:login/people', element: <People /> },
+          { path: 'a/:login/teams', element: <Teams /> },
+          { path: 'a/:login/health', element: <Health /> },
+          { path: 'a/:login/sponsors', element: <Sponsors /> },
           { path: 'pulls', element: <MyPulls /> },
           { path: 'settings', element: <Settings /> },
           {

@@ -7,6 +7,10 @@ import type {
   AccountResponse,
   AccountTotals,
   AuthStatus,
+  HealthResponse,
+  PeopleResponse,
+  SponsorsResponse,
+  TeamsResponse,
   MyPullsResponse,
   PullChurn,
   PullDetail,
@@ -203,6 +207,7 @@ export const useAccount = (login: string) =>
     queryKey: accountKey(login),
     queryFn: () => api<AccountResponse>(`/accounts/${login}`),
     staleTime: 10 * 60_000,
+    enabled: Boolean(login),
   });
 
 /** Stars, forks and languages over an account's repositories; null when there are too many. */
@@ -232,3 +237,18 @@ export const useAccountSearch = (text: string, enabled: boolean) =>
     // A failed account search never gets in the way of the repository search beside it.
     retry: false,
   });
+
+/** An organization's people, teams, security and quality, and sponsors: one query per page. */
+export const accountPageKey = (login: string, page: string) => [`account-${page}`, login.toLowerCase()];
+const accountPage =
+  <T>(page: string) =>
+  (login: string) =>
+    useQuery({
+      queryKey: accountPageKey(login, page),
+      queryFn: () => api<T>(`/accounts/${login}/${page}`),
+      staleTime: 10 * 60_000,
+    });
+export const usePeople = accountPage<PeopleResponse>('people');
+export const useTeams = accountPage<TeamsResponse>('teams');
+export const useHealth = accountPage<{ health: HealthResponse | null }>('health');
+export const useSponsors = accountPage<SponsorsResponse>('sponsors');

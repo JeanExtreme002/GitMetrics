@@ -449,7 +449,11 @@ export function Account() {
             action={
               <Button
                 component={Link}
-                to={`/repositories?owner=${encodeURIComponent(account.login)}`}
+                to={
+                  account.kind === 'organization'
+                    ? `/a/${account.login}/repositories`
+                    : `/repositories?owner=${encodeURIComponent(account.login)}`
+                }
                 variant="subtle"
                 size="compact-sm"
                 rightSection={<IconArrowRight size={14} />}

@@ -81,6 +81,13 @@ export interface AccountResponse {
   following: number | null;
   /** Organizations only: the members your account can see. */
   members: number | null;
+  /** Organizations only: whether you're a member, and so see all its members and teams. */
+  member: boolean | null;
+  /** Organizations only: the teams you can see (members see them all). */
+  teams: number | null;
+  /** Accounts it sponsors, and accounts sponsoring it, as GitHub shows them publicly. */
+  sponsoring: number;
+  sponsors: number;
   /** Users only: the organizations they show publicly. */
   organizations: { login: string; avatarUrl: string }[];
   /** Repositories it owns, by kind; counted by GitHub, so always exact. */
@@ -106,6 +113,82 @@ export interface AccountTotals {
 export interface AccountReposResponse {
   repos: RepoSummary[];
   /** False when there were more than could be read. */
+  complete: boolean;
+}
+
+/** A person or an organization, as listed on an account's pages. */
+export interface AccountPerson {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+}
+
+/** An organization's members. */
+export interface PeopleResponse {
+  /** Whether you're a member: then you see every member and their role, else only public ones. */
+  member: boolean;
+  /** Members, admins first, then by login; with their role when you're a member. */
+  people: (AccountPerson & { role: 'admin' | 'member' | null })[];
+  total: number;
+  /** False when there were more than could be read. */
+  complete: boolean;
+}
+
+/** An organization's teams you can see. */
+export interface TeamsResponse {
+  teams: {
+    name: string;
+    slug: string;
+    description: string | null;
+    secret: boolean;
+    url: string;
+    members: number;
+    repositories: number;
+    parent: string | null;
+  }[];
+  total: number;
+  complete: boolean;
+}
+
+/** One measure of how well kept an account's repositories are. */
+export interface QualityMeasure {
+  key: 'license' | 'description' | 'topics' | 'issues';
+  count: number;
+}
+
+/**
+ * How well kept and how safe an account's repositories are, or null when it owns more than can be
+ * read. Measured over its active repositories: its own (not forks), not archived.
+ */
+export interface HealthResponse {
+  /** Its own repositories, not forks. */
+  sources: number;
+  archived: number;
+  /** Its own repositories that aren't archived: what the measures are over. */
+  active: number;
+  quality: QualityMeasure[];
+  /** Licenses of the active repositories, most used first; "None" for those without one. */
+  licenses: { name: string; count: number }[];
+  /** Active repositories by their last push. */
+  activity: { month: number; quarter: number; year: number; older: number; never: number };
+  /**
+   * Open Dependabot alerts, counted only on the active repositories you can write to: GitHub shows
+   * them to people with write access alone. Null when there are none of those.
+   */
+  alerts: {
+    /** Active repositories you can see the alerts of. */
+    readable: number;
+    open: number;
+    /** Those with open alerts, most first. */
+    repositories: { fullName: string; open: number }[];
+  } | null;
+}
+
+/** Who an account sponsors, and who sponsors it, as GitHub shows them publicly. */
+export interface SponsorsResponse {
+  sponsoring: AccountPerson[];
+  sponsors: AccountPerson[];
+  totals: { sponsoring: number; sponsors: number };
   complete: boolean;
 }
 

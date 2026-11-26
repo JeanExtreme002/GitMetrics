@@ -45,10 +45,13 @@ export function LanguagesDonut({
   title,
   caption,
   counts,
+  colorOf = languageColor,
 }: {
   title: string;
   caption: string;
   counts: [string, number][];
+  /** Each name's color: the languages' own colors unless given. */
+  colorOf?: (name: string) => string;
 }) {
   const sorted = [...counts].sort((a, b) => b[1] - a[1]);
   const other = sorted.slice(5).reduce((s, [, c]) => s + c, 0);
@@ -57,7 +60,7 @@ export function LanguagesDonut({
     ...(other ? [['Other', other] as [string, number]] : []),
   ];
   const total = items.reduce((s, [, c]) => s + c, 0) || 1;
-  const color = (name: string) => (name === 'Other' ? '#8c959f' : languageColor(name));
+  const color = (name: string) => (name === 'Other' ? '#8c959f' : colorOf(name));
   const [active, setActive] = useState<string | null>(null);
 
   return (

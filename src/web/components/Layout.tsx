@@ -45,6 +45,9 @@ import {
   IconUser,
   IconWorld,
   IconCircleDot,
+  IconHeart,
+  IconShieldCheck,
+  IconUsersGroup,
 } from '@tabler/icons-react';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,6 +60,7 @@ import { useRecentRepos } from '../lib/recent';
 import { snoozed, type Dismissed } from '../lib/update';
 import {
   sectionQuery,
+  useAccount,
   useAccountSearch,
   useAuth,
   useMyPulls,
@@ -221,6 +225,47 @@ function RepoNavigation({
             />
           ))}
         </Box>
+      ))}
+    </>
+  );
+}
+
+/** An organization's own sidebar, as a repository has one: its pages, with their counts. */
+function OrgNavigation({ login, onNavigate }: { login: string; onNavigate: () => void }) {
+  const { data } = useAccount(login);
+  const base = `/a/${data?.login ?? login}`;
+  const items: (NavItem & { count?: number | null })[] = [
+    { to: '', label: 'Overview', icon: icon(IconLayoutDashboard) },
+    { to: 'repositories', label: 'Repositories', icon: icon(IconBook2), count: data?.repositories.total },
+    { to: 'people', label: 'People', icon: icon(IconUsers), count: data?.members },
+    ...(data?.teams ? [{ to: 'teams', label: 'Teams', icon: icon(IconUsersGroup), count: data.teams }] : []),
+    { to: 'health', label: 'Security & quality', icon: icon(IconShieldCheck) },
+    ...(data && data.sponsoring + data.sponsors > 0
+      ? [{ to: 'sponsors', label: 'Sponsors', icon: icon(IconHeart), count: data.sponsoring + data.sponsors }]
+      : []),
+  ];
+  return (
+    <>
+      <Group gap="sm" wrap="nowrap" px="xs" py="sm" mb="xs" className="repo-identity">
+        <Avatar src={data?.avatarUrl ?? `https://github.com/${login}.png`} size={34} radius="md" />
+        <Box miw={0} style={{ flex: 1 }}>
+          <Text fw={600} size="sm" truncate>
+            {data?.name ?? data?.login ?? login}
+          </Text>
+          <Text size="xs" c="dimmed" truncate>
+            Organization
+          </Text>
+        </Box>
+      </Group>
+      {items.map(({ count, ...item }) => (
+        <NavItemLink
+          key={item.to}
+          {...item}
+          to={item.to ? `${base}/${item.to}` : base}
+          end={!item.to}
+          right={count != null ? <Count>{compact(count)}</Count> : undefined}
+          onClick={onNavigate}
+        />
       ))}
     </>
   );
@@ -739,6 +784,9 @@ function RepoSpotlight() {
 export function Layout() {
   const [opened, { toggle, close }] = useDisclosure();
   const repoMatch = useMatch('/r/:owner/:repo/*');
+  const accountMatch = useMatch('/a/:login/*');
+  const account = useAccount(accountMatch?.params.login ?? '');
+  const orgLogin = account.data?.kind === 'organization' ? accountMatch?.params.login : undefined;
   const location = useLocation();
 
   useEffect(() => {
@@ -806,6 +854,12 @@ export function Layout() {
                   repo={repoMatch.params.repo!}
                   onNavigate={close}
                 />
+              </>
+            ) : orgLogin ? (
+              <>
+                <NavItemLink to="/" label="Home" icon={icon(IconArrowLeft)} onClick={close} />
+                <Box mt="sm" />
+                <OrgNavigation login={orgLogin} onNavigate={close} />
               </>
             ) : (
               <MainNavigation onNavigate={close} />
