@@ -1,3 +1,4 @@
+import { DonutChart } from '@mantine/charts';
 import {
   ActionIcon,
   Anchor,
@@ -35,8 +36,11 @@ import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { RepoCard, repoPath } from '../components/repo';
 import { EmptyState, ErrorState, MiniStat, PageSkeleton, RefreshButton } from '../components/ui';
 import { ApiError, api } from '../lib/api';
-import { compact, date, num } from '../lib/format';
+import { compact, date, num, percent } from '../lib/format';
 import { accountKey, useAccount, useAccountTotals, useAuth } from '../lib/queries';
+
+/** A theme color (like blue.5) as a CSS value. */
+const cssColor = (color: string) => `var(--mantine-color-${color.replace('.', '-')})`;
 
 /** A website as people write it: no scheme, no trailing slash. */
 const site = (url: string) => url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
@@ -101,32 +105,105 @@ function Stats({ account, totals }: { account: AccountResponse; totals: AccountT
   );
 }
 
-/** How the repositories it owns split up, as hairline rows. */
-function Breakdown({ account }: { account: AccountResponse }) {
+/**
+ * What it owns, at a glance: a donut of its own repositories and forks (together, all of them),
+ * then how many are archived and private, as bars of the whole (either can be its own or a fork).
+ */
+function Owns({ account }: { account: AccountResponse }) {
   const r = account.repositories;
-  const rows: [string, number, string][] = [
-    ['Of its own', r.sources, 'Repositories that are not forks'],
-    ['Forks', r.forks, 'Copies of other repositories'],
-    ['Archived', r.archived, 'Read-only, kept for reference'],
+  const [active, setActive] = useState<string | null>(null);
+  const slices = [
+    { name: 'Of its own', value: r.sources, color: 'blue.5', hint: 'Repositories that are not forks' },
+    { name: 'Forks', value: r.forks, color: 'grape.4', hint: 'Copies of other repositories' },
+  ];
+  const share = (value: number) => (r.total ? value / r.total : 0);
+  const bars = [
+    { name: 'Archived', value: r.archived, color: 'yellow.6', hint: 'Read-only, kept for reference' },
     ...(r.private
-      ? [['Private', r.private, 'Visible to you only through your access'] as [string, number, string]]
+      ? [{ name: 'Private', value: r.private, color: 'gray.5', hint: 'Visible to you through your access' }]
       : []),
   ];
   return (
     <Box>
-      <SectionTitle title="What it owns" caption={`Its ${num(r.total)} repositories, by kind`} />
-      <div className="rank-list">
-        {rows.map(([label, value, hint]) => (
-          <Tooltip key={label} label={hint} position="top-start">
-            <div className="account-row">
-              <Text size="sm">{label}</Text>
-              <Text size="sm" fw={600} ta="right" className="tabular">
-                {num(value)}
-              </Text>
-            </div>
+      <SectionTitle title="What it owns" caption={`Its ${num(r.total)} repositories`} />
+      <Group gap="lg" wrap="nowrap" align="center">
+        <Box className="donut">
+          <DonutChart
+            data={slices.map((s) => ({
+              name: s.name,
+              value: s.value,
+              color: active && active !== s.name ? 'var(--mantine-color-default-border)' : s.color,
+            }))}
+            size={120}
+            thickness={11}
+            paddingAngle={r.sources && r.forks ? 3 : 0}
+            startAngle={90}
+            endAngle={-270}
+            pieProps={{ cornerRadius: 2, isAnimationActive: false }}
+            strokeWidth={0}
+            tooltipDataSource="segment"
+            valueFormatter={(v) => `${num(v)} repositories`}
+          />
+          <div className="donut-label">
+            <Text fz={22} fw={600} lh={1} className="tabular">
+              {compact(r.total)}
+            </Text>
+            <Text size="xs" c="dimmed" mt={3}>
+              in all
+            </Text>
+          </div>
+        </Box>
+        <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+          {slices.map((s) => (
+            <Tooltip key={s.name} label={s.hint} position="top-start">
+              <div
+                className="legend-row"
+                onMouseEnter={() => setActive(s.name)}
+                onMouseLeave={() => setActive(null)}
+              >
+                <span className="lang-dot" style={{ background: cssColor(s.color), margin: 0 }} />
+                <Text size="sm" truncate>
+                  {s.name}
+                </Text>
+                <Text size="sm" ta="right" className="tabular">
+                  <Text component="span" inherit fw={600}>
+                    {num(s.value)}
+                  </Text>{' '}
+                  <Text component="span" inherit c="dimmed">
+                    {percent(share(s.value))}
+                  </Text>
+                </Text>
+              </div>
+            </Tooltip>
+          ))}
+        </div>
+      </Group>
+      {/* Archived and private cut across both, so each is a bar of the whole instead of a slice. */}
+      <Box mt="lg">
+        {bars.map((b) => (
+          <Tooltip key={b.name} label={b.hint} position="top-start">
+            <Box className="owns-bar">
+              <Group justify="space-between" wrap="nowrap">
+                <Text size="sm">{b.name}</Text>
+                <Text size="sm" ta="right" className="tabular">
+                  <Text component="span" inherit fw={600}>
+                    {num(b.value)}
+                  </Text>{' '}
+                  <Text component="span" inherit c="dimmed">
+                    {percent(share(b.value))}
+                  </Text>
+                </Text>
+              </Group>
+              <div className="rank-track">
+                <div
+                  className="rank-fill"
+                  style={{ width: `${share(b.value) * 100}%`, background: cssColor(b.color) }}
+                />
+              </div>
+            </Box>
           </Tooltip>
         ))}
-      </div>
+      </Box>
     </Box>
   );
 }
@@ -372,6 +449,15 @@ export function Account() {
           )}
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}>
+          <Owns account={account} />
+        </Grid.Col>
+      </Grid>
+
+      <Grid gap="md" mt="xl">
+        <Grid.Col span={{ base: 12, md: 7 }} pr={{ md: 'xl' }}>
+          <Languages account={account} totals={sums} />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
           {/* Its most starred, each opening its Stars page, as the home page's ranking does. */}
           <SectionTitle title="Most starred" />
           {account.top.length ? (
@@ -402,15 +488,6 @@ export function Account() {
               None of its repositories has a star yet.
             </Text>
           )}
-        </Grid.Col>
-      </Grid>
-
-      <Grid gap="md" mt="xl">
-        <Grid.Col span={{ base: 12, md: 7 }} pr={{ md: 'xl' }}>
-          <Languages account={account} totals={sums} />
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
-          <Breakdown account={account} />
           <Organizations account={account} />
         </Grid.Col>
       </Grid>

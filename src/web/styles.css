@@ -334,6 +334,16 @@
   background: var(--mantine-color-yellow-6);
 }
 
+/* Archived and private on an account page: a label and its share, over a bar of the whole. */
+.owns-bar {
+  padding: 9px 4px 11px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.owns-bar .rank-track {
+  margin-top: 8px;
+}
+
 /* A row on an account page: a label and its number, or an organization to open. */
 .account-row {
   display: flex;
