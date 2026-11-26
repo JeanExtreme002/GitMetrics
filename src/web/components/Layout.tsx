@@ -202,15 +202,23 @@ function RepoNavigation({
   return (
     <>
       <Group gap="sm" wrap="nowrap" px="xs" py="sm" mb="xs" className="repo-identity">
-        <Avatar src={summary?.ownerAvatarUrl ?? `https://github.com/${owner}.png`} size={34} radius="md" />
-        <Box miw={0} style={{ flex: 1 }}>
-          <Text fw={600} size="sm" truncate>
-            {repo}
-          </Text>
-          <Text size="xs" c="dimmed" truncate>
-            {owner}
-          </Text>
-        </Box>
+        {/* The owner's logo and name open its page, as a user's or an organization's. */}
+        <NavLink
+          to={`/a/${owner}`}
+          onClick={onNavigate}
+          className="identity-link"
+          title={`Open ${owner}'s page`}
+        >
+          <Avatar src={summary?.ownerAvatarUrl ?? `https://github.com/${owner}.png`} size={34} radius="md" />
+          <Box miw={0} style={{ flex: 1 }}>
+            <Text fw={600} size="sm" truncate>
+              {repo}
+            </Text>
+            <Text size="xs" c="dimmed" truncate className="identity-owner">
+              {owner}
+            </Text>
+          </Box>
+        </NavLink>
         <PinButton fullName={`${owner}/${repo}`} />
       </Group>
       {REPO_SECTIONS.map(({ group, items }) => (
@@ -796,6 +804,14 @@ export function Layout() {
   const accountMatch = useMatch('/a/:login/*');
   const account = useAccount(accountMatch?.params.login ?? '');
   const orgLogin = account.data?.kind === 'organization' ? accountMatch?.params.login : undefined;
+  // From a repository, back to its owner's repositories: an organization's own list, or the list
+  // filtered to the user, under GitHub's spelling of the login once known.
+  const repoOwner = useAccount(repoMatch?.params.owner ?? '');
+  const ownerLogin = repoOwner.data?.login ?? repoMatch?.params.owner ?? '';
+  const ownerRepositories =
+    repoOwner.data?.kind === 'organization'
+      ? `/a/${ownerLogin}/repositories`
+      : `/repositories?owner=${encodeURIComponent(ownerLogin)}`;
   const location = useLocation();
 
   useEffect(() => {
@@ -852,7 +868,7 @@ export function Layout() {
             {repoMatch ? (
               <>
                 <NavItemLink
-                  to="/repositories"
+                  to={ownerRepositories}
                   label="All repositories"
                   icon={icon(IconArrowLeft)}
                   onClick={close}

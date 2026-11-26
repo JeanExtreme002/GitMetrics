@@ -46,6 +46,22 @@
   background: var(--mantine-color-default-hover);
 }
 
+/* A repository's owner, in its sidebar: opens the owner's page. */
+.identity-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.identity-link:hover .identity-owner {
+  color: var(--mantine-color-text);
+  text-decoration: underline;
+}
+
 .search-button {
   width: min(380px, 40vw);
   height: 36px;
