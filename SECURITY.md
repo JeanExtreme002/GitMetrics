@@ -8,6 +8,8 @@ Security fixes are released for the latest version of GitMetrics published on np
 
 Please do not open a public issue for security problems. Report them privately through [GitHub Security Advisories](https://github.com/JeanExtreme002/GitMetrics/security/advisories/new) instead. Include what you found, how to reproduce it and the impact you expect. You can expect a first answer within a few days, and you will be credited in the release notes unless you prefer otherwise.
 
+**Alternative:** email contact@jeanloui.dev with subject `[GitMetrics security]`.
+
 ## How GitMetrics handles your data
 
 GitMetrics is designed to keep your GitHub token on your computer.
