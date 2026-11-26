@@ -53,6 +53,7 @@ const raw = (over: Partial<RawAccount> = {}): RawAccount => ({
   archived: { totalCount: 1 },
   private: { totalCount: 0 },
   repos: { nodes: [repo('fresh', 1), repo('big', 50), repo('empty', 0, { pushedAt: null })] },
+  top: { nodes: [repo('big', 50), repo('fresh', 1), repo('none', 0)] },
   ...over,
 });
 
@@ -72,9 +73,9 @@ describe('an account', () => {
       organizations: [{ login: 'acme' }],
       repositories: { total: 10, sources: 8, forks: 2, archived: 1, private: 0 },
     });
-    // Its repositories in GitHub's order, all of them; the recent ones only those ever pushed to.
+    // Its repositories in GitHub's order, all of them; the most starred only those with a star.
     expect(account.repos.map((r) => r.name)).toEqual(['fresh', 'big', 'empty']);
-    expect(account.recent.map((r) => r.name)).toEqual(['fresh', 'big']);
+    expect(account.top.map((r) => r.name)).toEqual(['big', 'fresh']);
     expect(account.repos[1]).toMatchObject({
       fullName: 'octo/big',
       stars: 50,

@@ -87,8 +87,8 @@ export interface AccountResponse {
   repositories: { total: number; sources: number; forks: number; archived: number; private: number };
   /** Its repositories in GitHub's own order: pushed to most recently first, forks included. */
   repos: RepoSummary[];
-  /** The repositories pushed to most recently. */
-  recent: RepoSummary[];
+  /** The most starred repositories that aren't forks, those with no star left out. */
+  top: RepoSummary[];
 }
 
 /**

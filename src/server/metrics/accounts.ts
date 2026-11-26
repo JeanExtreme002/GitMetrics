@@ -44,6 +44,9 @@ query ($login: String!) {
     repos: repositories(first: 6, ownerAffiliations: OWNER, orderBy: { field: PUSHED_AT, direction: DESC }) {
       nodes { ${REPO} }
     }
+    top: repositories(first: 5, ownerAffiliations: OWNER, isFork: false, orderBy: { field: STARGAZERS, direction: DESC }) {
+      nodes { ${REPO} }
+    }
   }
 }`;
 
@@ -114,6 +117,7 @@ export interface RawAccount {
   archived: { totalCount: number };
   private: { totalCount: number };
   repos: { nodes: RawGraphRepo[] };
+  top: { nodes: RawGraphRepo[] };
 }
 
 export const fromGraph = (r: RawGraphRepo): RepoSummary => ({
@@ -165,11 +169,7 @@ export function buildAccount(raw: RawAccount): AccountResponse {
       private: raw.private.totalCount,
     },
     repos: raw.repos.nodes.map(fromGraph),
-    // The same order is when each was pushed to: the latest five that ever were.
-    recent: raw.repos.nodes
-      .filter((r) => r.pushedAt)
-      .slice(0, 5)
-      .map(fromGraph),
+    top: raw.top.nodes.filter((r) => r.stargazerCount > 0).map(fromGraph),
   };
 }
 

@@ -31,8 +31,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import type { AccountResponse, AccountTotals } from '../../shared/types';
-import { LanguagesDonut, RecentActivity, SectionTitle } from '../components/overview';
-import { RepoCard } from '../components/repo';
+import { LanguagesDonut, SectionTitle } from '../components/overview';
+import { RepoCard, repoPath } from '../components/repo';
 import { EmptyState, ErrorState, MiniStat, PageSkeleton, RefreshButton } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { compact, date, num } from '../lib/format';
@@ -215,7 +215,7 @@ function Languages({
 
 /**
  * A user's or an organization's page, read the way the home page reads: who it is and its numbers,
- * its repositories in GitHub's order and latest activity, then its languages and how its repositories
+ * its repositories in GitHub's order and its most starred, then its languages and how its repositories
  * split up. Its repositories open in the Repositories page.
  */
 export function Account() {
@@ -372,18 +372,36 @@ export function Account() {
           )}
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}>
-          <Box className="activity-col">
-            <SectionTitle title="Recent activity" />
-            <Box className="activity-body">
-              {account.recent.length ? (
-                <RecentActivity repos={account.recent} />
-              ) : (
-                <Text size="sm" c="dimmed" py="md">
-                  Nothing pushed yet.
-                </Text>
-              )}
-            </Box>
-          </Box>
+          {/* Its most starred, each opening its Stars page, as the home page's ranking does. */}
+          <SectionTitle title="Most starred" />
+          {account.top.length ? (
+            <div className="rank-list">
+              {account.top.map((repo) => (
+                <Anchor
+                  key={repo.id}
+                  component={Link}
+                  to={`${repoPath(repo)}/stars`}
+                  underline="never"
+                  c="inherit"
+                  className="account-row account-link"
+                >
+                  <Text size="sm" fw={500} truncate>
+                    {repo.name}
+                  </Text>
+                  <Group gap={5} wrap="nowrap" style={{ flex: 'none' }}>
+                    <IconStar size={14} stroke={1.8} color="var(--mantine-color-yellow-6)" />
+                    <Text size="sm" fw={600} className="tabular">
+                      {compact(repo.stars)}
+                    </Text>
+                  </Group>
+                </Anchor>
+              ))}
+            </div>
+          ) : (
+            <Text size="sm" c="dimmed" py="md">
+              None of its repositories has a star yet.
+            </Text>
+          )}
         </Grid.Col>
       </Grid>
 
