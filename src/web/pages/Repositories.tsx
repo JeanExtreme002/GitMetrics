@@ -20,7 +20,7 @@ import type { RepoSummary } from '../../shared/types';
 import { LanguageDot, PinButton, repoPath } from '../components/repo';
 import { ErrorState, PageHeader, PageSkeleton } from '../components/ui';
 import { cleanText, num, relative } from '../lib/format';
-import { useOwners, useRepos } from '../lib/queries';
+import { useAccountRepos, useOwners, useRepos } from '../lib/queries';
 
 type Kind = 'sources' | 'forks' | 'archived' | 'all';
 type Sort = 'stars' | 'pushed' | 'name';
@@ -131,11 +131,22 @@ export function Repositories() {
   const [visibility, setVisibility] = useState<Visibility | null>(null);
   const [limit, setLimit] = useState(PAGE);
 
+  // An account outside your own list (opened from its page): its own repositories, read apart.
+  const external =
+    Boolean(repos.data) &&
+    owner !== 'all' &&
+    !owners.some((o) => o.login.toLowerCase() === owner.toLowerCase());
+  const outside = useAccountRepos(owner, external);
+  const source = useMemo(
+    () => (external ? (outside.data?.repos ?? []) : (repos.data?.repos ?? [])),
+    [external, outside.data, repos.data],
+  );
+
   // Account and type narrow the list first, so the other options always match what is on screen.
   const byKind = useMemo(
     () =>
-      (repos.data?.repos ?? [])
-        .filter((r) => owner === 'all' || r.owner === owner)
+      source
+        .filter((r) => external || owner === 'all' || r.owner === owner)
         .filter((r) =>
           kind === 'all'
             ? true
@@ -145,7 +156,7 @@ export function Repositories() {
                 ? r.archived
                 : !r.fork && !r.archived,
         ),
-    [repos.data, owner, kind],
+    [source, external, owner, kind],
   );
   const visibilities = useMemo(() => {
     const priv = byKind.filter((r) => r.private).length;
@@ -191,8 +202,11 @@ export function Repositories() {
       .sort((a, b) => (reversed ? -compare(a, b) : compare(a, b)));
   }, [scoped, language, search, sort, reversed]);
 
-  if (repos.isLoading) return <PageSkeleton />;
+  if (repos.isLoading || (external && outside.isLoading)) return <PageSkeleton />;
   if (repos.error || !repos.data) return <ErrorState error={repos.error} onRetry={() => repos.refetch()} />;
+  if (external && (outside.error || !outside.data)) {
+    return <ErrorState error={outside.error} onRetry={() => outside.refetch()} />;
+  }
 
   const setOwner = (value: string | null) => {
     setLimit(PAGE);
@@ -204,7 +218,11 @@ export function Repositories() {
       <PageHeader
         title="Repositories"
         icon={<IconBook2 size={26} stroke={1.6} />}
-        description="Everything you own, plus what you can reach through your organizations."
+        description={
+          external
+            ? `The public repositories of ${owner}${outside.data?.complete ? '' : ', the 1,000 pushed to most recently'}.`
+            : 'Everything you own, plus what you can reach through your organizations.'
+        }
       />
 
       <Group gap="sm" mb="md" wrap="wrap">
@@ -227,6 +245,7 @@ export function Repositories() {
           data={[
             { value: 'all', label: `All accounts (${num(repos.data.repos.length)})` },
             ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
+            ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
           ]}
         />
         <Select

@@ -42,6 +42,7 @@ import {
   IconSun,
   IconTag,
   IconUsers,
+  IconUser,
   IconWorld,
   IconCircleDot,
 } from '@tabler/icons-react';
@@ -54,7 +55,16 @@ import { compact, num } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { useRecentRepos } from '../lib/recent';
 import { snoozed, type Dismissed } from '../lib/update';
-import { sectionQuery, useAuth, useMyPulls, useOwners, useRateLimit, useRepos } from '../lib/queries';
+import {
+  sectionQuery,
+  useAccountSearch,
+  useAuth,
+  useMyPulls,
+  useOwners,
+  useRateLimit,
+  useRepos,
+} from '../lib/queries';
+import { parseAccountQuery } from '../lib/accounts';
 import { parsePullQuery } from '../lib/pulls';
 import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
@@ -280,10 +290,14 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
           {owners.map((o) => (
             <NavItemLink
               key={o.login}
-              to={`/repositories?owner=${encodeURIComponent(o.login)}`}
+              to={`/a/${o.login}`}
               label={o.login}
               icon={<Avatar src={o.avatarUrl} size={18} radius="sm" />}
-              active={onRepositories && params.get('owner') === o.login}
+              // The account's page, and its repositories opened from there.
+              active={
+                location.pathname.toLowerCase() === `/a/${o.login.toLowerCase()}` ||
+                (onRepositories && params.get('owner') === o.login)
+              }
               right={<Count>{o.count}</Count>}
               onClick={onNavigate}
             />
@@ -549,6 +563,16 @@ function RepoSpotlight() {
   const pull = parsePullQuery(query);
   const searchable = !pull && debounced.length >= 2 && debounced.length <= 100 && SEARCHABLE.test(debounced);
 
+  // Accounts: yours that match, then GitHub's, in their own group below everything else. Their
+  // search is a request of its own, so it never slows or breaks the repository search.
+  const account = pull ? null : parseAccountQuery(query);
+  const [accountTerm] = useDebouncedValue(account?.login ?? '', 300);
+  const accountSearch = useAccountSearch(
+    accountTerm,
+    Boolean(account) && accountTerm === account?.login && accountTerm.length >= 3,
+  );
+  const owners = useOwners();
+
   // GitHub is searched only once you type, and only below your own repositories.
   const search = useQuery({
     queryKey: ['search', debounced.toLowerCase()],
@@ -636,12 +660,64 @@ function RepoSpotlight() {
     }
   }
 
-  const actions = pull
+  const accounts: SpotlightActionData[] = [];
+  if (account) {
+    const term = account.login.toLowerCase();
+    const seen = new Set<string>();
+    const add = (item: SpotlightActionData & { login: string }) => {
+      const key = item.login.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      const { login, ...action } = item;
+      accounts.push({ ...action, id: `account:${login}`, onClick: () => navigate(`/a/${login}`) });
+    };
+    const hits = accountTerm === account.login ? (accountSearch.data?.accounts ?? []) : [];
+    const found = hits.find((h) => h.login.toLowerCase() === term);
+    // A link or @login opens that account, even before (or without) a search result for it.
+    if (account.exact) {
+      add({
+        id: '',
+        login: found?.login ?? account.login,
+        label: found?.login ?? account.login,
+        description: 'Open this account',
+        leftSection: found ? (
+          <Avatar src={found.avatarUrl} size={26} radius={found.kind === 'user' ? 'xl' : 'md'} />
+        ) : (
+          <IconUser size={20} stroke={1.5} />
+        ),
+      });
+    }
+    for (const o of owners.filter((o) => o.login.toLowerCase().includes(term))) {
+      add({
+        id: '',
+        login: o.login,
+        label: o.login,
+        description: `${o.count} of your repositories`,
+        leftSection: <Avatar src={o.avatarUrl} size={26} radius="md" />,
+      });
+    }
+    for (const h of hits) {
+      add({
+        id: '',
+        login: h.login,
+        label: h.login,
+        description: h.kind === 'organization' ? 'Organization' : 'User',
+        leftSection: <Avatar src={h.avatarUrl} size={26} radius={h.kind === 'user' ? 'xl' : 'md'} />,
+      });
+    }
+  }
+
+  const repoActions = pull
     ? elsewhere
     : elsewhere.length
       ? [...local, { group: 'On GitHub', actions: elsewhere.slice(0, 6) }]
       : local;
-  const searching = searchable && (search.isFetching || debounced !== text);
+  const actions = accounts.length
+    ? [...repoActions, { group: 'Accounts', actions: accounts.slice(0, 4) }]
+    : repoActions;
+  const searching =
+    (searchable && (search.isFetching || debounced !== text)) ||
+    (Boolean(account) && accountSearch.isFetching);
 
   return (
     <Spotlight
@@ -649,12 +725,12 @@ function RepoSpotlight() {
       filter={(_query, list) => list}
       query={query}
       onQueryChange={setQuery}
-      nothingFound={searching ? 'Searching GitHub…' : 'No repository matches your search'}
+      nothingFound={searching ? 'Searching GitHub…' : 'No repository or account matches your search'}
       highlightQuery
       shortcut={['mod + K', '/']}
       searchProps={{
         leftSection: <IconSearch size={18} stroke={1.5} />,
-        placeholder: 'Jump to a repository, search GitHub, or paste a pull request link…',
+        placeholder: 'Jump to a repository or account, search GitHub, or paste a link…',
       }}
     />
   );

@@ -334,6 +334,24 @@
   background: var(--mantine-color-yellow-6);
 }
 
+/* A row on an account page: a label and its number, or an organization to open. */
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.account-link {
+  transition: background 120ms ease;
+}
+
+.account-link:hover {
+  background: var(--mantine-color-default-hover);
+}
+
 .legend-row {
   display: grid;
   grid-template-columns: 10px 1fr auto;

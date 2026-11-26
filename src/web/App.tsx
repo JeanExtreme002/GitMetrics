@@ -5,6 +5,7 @@ import { useAuth } from './lib/queries';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { MyPulls } from './pages/MyPulls';
+import { Account } from './pages/Account';
 import { Repositories } from './pages/Repositories';
 import { NotFound } from './pages/NotFound';
 import { Settings } from './pages/Settings';
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Home /> },
           { path: 'repositories', element: <Repositories /> },
+          { path: 'a/:login', element: <Account /> },
           { path: 'pulls', element: <MyPulls /> },
           { path: 'settings', element: <Settings /> },
           {
