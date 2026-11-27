@@ -16,7 +16,11 @@ export function stackedBars(keys: string[], { radius = 3, maxBarSize = 22 } = {}
       const height = props.height ?? 0;
       // A part above another reaches a pixel down over it, drawn after it: their edges fall
       // mid-pixel, and two half-drawn edges let a hairline of the background show where they meet.
-      const overlap = series.name !== filled[0] ? 1 : 0;
+      // Never more than half of the part below, so a part thinner than a pixel still shows.
+      const index = filled.indexOf(series.name);
+      const perUnit = height / Number(row[series.name]);
+      const below = index > 0 ? Number(row[filled[index - 1]!]) * perUnit : 0;
+      const overlap = Math.min(1, below / 2);
       // Corners no taller than the part itself, so a thin top stays a flat cap, not a sliver.
       const corner = Math.min(radius, height / 2);
       return (
