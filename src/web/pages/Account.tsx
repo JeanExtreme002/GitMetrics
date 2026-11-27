@@ -472,6 +472,8 @@ export function Account() {
                 to={`/radar?user=${account.login}`}
                 variant="default"
                 leftSection={<IconRadar size={16} stroke={1.7} />}
+                // The same soft glow as Radar in the sidebar: worth a look, without asking for it.
+                rightSection={<span className="nav-dot" aria-hidden />}
               >
                 Radar
               </Button>

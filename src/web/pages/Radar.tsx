@@ -52,7 +52,7 @@ import type { ActivityPerson, ActivityPull, ActivityResponse } from '../../share
 import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { PunchCard } from '../components/punch';
 import { ReportModal } from '../components/report';
-import { EmptyState, ErrorState, PageHeader } from '../components/ui';
+import { EmptyState, ErrorState, PRIMARY_ACTION, PageHeader } from '../components/ui';
 import { parseAccountQuery } from '../lib/accounts';
 import { ApiError, api } from '../lib/api';
 import { dayLabel, hourLabel, hours, num, percent, relative } from '../lib/format';
@@ -963,7 +963,7 @@ function WhoActions({ login, onReport }: { login: string; onReport: () => void }
   return (
     <>
       {/* What they did, as a Markdown file. */}
-      <Button variant="default" leftSection={<IconFileText size={16} stroke={1.7} />} onClick={onReport}>
+      <Button {...PRIMARY_ACTION} leftSection={<IconFileText size={16} stroke={1.7} />} onClick={onReport}>
         Generate report
       </Button>
       <Button
@@ -1422,7 +1422,7 @@ export function Radar() {
           description="Pick a person: you'll see the pull requests they open and review, where and when they work, and with whom, in all of GitHub or just one organization or repository."
           action={
             auth?.viewer ? (
-              <Button variant="default" onClick={() => set({ user: auth.viewer!.login })}>
+              <Button {...PRIMARY_ACTION} onClick={() => set({ user: auth.viewer!.login })}>
                 Start with yourself
               </Button>
             ) : undefined
