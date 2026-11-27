@@ -37,14 +37,7 @@ import { Link, useParams } from 'react-router';
 import type { AccountResponse, AccountTotals } from '../../shared/types';
 import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { RepoCard, repoPath } from '../components/repo';
-import {
-  EmptyState,
-  ErrorState,
-  PRIMARY_ACTION,
-  MiniStat,
-  PageSkeleton,
-  RefreshButton,
-} from '../components/ui';
+import { EmptyState, ErrorState, MiniStat, PageSkeleton, RefreshButton } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { cleanText, compact, date, num, percent, relative } from '../lib/format';
 import { languageColor } from '../lib/languages';
@@ -477,8 +470,10 @@ export function Account() {
               <Button
                 component={Link}
                 to={`/radar?user=${account.login}`}
-                {...PRIMARY_ACTION}
+                variant="default"
                 leftSection={<IconRadar size={16} stroke={1.7} />}
+                // The same soft glow as Radar in the sidebar: worth a look, without asking for it.
+                rightSection={<span className="nav-dot" aria-hidden />}
               >
                 Radar
               </Button>
