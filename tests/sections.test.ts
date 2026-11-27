@@ -544,6 +544,8 @@ describe('repository pages, end to end', () => {
       '/api/activity/octo?in=a/b/c',
       '/api/activity/octo?in=bad..name',
       '/api/activity/octo/commented?days=abc',
+      '/api/activity/octo?from=2026-03-01&to=2026-01-01',
+      '/api/activity/octo?from=2020-01-01',
     ]) {
       expect((await send(path)).status, path).toBe(400);
     }

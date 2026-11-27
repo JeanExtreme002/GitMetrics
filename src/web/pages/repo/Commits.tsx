@@ -1,16 +1,5 @@
 import { BarChart, Heatmap } from '@mantine/charts';
-import {
-  Anchor,
-  Avatar,
-  Box,
-  Button,
-  Grid,
-  Group,
-  ScrollArea,
-  SegmentedControl,
-  Text,
-  Tooltip,
-} from '@mantine/core';
+import { Anchor, Avatar, Box, Button, Grid, Group, ScrollArea, SegmentedControl, Text } from '@mantine/core';
 import {
   IconArrowUpRight,
   IconCalendarWeek,
@@ -23,14 +12,12 @@ import { useElementSize } from '@mantine/hooks';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useState } from 'react';
 import type { CommitsResponse } from '../../../shared/types';
+import { PunchCard } from '../../components/punch';
 import { Counter, Counters, NoData, PageHeader, QueryView, SectionHeader } from '../../components/ui';
 import { axisNumber, dayLabel, hourLabel, num, relative, timeTick } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
 import { cutoff, rangeOptions, type RangeValue } from '../../lib/ranges';
 import { semantic, useHeatScale } from '../../theme';
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOURS = Array.from({ length: 24 }, (_, h) => hourLabel(h));
 
 function CommitStats({ data }: { data: CommitsResponse }) {
   return (
@@ -64,58 +51,6 @@ function CommitStats({ data }: { data: CommitsResponse }) {
         }
       />
     </Counters>
-  );
-}
-
-const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-/**
- * A punch card like GitHub's original one: a dot for every day and hour, sized and tinted by
- * how many commits landed there. Hour labels stay horizontal, every three hours.
- */
-function PunchCard({ data }: { data: CommitsResponse['punchCard'] }) {
-  const counts = new Map(data.map((p) => [`${p.day}-${p.hour}`, p.commits]));
-  const max = Math.max(1, ...data.map((p) => p.commits));
-  return (
-    <div className="punch">
-      {DAYS.map((day, d) => (
-        <div key={day} className="punch-row">
-          <Text size="xs" c="dimmed" className="punch-day">
-            {day}
-          </Text>
-          {HOURS.map((hour, h) => {
-            const value = counts.get(`${d}-${h}`) ?? 0;
-            const ratio = value / max;
-            return (
-              <Tooltip
-                key={hour}
-                label={`${FULL_DAYS[d]} at ${hour} UTC: ${num(value)} ${value === 1 ? 'commit' : 'commits'}`}
-                openDelay={0}
-              >
-                <span className="punch-cell">
-                  <span
-                    className={value ? 'punch-dot' : 'punch-dot punch-empty'}
-                    style={
-                      value
-                        ? { width: `${6 + 14 * Math.sqrt(ratio)}px`, opacity: 0.35 + 0.65 * ratio }
-                        : undefined
-                    }
-                  />
-                </span>
-              </Tooltip>
-            );
-          })}
-        </div>
-      ))}
-      <div className="punch-row">
-        <span />
-        {HOURS.map((hour, h) => (
-          <Text key={hour} size="xs" c="dimmed" ta="center" className="punch-hour">
-            {h % 3 === 0 ? hour : ''}
-          </Text>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -305,7 +240,11 @@ export function Commits() {
                     caption="Day of the week and hour, all time (UTC)"
                   />
                   {data.punchCard.some((p) => p.commits > 0) ? (
-                    <PunchCard data={data.punchCard} />
+                    <PunchCard
+                      data={data.punchCard.map((p) => ({ day: p.day, hour: p.hour, count: p.commits }))}
+                      unit={['commit', 'commits']}
+                      zone="UTC"
+                    />
                   ) : (
                     <NoData />
                   )}

@@ -15,7 +15,14 @@ import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getAccount, getAccountRepos, getAccountTotals, searchAccounts } from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
-import { UnknownScope, getActivity, getCommented } from './metrics/activity.js';
+import {
+  UnknownScope,
+  customPeriod,
+  getActivity,
+  getCommented,
+  period,
+  type Period,
+} from './metrics/activity.js';
 import {
   getAlertDetails,
   buildQuality,
@@ -471,7 +478,15 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // Someone's activity with pull requests over a period, in all of GitHub, one account or one repo.
-  const ACTIVITY_DAYS = new Set([30, 90, 365]);
+  const ACTIVITY_DAYS = new Set([30, 90, 180, 365]);
+  /** The period: the last ?days= days (30, 90, 180 or 365), or ?from= to ?to=, days both included. */
+  const activityPeriod = (c: Context): Period | null => {
+    const from = c.req.query('from');
+    const to = c.req.query('to');
+    if (from !== undefined || to !== undefined) return customPeriod(from ?? '', to ?? '');
+    const days = Number(c.req.query('days') ?? 90);
+    return ACTIVITY_DAYS.has(days) ? period(days) : null;
+  };
   /** The scope in ?in=: nothing for all of GitHub, a login for an account, owner/name for a repo. */
   const activityScope = (value: string | undefined): ActivityScope | null => {
     const text = (value ?? '').trim();
@@ -490,22 +505,22 @@ export function createApp(options: AppOptions = {}) {
     (error instanceof GitHubError && /cannot be searched/i.test(error.message));
   const activityRoute =
     (
-      load: (gh: GitHubClient, login: string, scope: ActivityScope, days: number) => Promise<unknown>,
+      load: (gh: GitHubClient, login: string, scope: ActivityScope, range: Period) => Promise<unknown>,
       kind: string,
     ) =>
     async (c: Context) => {
       const login = c.req.param('login') ?? '';
       const scope = activityScope(c.req.query('in'));
-      const days = Number(c.req.query('days') ?? 90);
-      if (!ACCOUNT.test(login) || !scope || !ACTIVITY_DAYS.has(days)) {
+      const range = activityPeriod(c);
+      if (!ACCOUNT.test(login) || !scope || !range) {
         return c.json({ error: 'Invalid user, scope or period.', status: 400 }, 400);
       }
       const where = scope.kind === 'all' ? '' : scope.name.toLowerCase();
       try {
         const result = await memory.wrap(
-          `${config.auth!.login}:activity-${kind}:${login.toLowerCase()}:${where}:${days}`,
+          `${config.auth!.login}:activity-${kind}:${login.toLowerCase()}:${where}:${range.from}..${range.to}`,
           10 * MINUTE,
-          () => load(github()!, login, scope, days),
+          () => load(github()!, login, scope, range),
           c.req.query('refresh') === '1',
         );
         if (result === null) return c.json({ error: 'No user has this name.', status: 404 }, 404);

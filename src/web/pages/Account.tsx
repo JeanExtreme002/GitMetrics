@@ -424,15 +424,15 @@ export function Account() {
         <Group gap="xl" wrap="wrap" align="center" justify="flex-end">
           <Stats account={account} totals={sums} />
           <Group gap="xs" wrap="nowrap">
-            {/* A person's pull requests, opened and reviewed: the Activity page, on them. */}
+            {/* A person's pull requests, opened and reviewed, where, when and with whom: Radar, on them. */}
             {user && (
               <Button
                 component={Link}
-                to={`/activity?user=${account.login}`}
+                to={`/radar?user=${account.login}`}
                 variant="default"
                 leftSection={<IconRadar size={16} stroke={1.7} />}
               >
-                Activity
+                Radar
               </Button>
             )}
             <Tooltip label="Open on GitHub">

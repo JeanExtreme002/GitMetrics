@@ -278,14 +278,24 @@ export const useMemberTeams = (login: string, member: string | null) =>
   });
 
 /** The ?in= of an activity: nothing for all of GitHub, a login, or owner/name. */
-const activityPath = (login: string, where: string, days: number, rest = '') =>
-  `/activity/${login}${rest}?days=${days}${where ? `&in=${encodeURIComponent(where)}` : ''}`;
+/**
+ * Where an activity is read. `range` is the period as the address writes it: days=90, or
+ * from=2026-01-01&to=2026-03-31.
+ */
+export const activityPath = (login: string, where: string, range: string, rest = '') =>
+  `/activity/${login}${rest}?${range}${where ? `&in=${encodeURIComponent(where)}` : ''}`;
 
 /** Someone's activity with pull requests, in a scope and a period. */
-export const useActivity = (login: string, where: string, days: number) =>
+export const activityKey = (login: string, where: string, range: string) => [
+  'activity',
+  login.toLowerCase(),
+  where.toLowerCase(),
+  range,
+];
+export const useActivity = (login: string, where: string, range: string) =>
   useQuery({
-    queryKey: ['activity', login.toLowerCase(), where.toLowerCase(), days],
-    queryFn: () => api<ActivityResponse>(activityPath(login, where, days)),
+    queryKey: activityKey(login, where, range),
+    queryFn: () => api<ActivityResponse>(activityPath(login, where, range)),
     enabled: Boolean(login),
     staleTime: 10 * 60_000,
     // Reading a busy person takes a while: asking again on a failure would only double it.
@@ -293,10 +303,10 @@ export const useActivity = (login: string, where: string, days: number) =>
   });
 
 /** The pull requests they commented on: another search, asked only when its list is opened. */
-export const useActivityCommented = (login: string, where: string, days: number, enabled: boolean) =>
+export const useActivityCommented = (login: string, where: string, range: string, enabled: boolean) =>
   useQuery({
-    queryKey: ['activity-commented', login.toLowerCase(), where.toLowerCase(), days],
-    queryFn: () => api<ActivityCommentedResponse>(activityPath(login, where, days, '/commented')),
+    queryKey: ['activity-commented', login.toLowerCase(), where.toLowerCase(), range],
+    queryFn: () => api<ActivityCommentedResponse>(activityPath(login, where, range, '/commented')),
     enabled: Boolean(login) && enabled,
     staleTime: 10 * 60_000,
     retry: false,

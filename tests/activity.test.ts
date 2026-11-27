@@ -3,8 +3,10 @@ import { GitHubError, type GitHubClient } from '../src/server/github';
 import {
   buildActivity,
   coolDown,
+  customPeriod,
   getActivity,
   period,
+  periodDays,
   searchPeriod,
   slices,
   UnknownScope,
@@ -34,6 +36,20 @@ describe('the period', () => {
   it('runs over the last days, today included', () => {
     expect(period(30, NOW)).toEqual({ from: '2026-10-29', to: '2026-11-27' });
     expect(period(1, NOW)).toEqual({ from: '2026-11-27', to: '2026-11-27' });
+  });
+
+  it('takes a custom period of real days, in order, up to today and two years long', () => {
+    expect(customPeriod('2026-01-01', '2026-03-31', NOW)).toEqual({ from: '2026-01-01', to: '2026-03-31' });
+    expect(periodDays({ from: '2026-01-01', to: '2026-03-31' })).toBe(90);
+    for (const [from, to] of [
+      ['2026-03-31', '2026-01-01'], // backwards
+      ['2026-02-31', '2026-03-01'], // no such day
+      ['2026-11-01', '2026-12-01'], // ends after today
+      ['2024-01-01', '2026-11-27'], // longer than two years
+      ['2026-1-1', '2026-02-01'], // not a day as search writes it
+    ]) {
+      expect(customPeriod(from!, to!, NOW), `${from}..${to}`).toBeNull();
+    }
   });
 
   it('is cut into slices covering it to the second, with no gap or overlap', () => {
@@ -162,6 +178,13 @@ describe("putting someone's activity together", () => {
       open: 1,
       closed: 1,
       medianMergeHours: 15,
+      sizes: [
+        { size: 'XS', count: 4 },
+        { size: 'S', count: 0 },
+        { size: 'M', count: 0 },
+        { size: 'L', count: 0 },
+        { size: 'XL', count: 0 },
+      ],
       complete: true,
     });
     expect(activity.timeline.reduce((s, b) => s + b.opened, 0)).toBe(4);
@@ -173,6 +196,7 @@ describe("putting someone's activity together", () => {
       [],
       [
         pull(10, {
+          createdAt: '2026-09-01T00:00:00Z',
           author: { login: 'ana', avatarUrl: 'a' },
           reviews: {
             totalCount: 3,
@@ -184,6 +208,7 @@ describe("putting someone's activity together", () => {
           },
         }),
         pull(11, {
+          createdAt: '2026-09-01T00:00:00Z',
           author: { login: 'cy', avatarUrl: 'c' },
           reviews: { totalCount: 1, nodes: [review('APPROVED', '2026-11-07T00:00:00Z')] },
         }),
@@ -203,6 +228,9 @@ describe("putting someone's activity together", () => {
       changes: 1,
       commented: 0,
       dismissed: 0,
+      // Both opened before the period: how soon they came to them isn't this period's.
+      medianFirstReviewHours: null,
+      times: ['2026-11-05T00:00:00Z', '2026-11-06T00:00:00Z', '2026-11-07T00:00:00Z'],
       complete: true,
     });
     expect(activity.reviewsGiven).toEqual([
@@ -215,6 +243,27 @@ describe("putting someone's activity together", () => {
       review: 'approved',
       at: '2026-11-06T00:00:00Z',
     });
+  });
+
+  it('tells how soon they review, from opening to their first review, for those opened in the period', () => {
+    const activity = build(
+      [],
+      [
+        pull(1, {
+          createdAt: '2026-11-10T00:00:00Z',
+          reviews: {
+            totalCount: 2,
+            nodes: [review('APPROVED', '2026-11-11T12:00:00Z'), review('COMMENTED', '2026-11-10T06:00:00Z')],
+          },
+        }),
+        pull(2, {
+          createdAt: '2026-11-12T00:00:00Z',
+          reviews: { totalCount: 1, nodes: [review('APPROVED', '2026-11-12T02:00:00Z')] },
+        }),
+      ],
+    );
+    // 6 hours and 2 hours: the median of the two.
+    expect(activity.reviews.medianFirstReviewHours).toBe(4);
   });
 
   it('says reviews are short when a pull request has more of theirs than were read', () => {
@@ -264,13 +313,13 @@ describe("putting someone's activity together", () => {
           ? { repositoryOwner: null }
           : { user: { login: 'bo', name: null, avatarUrl: '' } },
     } as unknown as GitHubClient;
-    await expect(getActivity(gh, 'bo', { kind: 'account', name: 'nowhere' }, 30, NOW)).rejects.toBeInstanceOf(
-      UnknownScope,
-    );
+    await expect(
+      getActivity(gh, 'bo', { kind: 'account', name: 'nowhere' }, period(30, NOW)),
+    ).rejects.toBeInstanceOf(UnknownScope);
   });
 
   it('is null for a login no user has', async () => {
     const gh = { graphql: async () => ({ user: null }) } as unknown as GitHubClient;
-    expect(await getActivity(gh, 'acme', { kind: 'all' }, 30, NOW)).toBeNull();
+    expect(await getActivity(gh, 'acme', { kind: 'all' }, period(30, NOW))).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import type {
 } from '../../shared/types.js';
 import { GitHubError, type GitHubClient } from '../github.js';
 import { hoursBetween, median } from '../util.js';
+import { sizeLabel } from './pulls.js';
 
 /*
  * What someone does with pull requests, as far as you can see: the ones they open, and every
@@ -64,6 +65,43 @@ export interface RawActivityPull {
 
 /** A day as GitHub's search writes it. */
 const day = (date: Date) => date.toISOString().slice(0, 10);
+
+/** A period as its first and last days, both included, as GitHub's search writes them. */
+export interface Period {
+  from: string;
+  to: string;
+}
+
+/** The longest period that can be asked for: two years, so a look stays a reasonable read. */
+export const MAX_PERIOD_DAYS = 731;
+
+/** Days in a period, both ends included. */
+export const periodDays = ({ from, to }: Period) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS) + 1;
+
+/**
+ * A period picked by its days, checked: real days, the first not after the last, the last not after
+ * today, and no longer than two years. Null otherwise.
+ */
+export function customPeriod(from: string, to: string, now = new Date()): Period | null {
+  const DAY = /^\d{4}-\d{2}-\d{2}$/;
+  if (!DAY.test(from) || !DAY.test(to)) return null;
+  const start = Date.parse(from);
+  const end = Date.parse(to);
+  // A day like 2026-02-31 isn't one: the date it reads as wouldn't write back the same.
+  if (
+    Number.isNaN(start) ||
+    Number.isNaN(end) ||
+    day(new Date(start)) !== from ||
+    day(new Date(end)) !== to
+  ) {
+    return null;
+  }
+  const today = period(1, now).to;
+  if (start > end || to > today) return null;
+  const result = { from, to };
+  return periodDays(result) <= MAX_PERIOD_DAYS ? result : null;
+}
 
 /** The period of the last `days` days, today included, as days. */
 export function period(days: number, now = new Date()) {
@@ -319,16 +357,25 @@ export function buildActivity(input: {
   // Their reviews, each by its own date, on pull requests by others.
   const given = new Map<string, ActivityPerson>();
   const states = { approved: 0, changes: 0, commented: 0, dismissed: 0 };
+  const times: string[] = [];
+  const firstReviewHours: number[] = [];
   let reviewsComplete = input.reviewed.complete;
   const reviewed: ActivityPull[] = [];
   for (const p of input.reviewed.pulls) {
     if (p.author?.login.toLowerCase() === login) continue;
     const reviews = p.reviews;
     if (reviews && (reviews.totalCount ?? 0) > reviews.nodes.length) reviewsComplete = false;
-    const mine = (reviews?.nodes ?? []).filter((r) => r.state in REVIEW_STATES && inPeriod(r.submittedAt));
+    const all = (reviews?.nodes ?? []).filter((r) => r.state in REVIEW_STATES && r.submittedAt);
+    const mine = all.filter((r) => inPeriod(r.submittedAt));
     if (!mine.length) continue;
+    // How soon they came to it: their first review ever on it, for one opened in the period.
+    if (inPeriod(p.createdAt)) {
+      const first = all.reduce((a, b) => (a.submittedAt! <= b.submittedAt! ? a : b));
+      firstReviewHours.push(hoursBetween(p.createdAt, first.submittedAt!));
+    }
     for (const r of mine) {
       states[REVIEW_STATES[r.state]!]++;
+      times.push(r.submittedAt!);
       bucket(r.submittedAt!)!.reviews++;
       repo(p.repository.nameWithOwner).reviews++;
       if (p.author) tally(given, p.author);
@@ -350,9 +397,20 @@ export function buildActivity(input: {
       open: opened.filter((p) => !p.mergedAt && p.state === 'OPEN').length,
       closed: opened.filter((p) => !p.mergedAt && p.state !== 'OPEN').length,
       medianMergeHours: median(mergeHours),
+      sizes: ['XS', 'S', 'M', 'L', 'XL'].map((size) => ({
+        size,
+        count: opened.filter((p) => sizeLabel(p.additions + p.deletions) === size).length,
+      })),
       complete: input.opened.complete,
     },
-    reviews: { total: reviewTotal, pulls: reviewed.length, ...states, complete: reviewsComplete },
+    reviews: {
+      total: reviewTotal,
+      pulls: reviewed.length,
+      ...states,
+      medianFirstReviewHours: median(firstReviewHours),
+      times: times.sort(),
+      complete: reviewsComplete,
+    },
     timeline: buckets,
     repos: [...repos.values()]
       .sort((a, b) => b.opened + b.reviews - (a.opened + a.reviews) || a.name.localeCompare(b.name))
@@ -404,17 +462,17 @@ async function getUser(gh: GitHubClient, login: string): Promise<ActivityRespons
     : null;
 }
 
-/** Someone's activity over the last `days` days, in a scope; null when no user has that login. */
+/** Someone's activity over a period, in a scope; null when no user has that login. */
 export async function getActivity(
   gh: GitHubClient,
   login: string,
   scope: ActivityScope,
-  days: number,
-  now = new Date(),
+  range: Period,
 ): Promise<ActivityResponse | null> {
   const [user, place] = await Promise.all([getUser(gh, login), resolveScope(gh, scope)]);
   if (!user) return null;
-  const { from, to } = period(days, now);
+  const { from, to } = range;
+  const days = periodDays(range);
   const where = qualifier(place);
   const [opened, reviewed] = await Promise.all([
     searchPeriod(gh, `is:pr author:${user.login}${where}`, 'created', from, to, OPENED, 50),
@@ -440,10 +498,9 @@ export async function getCommented(
   gh: GitHubClient,
   login: string,
   scope: ActivityScope,
-  days: number,
-  now = new Date(),
+  range: Period,
 ): Promise<ActivityCommentedResponse> {
-  const { from, to } = period(days, now);
+  const { from, to } = range;
   const place = await resolveScope(gh, scope);
   const found = await searchPeriod(
     gh,

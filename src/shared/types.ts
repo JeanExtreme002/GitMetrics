@@ -887,6 +887,8 @@ export interface ActivityResponse {
     /** Closed without being merged. */
     closed: number;
     medianMergeHours: number | null;
+    /** By lines changed, as on a repository's pull requests: XS, S, M, L and XL. */
+    sizes: { size: string; count: number }[];
     /** False when there were more than could be read: the counts above are then the ones read. */
     complete: boolean;
   };
@@ -899,6 +901,13 @@ export interface ActivityResponse {
     changes: number;
     commented: number;
     dismissed: number;
+    /**
+     * How soon they review: from a pull request's opening to their first review of it, the median,
+     * over those opened in the period.
+     */
+    medianFirstReviewHours: number | null;
+    /** When each review was submitted, for when in the week they review. */
+    times: string[];
     complete: boolean;
   };
   /** By day for a month, by week otherwise: pull requests opened, reviews submitted. */

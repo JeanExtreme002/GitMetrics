@@ -359,7 +359,7 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         right={reviews ? <Count>{reviews}</Count> : undefined}
         onClick={onNavigate}
       />
-      <NavItemLink to="/activity" label="Activity" icon={icon(IconRadar)} onClick={onNavigate} />
+      <NavItemLink to="/radar" label="Radar" icon={icon(IconRadar)} onClick={onNavigate} />
 
       {/* While your repositories load, the accounts they belong to aren't known yet: hold their place. */}
       {!data && (
