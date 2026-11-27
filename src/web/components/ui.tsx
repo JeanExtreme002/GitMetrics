@@ -16,7 +16,8 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconAlertTriangle, IconHourglassHigh, IconRefresh, type Icon } from '@tabler/icons-react';
-import { useId, type CSSProperties, type ReactNode } from 'react';
+import { useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 /** Brand red of the logo; the same in light and dark mode. */
 export const LOGO_RED = '#E5383B';
@@ -396,5 +397,30 @@ export function MiniStat({
         </Text>
       </Box>
     </Tooltip>
+  );
+}
+
+/**
+ * A small toast at the bottom of the screen: a fill runs across it while it shows, and when the
+ * fill ends the toast goes. Give it a new `id` to show it again, the fill starting over.
+ */
+export function Toast({ id, icon, children }: { id: number; icon?: ReactNode; children: ReactNode }) {
+  const [gone, setGone] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState<number | null>(null);
+  if (!id || gone === id) return null;
+  return createPortal(
+    <div
+      key={id}
+      role="status"
+      className={leaving === id ? 'toast-pill leaving' : 'toast-pill'}
+      onAnimationEnd={(e) => {
+        if (e.animationName === 'toast-out') setGone(id);
+      }}
+    >
+      <span className="toast-fill" onAnimationEnd={() => setLeaving(id)} />
+      {icon}
+      <span>{children}</span>
+    </div>,
+    document.body,
   );
 }

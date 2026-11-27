@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Code,
+  Flex,
   Group,
   Paper,
   Progress,
@@ -12,13 +13,12 @@ import {
   useMantineColorScheme,
   type MantineColorScheme,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { IconLogout, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconLogout, IconSettings, IconTrash } from '@tabler/icons-react';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { PageHeader } from '../components/ui';
+import { PageHeader, Toast } from '../components/ui';
 import { post } from '../lib/api';
 import { date, num, relative } from '../lib/format';
 import { useAuth, useRateLimit } from '../lib/queries';
@@ -66,13 +66,19 @@ export function Settings() {
     navigate('/login');
   };
 
+  const [clearing, setClearing] = useState(false);
+  const [toast, setToast] = useState(0);
   const clearCache = async () => {
-    await post('/cache/clear');
-    await client.invalidateQueries();
-    notifications.show({
-      message: 'Cache cleared. Pages will reload fresh data from GitHub.',
-      color: 'green',
-    });
+    setClearing(true);
+    try {
+      await post('/cache/clear');
+    } finally {
+      setClearing(false);
+    }
+    // Said as soon as it's done: the pages reload in the background, and waiting on them (your
+    // repositories take seconds) would leave the button looking like it did nothing.
+    setToast(Date.now());
+    void client.invalidateQueries();
   };
 
   const used = rate.data ? 1 - rate.data.remaining / rate.data.limit : 0;
@@ -87,8 +93,14 @@ export function Settings() {
 
       {viewer && (
         <Paper p="lg" mb={40}>
-          <Group justify="space-between" align="center" wrap="nowrap" gap="lg">
-            <Group gap="md" wrap="nowrap">
+          {/* Side by side on a wide screen; on a phone, who you are first and the buttons under it. */}
+          <Flex
+            direction={{ base: 'column', sm: 'row' }}
+            justify="space-between"
+            align={{ base: 'stretch', sm: 'center' }}
+            gap="lg"
+          >
+            <Group gap="md" wrap="nowrap" align="flex-start">
               <Avatar src={viewer.avatarUrl} size={56} radius="xl" />
               <Box>
                 <Text fw={600} size="lg">
@@ -107,7 +119,7 @@ export function Settings() {
                 )}
               </Box>
             </Group>
-            <Group gap="sm">
+            <Group gap="sm" wrap="nowrap" className="profile-actions">
               <Button
                 variant="default"
                 leftSection={<MarkGithubIcon size={16} />}
@@ -126,7 +138,7 @@ export function Settings() {
                 Sign out
               </Button>
             </Group>
-          </Group>
+          </Flex>
         </Paper>
       )}
 
@@ -172,7 +184,13 @@ export function Settings() {
         >
           <Group justify="space-between" wrap="nowrap">
             <Code>~/.gitmetrics</Code>
-            <Button variant="default" size="sm" leftSection={<IconTrash size={16} />} onClick={clearCache}>
+            <Button
+              variant="default"
+              size="sm"
+              leftSection={<IconTrash size={16} />}
+              onClick={clearCache}
+              loading={clearing}
+            >
               Clear cache
             </Button>
           </Group>
@@ -208,6 +226,9 @@ export function Settings() {
           </Group>
         </Row>
       </div>
+      <Toast id={toast} icon={<IconCheck size={15} stroke={2.4} className="toast-icon" />}>
+        Cache cleared
+      </Toast>
     </Box>
   );
 }
