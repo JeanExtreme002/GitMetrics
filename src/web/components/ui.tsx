@@ -1,9 +1,9 @@
 import {
   ActionIcon,
-  Alert,
   Box,
   Button,
   Center,
+  Code,
   Group,
   Loader,
   Paper,
@@ -15,9 +15,22 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { IconAlertTriangle, IconHourglassHigh, IconRefresh, type Icon } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconCloudOff,
+  IconHourglassHigh,
+  IconLinkOff,
+  IconLock,
+  IconLogin2,
+  IconMoodEmpty,
+  IconPlugConnectedX,
+  IconRefresh,
+  type Icon,
+} from '@tabler/icons-react';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router';
+import { ApiError } from '../lib/api';
 
 /** Brand red of the logo; the same in light and dark mode. */
 export const LOGO_RED = '#E5383B';
@@ -305,23 +318,168 @@ export function EmptyState({
   );
 }
 
-export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const message = error instanceof Error ? error.message : 'Something went wrong.';
+/** What went wrong, told plainly, with what to do about it. */
+interface Failure {
+  icon: Icon;
+  title: string;
+  description: ReactNode;
+  /** GitHub's or the server's own words, when they add to the description. */
+  detail?: string;
+  /** Another way out than trying again. */
+  link?: { label: string; to: string };
+  /** Whether trying again can help. */
+  retry: boolean;
+}
+
+/** Sorts a failed request by its cause, as far as its status and message tell. */
+function failure(error: unknown): Failure {
+  const message = error instanceof Error ? error.message : '';
+  // fetch failing outright: nothing answered at all, so GitMetrics itself isn't running.
+  if (!(error instanceof ApiError)) {
+    return error instanceof TypeError
+      ? {
+          icon: IconPlugConnectedX,
+          title: "GitMetrics isn't running",
+          description: (
+            <>
+              This page couldn&apos;t reach GitMetrics on your computer. Start it again in a terminal with{' '}
+              <Code>npx @gitmetrics/app</Code>, then try again.
+            </>
+          ),
+          retry: true,
+        }
+      : {
+          icon: IconAlertTriangle,
+          title: "This page couldn't load",
+          description: 'Something unexpected went wrong. Trying again often works.',
+          detail: message || undefined,
+          retry: true,
+        };
+  }
+  switch (true) {
+    case error.status === 401:
+      return {
+        icon: IconLogin2,
+        title: "You're signed out of GitHub",
+        description: 'Your GitHub session ended or its access was taken back. Sign in again to keep going.',
+        link: { label: 'Sign in', to: '/login' },
+        retry: false,
+      };
+    case error.status === 429:
+      return {
+        icon: IconHourglassHigh,
+        title: "GitHub's hourly limit is used up",
+        description:
+          'GitHub allows a fixed number of requests an hour, and they ran out. They come back on their own: try again in a few minutes.',
+        link: { label: 'See API usage', to: '/settings' },
+        retry: true,
+      };
+    case error.status === 403:
+      return {
+        icon: IconLock,
+        title: "GitHub didn't allow this",
+        description:
+          "Your access doesn't reach it: it may be private, or its organization may restrict what apps can read.",
+        detail: message,
+        retry: false,
+      };
+    case error.status === 404:
+      return {
+        icon: IconMoodEmpty,
+        title: 'Nothing here',
+        // The server's own words when they name what's missing; a bare "Not found" adds nothing.
+        description: `${/^not found\.?$/i.test(message) ? '' : `${message.replace(/\.?$/, '.')} `}It may have been renamed or deleted, or be out of your access.`,
+        retry: false,
+      };
+    case error.status === 400:
+      return {
+        icon: IconLinkOff,
+        title: "This address isn't right",
+        description: `${message.replace(/\.?$/, '.')} Check the link, or start again from the sidebar.`,
+        retry: false,
+      };
+    case error.status === 502 || error.status === 503 || error.status === 504:
+      return {
+        icon: IconCloudOff,
+        title: 'GitHub is having trouble',
+        description: "GitHub didn't answer in time. That's usually brief: try again in a moment.",
+        detail: message,
+        retry: true,
+      };
+    case error.status === 500:
+      return {
+        icon: IconAlertTriangle,
+        title: 'GitMetrics ran into a problem',
+        description:
+          'Its server on your computer hit an error. Trying again often works; if it keeps happening, the terminal running GitMetrics says what went wrong.',
+        retry: true,
+      };
+    default:
+      return {
+        icon: IconAlertTriangle,
+        title: "This page couldn't load",
+        description: 'GitHub answered with an error. Trying again often works.',
+        detail: message,
+        retry: true,
+      };
+  }
+}
+
+/** A request that failed: what happened, in plain words, and a way on. */
+export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => unknown }) {
+  const { icon: FailureIcon, title, description, detail, link, retry } = failure(error);
+  const [retrying, setRetrying] = useState(false);
+  const again = async () => {
+    setRetrying(true);
+    try {
+      await onRetry?.();
+    } finally {
+      setRetrying(false);
+    }
+  };
   return (
-    <Alert
-      color="red"
-      variant="light"
-      radius="lg"
-      icon={<IconAlertTriangle size={20} />}
-      title="Could not load this page"
-    >
-      <Text size="sm">{message}</Text>
-      {onRetry && (
-        <Button size="xs" variant="white" color="red" mt="sm" onClick={onRetry}>
-          Try again
-        </Button>
-      )}
-    </Alert>
+    <Paper p={48} role="alert">
+      <Stack align="center" gap="xs" ta="center">
+        <ThemeIcon variant="light" size={56} radius="xl" color="gray">
+          <FailureIcon size={28} stroke={1.5} />
+        </ThemeIcon>
+        <Text fw={600} mt="sm" size="lg">
+          {title}
+        </Text>
+        <Text c="dimmed" maw={480}>
+          {description}
+        </Text>
+        {detail && (
+          <Text size="xs" c="dimmed" maw={480} className="error-detail">
+            {detail}
+          </Text>
+        )}
+        {((retry && onRetry) || link) && (
+          <Group gap="xs" mt="sm" justify="center">
+            {retry && onRetry && (
+              <Button
+                variant="default"
+                leftSection={<IconRefresh size={16} />}
+                loading={retrying}
+                onClick={again}
+              >
+                Try again
+              </Button>
+            )}
+            {link && (
+              <Button
+                component={Link}
+                to={link.to}
+                variant={retry && onRetry ? 'subtle' : 'default'}
+                color="gray"
+              >
+                {link.label}
+              </Button>
+            )}
+          </Group>
+        )}
+      </Stack>
+    </Paper>
   );
 }
 
