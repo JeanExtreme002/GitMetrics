@@ -39,6 +39,21 @@ import { ApiError } from '../lib/api';
 export const LOGO_RED = '#E5383B';
 
 /**
+ * The main step of a feature that's easy to miss: a button in the text's own color, light on dark
+ * and dark on light, standing out from every other button by contrast alone, with no color that
+ * could read as a warning.
+ */
+export const PRIMARY_ACTION = {
+  variant: 'filled',
+  style: {
+    '--button-bg': 'var(--mantine-color-text)',
+    '--button-hover': 'color-mix(in srgb, var(--mantine-color-text) 86%, var(--mantine-color-body))',
+    '--button-color': 'var(--mantine-color-body)',
+    '--button-bd': 'none',
+  } as CSSProperties,
+} as const;
+
+/**
  * The GitMetrics mark: a rounded red diamond with a chart cut out of it, rising bars with a
  * trend line above them.
  */

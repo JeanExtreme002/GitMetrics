@@ -25,6 +25,7 @@ import type { ActivityCommentedResponse, ActivityResponse } from '../../shared/t
 import { api, post } from '../lib/api';
 import { dayLabel, num } from '../lib/format';
 import { activityPath, useActivityCommented } from '../lib/queries';
+import { PRIMARY_ACTION } from './ui';
 import {
   DEFAULT_REPORT,
   buildReport,
@@ -353,7 +354,7 @@ export function ReportModal({
           )}
           <Group justify="flex-end" mt={22}>
             <Button
-              variant="default"
+              {...PRIMARY_ACTION}
               leftSection={<IconFileText size={16} stroke={1.7} />}
               disabled={nothing}
               onClick={make}
@@ -400,7 +401,7 @@ export function ReportModal({
           <Button
             fullWidth
             mt={20}
-            variant="default"
+            {...PRIMARY_ACTION}
             leftSection={<IconDownload size={16} />}
             onClick={() => download(step.markdown)}
           >

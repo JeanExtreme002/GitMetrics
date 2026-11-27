@@ -605,7 +605,8 @@ a.bar-link:hover {
 
 .page-icon {
   display: flex;
-  color: var(--mantine-color-text);
+  /* The logo's red: each page's title wears it, so the eye finds where it is. */
+  color: #e5383b;
 }
 
 /* Settings: one setting per row, description on the left and the control on the right, with lines

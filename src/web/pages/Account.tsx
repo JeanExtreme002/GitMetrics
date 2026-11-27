@@ -37,7 +37,14 @@ import { Link, useParams } from 'react-router';
 import type { AccountResponse, AccountTotals } from '../../shared/types';
 import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { RepoCard, repoPath } from '../components/repo';
-import { EmptyState, ErrorState, MiniStat, PageSkeleton, RefreshButton } from '../components/ui';
+import {
+  EmptyState,
+  ErrorState,
+  PRIMARY_ACTION,
+  MiniStat,
+  PageSkeleton,
+  RefreshButton,
+} from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { cleanText, compact, date, num, percent, relative } from '../lib/format';
 import { languageColor } from '../lib/languages';
@@ -470,7 +477,7 @@ export function Account() {
               <Button
                 component={Link}
                 to={`/radar?user=${account.login}`}
-                variant="default"
+                {...PRIMARY_ACTION}
                 leftSection={<IconRadar size={16} stroke={1.7} />}
               >
                 Radar
