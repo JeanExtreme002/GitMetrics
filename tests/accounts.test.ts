@@ -105,6 +105,13 @@ describe('an account', () => {
     });
   });
 
+  it("tells internal repositories apart from private ones, which GitHub's count adds them to", () => {
+    const account = buildAccount(
+      raw({ __typename: 'Organization', private: { totalCount: 9 }, privateOnly: { totalCount: 5 } }),
+    );
+    expect(account.repositories).toMatchObject({ private: 5, internal: 4 });
+  });
+
   it('is null when no user or organization has the login', async () => {
     const gh = { graphql: async () => ({ repositoryOwner: null }) } as unknown as GitHubClient;
     expect(await getAccount(gh, 'nobody')).toBeNull();

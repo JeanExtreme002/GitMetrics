@@ -93,7 +93,18 @@ export interface AccountResponse {
   /** Users only: the organizations they show publicly. */
   organizations: { login: string; avatarUrl: string }[];
   /** Repositories it owns, by kind; counted by GitHub, so always exact. */
-  repositories: { total: number; sources: number; forks: number; archived: number; private: number };
+  /**
+   * Private counts those only people given access see; internal, those everyone in its enterprise
+   * sees, which GitHub's own private count adds in.
+   */
+  repositories: {
+    total: number;
+    sources: number;
+    forks: number;
+    archived: number;
+    private: number;
+    internal: number;
+  };
   /** Its repositories in GitHub's own order: pushed to most recently first, forks included. */
   repos: RepoSummary[];
   /** The most starred repositories that aren't forks, those with no star left out. */

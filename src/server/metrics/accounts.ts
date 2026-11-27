@@ -44,6 +44,9 @@ query ($login: String!) {
     forks: repositories(ownerAffiliations: OWNER, isFork: true) { totalCount }
     archived: repositories(ownerAffiliations: OWNER, isArchived: true) { totalCount }
     private: repositories(ownerAffiliations: OWNER, privacy: PRIVATE) { totalCount }
+    # Private alone, not internal: the rest of the private count above is internal. GitHub's own
+    # internal filter counts repositories you can't see when you're outside the enterprise.
+    privateOnly: repositories(ownerAffiliations: OWNER, visibility: PRIVATE) { totalCount }
     # In GitHub's own order, as on its repositories tab: pushed to most recently first, forks too.
     repos: repositories(first: 6, ownerAffiliations: OWNER, orderBy: { field: PUSHED_AT, direction: DESC }) {
       nodes { ${REPO} }
@@ -125,6 +128,7 @@ export interface RawAccount {
   forks: { totalCount: number };
   archived: { totalCount: number };
   private: { totalCount: number };
+  privateOnly?: { totalCount: number };
   repos: { nodes: RawGraphRepo[] };
   top: { nodes: RawGraphRepo[] };
 }
@@ -180,7 +184,8 @@ export function buildAccount(raw: RawAccount): AccountResponse {
       sources: raw.all.totalCount - raw.forks.totalCount,
       forks: raw.forks.totalCount,
       archived: raw.archived.totalCount,
-      private: raw.private.totalCount,
+      private: raw.privateOnly?.totalCount ?? raw.private.totalCount,
+      internal: Math.max(0, raw.private.totalCount - (raw.privateOnly?.totalCount ?? raw.private.totalCount)),
     },
     repos: raw.repos.nodes.map(fromGraph),
     top: raw.top.nodes.filter((r) => r.stargazerCount > 0).map(fromGraph),

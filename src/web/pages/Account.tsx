@@ -126,9 +126,19 @@ function Owns({ account }: { account: AccountResponse }) {
   const share = (value: number) => (r.total ? value / r.total : 0);
   const bars = [
     { name: 'Archived', value: r.archived, color: 'yellow.6', hint: 'Read-only, kept for reference' },
-    ...(r.private
-      ? [{ name: 'Private', value: r.private, color: 'gray.5', hint: 'Visible to you through your access' }]
-      : []),
+    // Always shown, zero included: none of them is an answer too. Each counts those you can see.
+    {
+      name: 'Private',
+      value: r.private,
+      color: 'gray.5',
+      hint: 'Only people given access see them; counted are those you can see',
+    },
+    {
+      name: 'Internal',
+      value: r.internal,
+      color: 'indigo.4',
+      hint: 'Everyone in its enterprise sees them; counted are those you can see',
+    },
   ];
   return (
     <Box>
