@@ -837,3 +837,95 @@ export interface PullDetail {
     since: string | null;
   } | null;
 }
+
+// Activity ------------------------------------------------------------------------------------------
+
+/** Where someone's activity is looked at: all of GitHub, one account's repositories, or one repository. */
+export type ActivityScope =
+  { kind: 'all' } | { kind: 'account'; name: string } | { kind: 'repo'; name: string };
+
+/** A pull request in someone's activity, with the date that put it there. */
+export interface ActivityPull {
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  state: 'open' | 'merged' | 'closed';
+  draft: boolean;
+  author: { login: string; avatarUrl: string } | null;
+  createdAt: string;
+  mergedAt: string | null;
+  additions: number;
+  deletions: number;
+  /** When it counts here: opened, their latest review in the period, or its last update. */
+  at: string;
+  /** Their latest review in the period, for one they reviewed. */
+  review?: 'approved' | 'changes' | 'commented' | 'dismissed';
+}
+
+export interface ActivityPerson {
+  login: string;
+  avatarUrl: string;
+  count: number;
+}
+
+/**
+ * What someone did with pull requests over a period, as far as you can see: the ones they opened,
+ * and every review they submitted, each by its own date.
+ */
+export interface ActivityResponse {
+  user: { login: string; name: string | null; avatarUrl: string };
+  scope: ActivityScope;
+  /** The period, as days: from its first to its last, both included. */
+  from: string;
+  to: string;
+  days: number;
+  opened: {
+    total: number;
+    merged: number;
+    open: number;
+    /** Closed without being merged. */
+    closed: number;
+    medianMergeHours: number | null;
+    /** Of those merged, the ones they merged themselves: in their own repositories, often at once. */
+    selfMerged: number;
+    /** By lines changed, as on a repository's pull requests: XS, S, M, L and XL. */
+    sizes: { size: string; count: number }[];
+    /** False when there were more than could be read: the counts above are then the ones read. */
+    complete: boolean;
+  };
+  reviews: {
+    /** Reviews submitted in the period. */
+    total: number;
+    /** The pull requests those were on. */
+    pulls: number;
+    approved: number;
+    changes: number;
+    commented: number;
+    dismissed: number;
+    /**
+     * How soon they review: from a pull request's opening to their first review of it, the median,
+     * over those opened in the period. Null below three of them, too few to say.
+     */
+    medianFirstReviewHours: number | null;
+    /** When each review was submitted, for when in the week they review. */
+    times: string[];
+    complete: boolean;
+  };
+  /** By day for a month, by week otherwise: pull requests opened, reviews submitted. */
+  timeline: { start: string; opened: number; reviews: number }[];
+  /** Where they work: the repositories with the most, opened and reviewed. */
+  repos: { name: string; opened: number; reviews: number }[];
+  /** Whose pull requests they review the most. */
+  reviewsGiven: ActivityPerson[];
+  /** Who reviews the pull requests they opened the most. */
+  reviewsReceived: ActivityPerson[];
+  pulls: { opened: ActivityPull[]; reviewed: ActivityPull[] };
+}
+
+/** Pull requests someone commented on, by others, active in the period: read only when asked. */
+export interface ActivityCommentedResponse {
+  total: number;
+  pulls: ActivityPull[];
+  complete: boolean;
+}

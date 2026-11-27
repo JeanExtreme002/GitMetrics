@@ -2,6 +2,7 @@ import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:f
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
 import type {
+  ActivityScope,
   AuthStatus,
   PullFilter,
   RepoBaseline,
@@ -14,6 +15,14 @@ import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
 import { getAccount, getAccountRepos, getAccountTotals, searchAccounts } from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
+import {
+  UnknownScope,
+  customPeriod,
+  getActivity,
+  getCommented,
+  period,
+  type Period,
+} from './metrics/activity.js';
 import {
   getAlertDetails,
   buildQuality,
@@ -467,6 +476,65 @@ export function createApp(options: AppOptions = {}) {
       ),
     );
   });
+
+  // Someone's activity with pull requests over a period, in all of GitHub, one account or one repo.
+  const ACTIVITY_DAYS = new Set([30, 90, 180, 365, 730]);
+  /** The period: the last ?days= days (30, 90, 180, 365 or 730), or ?from= to ?to=, days both included. */
+  const activityPeriod = (c: Context): Period | null => {
+    const from = c.req.query('from');
+    const to = c.req.query('to');
+    if (from !== undefined || to !== undefined) return customPeriod(from ?? '', to ?? '');
+    const days = Number(c.req.query('days') ?? 90);
+    return ACTIVITY_DAYS.has(days) ? period(days) : null;
+  };
+  /** The scope in ?in=: nothing for all of GitHub, a login for an account, owner/name for a repo. */
+  const activityScope = (value: string | undefined): ActivityScope | null => {
+    const text = (value ?? '').trim();
+    if (!text) return { kind: 'all' };
+    const [owner, name, extra] = text.split('/');
+    if (name !== undefined) {
+      return extra === undefined && ACCOUNT.test(owner!) && NAME.test(name)
+        ? { kind: 'repo', name: text }
+        : null;
+    }
+    return ACCOUNT.test(text) ? { kind: 'account', name: text } : null;
+  };
+  /** A scope no account or repository you can see has: a miss, not a failure. */
+  const unknownScope = (error: unknown) =>
+    error instanceof UnknownScope ||
+    (error instanceof GitHubError && /cannot be searched/i.test(error.message));
+  const activityRoute =
+    (
+      load: (gh: GitHubClient, login: string, scope: ActivityScope, range: Period) => Promise<unknown>,
+      kind: string,
+    ) =>
+    async (c: Context) => {
+      const login = c.req.param('login') ?? '';
+      const scope = activityScope(c.req.query('in'));
+      const range = activityPeriod(c);
+      if (!ACCOUNT.test(login) || !scope || !range) {
+        return c.json({ error: 'Invalid user, scope or period.', status: 400 }, 400);
+      }
+      const where = scope.kind === 'all' ? '' : scope.name.toLowerCase();
+      try {
+        const result = await memory.wrap(
+          `${config.auth!.login}:activity-${kind}:${login.toLowerCase()}:${where}:${range.from}..${range.to}`,
+          10 * MINUTE,
+          () => load(github()!, login, scope, range),
+          c.req.query('refresh') === '1',
+        );
+        if (result === null) return c.json({ error: 'No user has this name.', status: 404 }, 404);
+        return c.json(result);
+      } catch (error) {
+        if (unknownScope(error)) {
+          return c.json({ error: 'No account or repository you can see has this name.', status: 404 }, 404);
+        }
+        throw error;
+      }
+    };
+  app.get('/api/activity/:login', activityRoute(getActivity, 'summary'));
+  // What they commented on: asked only when it's opened, as it's another search of its own.
+  app.get('/api/activity/:login/commented', activityRoute(getCommented, 'commented'));
 
   // Accounts whose login matches, for the quick search.
   app.get('/api/search/accounts', async (c) => {

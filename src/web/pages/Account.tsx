@@ -24,6 +24,7 @@ import {
   IconCalendar,
   IconGitFork,
   IconLink,
+  IconRadar,
   IconMapPin,
   IconRosetteDiscountCheck,
   IconStar,
@@ -414,6 +415,20 @@ export function Account() {
             </Group>
             <Group gap={8} mt={2} wrap="wrap">
               <Text c="dimmed">{account.login}</Text>
+              <Tooltip label="Open on GitHub">
+                <ActionIcon
+                  component="a"
+                  href={account.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  aria-label="Open on GitHub"
+                >
+                  <MarkGithubIcon size={15} />
+                </ActionIcon>
+              </Tooltip>
               <Badge variant="light" color="gray" tt="none" radius="sm">
                 {own ? 'You' : user ? 'User' : 'Organization'}
               </Badge>
@@ -423,19 +438,17 @@ export function Account() {
         <Group gap="xl" wrap="wrap" align="center" justify="flex-end">
           <Stats account={account} totals={sums} />
           <Group gap="xs" wrap="nowrap">
-            <Tooltip label="Open on GitHub">
-              <ActionIcon
-                component="a"
-                href={account.url}
-                target="_blank"
-                rel="noreferrer"
+            {/* A person's pull requests, opened and reviewed, where, when and with whom: Radar, on them. */}
+            {user && (
+              <Button
+                component={Link}
+                to={`/radar?user=${account.login}`}
                 variant="default"
-                size={36}
-                aria-label="Open on GitHub"
+                leftSection={<IconRadar size={16} stroke={1.7} />}
               >
-                <MarkGithubIcon size={16} />
-              </ActionIcon>
-            </Tooltip>
+                Radar
+              </Button>
+            )}
             <RefreshButton onRefresh={refresh} refreshing={refreshing} />
           </Group>
         </Group>

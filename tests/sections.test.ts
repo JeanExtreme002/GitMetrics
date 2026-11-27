@@ -538,6 +538,15 @@ describe('repository pages, end to end', () => {
       '/api/accounts/bad..name/quality',
       '/api/accounts/bad..name/security',
       '/api/search/accounts?q=two%20words',
+      // Activity: a user, a scope and a period it knows.
+      '/api/activity/-x',
+      '/api/activity/octo?days=7',
+      '/api/activity/octo?days=731',
+      '/api/activity/octo?in=a/b/c',
+      '/api/activity/octo?in=bad..name',
+      '/api/activity/octo/commented?days=abc',
+      '/api/activity/octo?from=2026-03-01&to=2026-01-01',
+      '/api/activity/octo?from=2020-01-01',
     ]) {
       expect((await send(path)).status, path).toBe(400);
     }

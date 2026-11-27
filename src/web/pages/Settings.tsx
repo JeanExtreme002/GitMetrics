@@ -9,6 +9,7 @@ import {
   Paper,
   Progress,
   SegmentedControl,
+  Skeleton,
   Text,
   useMantineColorScheme,
   type MantineColorScheme,
@@ -170,6 +171,15 @@ export function Settings() {
                 </Text>
               </Group>
               <Progress value={(1 - used) * 100} color={used > 0.85 ? 'red' : 'gray'} size="sm" radius="xl" />
+            </Box>
+          ) : rate.isLoading ? (
+            // Read at once: its place held, not "no usage yet" for a moment.
+            <Box aria-busy="true">
+              <Group justify="space-between" mb={8}>
+                <Skeleton height={12} width={140} radius="xl" />
+                <Skeleton height={12} width={90} radius="xl" />
+              </Group>
+              <Skeleton height={8} radius="xl" />
             </Box>
           ) : (
             <Text size="sm" c="dimmed">

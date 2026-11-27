@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { MyPulls } from './pages/MyPulls';
 import { Account } from './pages/Account';
+import { Radar } from './pages/Radar';
 import { AccountRepositories, People, Quality, Security, Sponsors, Teams } from './pages/Organization';
 import { Repositories } from './pages/Repositories';
 import { NotFound } from './pages/NotFound';
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
           { path: 'a/:login/security', element: <Security /> },
           { path: 'a/:login/sponsors', element: <Sponsors /> },
           { path: 'pulls', element: <MyPulls /> },
+          { path: 'radar', element: <Radar /> },
           { path: 'settings', element: <Settings /> },
           {
             path: 'r/:owner/:repo',

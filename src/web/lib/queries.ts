@@ -2,6 +2,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import type {
+  ActivityCommentedResponse,
+  ActivityResponse,
   AlertDetailsResponse,
   AccountHit,
   AccountReposResponse,
@@ -273,4 +275,38 @@ export const useMemberTeams = (login: string, member: string | null) =>
     queryFn: () => api<{ teams: string[]; complete: boolean }>(`/accounts/${login}/teams/${member}`),
     enabled: Boolean(member),
     staleTime: 10 * 60_000,
+  });
+
+/**
+ * Where an activity is read. `range` is the period as the address writes it: days=90, or
+ * from=2026-01-01&to=2026-03-31.
+ */
+export const activityPath = (login: string, where: string, range: string, rest = '') =>
+  `/activity/${login}${rest}?${range}${where ? `&in=${encodeURIComponent(where)}` : ''}`;
+
+/** Someone's activity with pull requests, in a scope and a period. */
+export const activityKey = (login: string, where: string, range: string) => [
+  'activity',
+  login.toLowerCase(),
+  where.toLowerCase(),
+  range,
+];
+export const useActivity = (login: string, where: string, range: string) =>
+  useQuery({
+    queryKey: activityKey(login, where, range),
+    queryFn: () => api<ActivityResponse>(activityPath(login, where, range)),
+    enabled: Boolean(login),
+    staleTime: 10 * 60_000,
+    // Reading a busy person takes a while: asking again on a failure would only double it.
+    retry: false,
+  });
+
+/** The pull requests they commented on: another search, asked only when its list is opened. */
+export const useActivityCommented = (login: string, where: string, range: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['activity-commented', login.toLowerCase(), where.toLowerCase(), range],
+    queryFn: () => api<ActivityCommentedResponse>(activityPath(login, where, range, '/commented')),
+    enabled: Boolean(login) && enabled,
+    staleTime: 10 * 60_000,
+    retry: false,
   });

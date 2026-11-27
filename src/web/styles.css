@@ -1384,3 +1384,163 @@ a.pull-row {
     flex: 1;
   }
 }
+
+/* A repository's bar on the Activity page: opened and reviewed, side by side in one bar. */
+.activity-split-fill {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 99px;
+}
+
+.activity-split-fill > span {
+  min-width: 2px;
+}
+
+/* Radar: the five numbers across the top, two by two on a phone. */
+.quality-strip.radar-strip > :nth-child(5) {
+  padding-left: 0;
+}
+
+@media (min-width: 62em) {
+  .quality-strip.radar-strip > :nth-child(5) {
+    padding-left: 24px;
+  }
+}
+
+/* A person looked at lately: pick to look again, or forget. */
+.radar-chip {
+  padding: 2px 2px 2px 4px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 99px;
+}
+
+.radar-chip-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.radar-chip:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* What stands out: an icon in a soft circle, and the sentence. */
+.radar-insight-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mantine-color-teal-5) 14%, transparent);
+  color: var(--mantine-color-teal-5);
+}
+
+/* A repository picked to narrow the pull requests below. */
+.radar-repo {
+  width: 100%;
+}
+
+.radar-repo.active {
+  background: var(--mantine-color-default-hover);
+  box-shadow: inset 3px 0 0 var(--mantine-color-teal-5);
+}
+
+/* While a person is read: the radar sweeping. */
+.radar-sweep {
+  animation: radar-sweep 1.6s linear infinite;
+}
+
+@keyframes radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-sweep {
+    animation: none;
+  }
+}
+
+/* Radar's own days: the browser's date picker, in the app's colors. */
+[data-mantine-color-scheme='dark'] .radar-dates input {
+  color-scheme: dark;
+}
+
+/* Radar's period: one field, like the inputs beside it, opening the choices. */
+.radar-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-default);
+  background: var(--mantine-color-default);
+}
+
+.radar-period:hover,
+.radar-period[aria-expanded='true'] {
+  border-color: var(--mantine-color-dark-3);
+}
+
+[data-mantine-color-scheme='light'] .radar-period:hover,
+[data-mantine-color-scheme='light'] .radar-period[aria-expanded='true'] {
+  border-color: var(--mantine-color-gray-5);
+}
+
+.radar-period-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.radar-period-option:hover,
+.radar-period-option.active {
+  background: var(--mantine-color-default-hover);
+}
+
+.radar-period-custom {
+  margin-top: 6px;
+  padding: 12px 10px 6px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+/* Radar: where and over what, beside the person, split by a hairline. */
+.radar-facts {
+  min-width: 0;
+}
+
+.radar-fact {
+  min-width: 0;
+  max-width: 260px;
+  padding: 2px 22px;
+}
+
+.radar-fact + .radar-fact {
+  border-left: 1px solid var(--mantine-color-default-border);
+}
+
+.radar-fact:last-child {
+  padding-right: 0;
+}
+
+@media (max-width: 48em) {
+  .radar-fact:first-child {
+    padding-left: 0;
+  }
+}
+
+/* Radar's numbers: a little smaller, to fit five across. */
+@media (min-width: 36em) {
+  .radar-strip .alert-value {
+    font-size: 30px;
+  }
+}
