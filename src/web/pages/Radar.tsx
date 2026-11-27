@@ -987,6 +987,16 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
             </Tooltip>
           </Group>
         </Box>
+        {/* What they did, as a Markdown file: beside who they are. */}
+        <Button
+          variant="default"
+          ml="md"
+          leftSection={<IconFileText size={16} stroke={1.7} />}
+          onClick={onReport}
+          style={{ flex: 'none' }}
+        >
+          Report
+        </Button>
       </Group>
       {/* Where and over what, as two quiet facts, like the numbers below them. */}
       <Group gap="lg" wrap="wrap" align="center">
@@ -1042,10 +1052,6 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
             </Group>
           </Box>
         </Group>
-        {/* What they did, as a Markdown file. */}
-        <Button variant="default" leftSection={<IconFileText size={16} stroke={1.7} />} onClick={onReport}>
-          Report
-        </Button>
       </Group>
     </Group>
   );
