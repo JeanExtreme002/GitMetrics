@@ -933,3 +933,16 @@ export interface ActivityCommentedResponse {
   pulls: ActivityPull[];
   complete: boolean;
 }
+
+/** Opening GitMetrics without a terminal: what this computer has set up. */
+export interface LaunchStatus {
+  /** Whether this system can have them (macOS, Linux and Windows can). */
+  supported: boolean;
+  platform: 'darwin' | 'linux' | 'win32' | null;
+  /** A shortcut among the computer's apps. */
+  shortcut: boolean;
+  /** Starting with the computer, quietly. */
+  autostart: boolean;
+  /** Whether they were offered already, on this computer. */
+  offered: boolean;
+}

@@ -2,6 +2,7 @@ import { closeSync, existsSync, fstatSync, openSync, readFileSync } from 'node:f
 import path from 'node:path';
 import { Hono, type Context } from 'hono';
 import type {
+  LaunchStatus,
   ActivityScope,
   AuthStatus,
   PullFilter,
@@ -47,6 +48,7 @@ import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
+import { launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
 
 const MINUTE = 60_000;
 const TABS = new Set<string>(['all', 'authored', 'assigned', 'involved', 'review', 'owned']);
@@ -73,6 +75,10 @@ export interface AppOptions {
   collectEvery?: number;
   /** What the CLI found out about updates when it started. */
   update?: UpdateInfo;
+  /** How to start this GitMetrics again, for a shortcut and the start with the computer. */
+  launch?: Omit<LaunchEnvironment, 'dataDir'>;
+  /** Ends GitMetrics, for the Quit in Settings: the CLI's, as a test must not end. */
+  quit?: () => void;
 }
 
 type Section = (gh: GitHubClient, owner: string, repo: string, c: Context) => Promise<unknown>;
@@ -680,6 +686,49 @@ export function createApp(options: AppOptions = {}) {
     const state = result as { pending?: boolean; historyPending?: boolean };
     if (state.pending || state.historyPending) memory.delete(key);
     return c.json(result);
+  });
+
+  // Opening it like an app -------------------------------------------------
+
+  const launchEnv = options.launch ? { ...options.launch, dataDir: config.dir } : null;
+  const launchState = (): LaunchStatus => ({
+    ...(launchEnv
+      ? launchStatus(launchEnv)
+      : { supported: false, platform: null, shortcut: false, autostart: false }),
+    offered: config.launchOffered,
+  });
+  app.get('/api/launch', (c) => c.json(launchState()));
+  app.put('/api/launch', async (c) => {
+    if (!launchEnv || !launchState().supported) {
+      return c.json({ error: 'Not available on this computer.', status: 400 }, 400);
+    }
+    const body = (await c.req.json().catch(() => null)) as { shortcut?: unknown; autostart?: unknown } | null;
+    const { shortcut, autostart } = body ?? {};
+    if (
+      (shortcut !== undefined && typeof shortcut !== 'boolean') ||
+      (autostart !== undefined && typeof autostart !== 'boolean')
+    ) {
+      return c.json({ error: 'Invalid choice.', status: 400 }, 400);
+    }
+    try {
+      if (typeof shortcut === 'boolean') await setShortcut(launchEnv, shortcut);
+      if (typeof autostart === 'boolean') await setAutostart(launchEnv, autostart);
+    } catch (error) {
+      console.error(error);
+      return c.json({ error: "Couldn't change it on this computer.", status: 500 }, 500);
+    }
+    config.setLaunchOffered();
+    return c.json(launchState());
+  });
+  app.post('/api/launch/offered', (c) => {
+    config.setLaunchOffered();
+    return c.json(launchState());
+  });
+  // Ends GitMetrics, once its answer is on its way: running in the background, it has no Ctrl+C.
+  app.post('/api/quit', (c) => {
+    if (!options.quit) return c.json({ error: 'Not available.', status: 400 }, 400);
+    setTimeout(options.quit, 300);
+    return c.json({ ok: true });
   });
 
   app.all('/api/*', (c) => c.json({ error: 'Not found.', status: 404 }, 404));

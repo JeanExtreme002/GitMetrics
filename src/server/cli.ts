@@ -2,11 +2,13 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import type { UpdateInfo } from '../shared/types.js';
 import { createApp } from './app.js';
+import { launchCommand } from './launch.js';
 import { defaultDataDir } from './store.js';
 import { NO_UPDATE_CHECK, PACKAGE, RELAUNCHED, installKind, latestVersion, updateInfo } from './update.js';
 
@@ -138,8 +140,30 @@ function relaunch(args: Args, update: UpdateInfo) {
   });
 }
 
+/**
+ * Whether a GitMetrics already answers on this port: a shortcut clicked while it runs in the
+ * background should open it, not start a second one beside it.
+ */
+async function running(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/update`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    const body = (await response.json()) as { current?: unknown };
+    return response.ok && typeof body.current === 'string';
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (!args.dev && args.port === undefined && (await running(DEFAULT_PORT))) {
+    const url = `http://localhost:${DEFAULT_PORT}`;
+    console.log(`\n  GitMetrics is already running at ${url}\n`);
+    if (args.open) openBrowser(url);
+    return;
+  }
   const update = args.dev ? undefined : await checkForUpdate();
   const viaNpx = update?.command?.startsWith('npx ');
   if (update?.available && viaNpx && process.env[RELAUNCHED] !== '1') relaunch(args, update);
@@ -148,9 +172,25 @@ async function main() {
 
 async function start(args: Args, update: UpdateInfo | undefined) {
   const port = args.dev ? DEV_API_PORT : await pickPort(args.port ?? DEFAULT_PORT, args.port !== undefined);
+  const web = path.join(here, 'web');
+  const cli = fileURLToPath(import.meta.url);
+  const icon = path.join(web, 'icon-512.png');
   const app = createApp({
-    webDir: args.dev ? null : path.join(here, 'web'),
+    webDir: args.dev ? null : web,
     update,
+    // How to start this GitMetrics again: for its shortcut, and its start with the computer.
+    ...(args.dev
+      ? {}
+      : {
+          launch: {
+            platform: process.platform,
+            home: homedir(),
+            command: launchCommand(installKind(cli), cli),
+            icon: existsSync(icon) ? icon : null,
+            env: process.env,
+          },
+        }),
+    quit: () => process.exit(0),
     // Checked every hour; it collects once a day.
     collectEvery: 60 * 60_000,
   });

@@ -23,6 +23,7 @@ import { PageHeader, Toast } from '../components/ui';
 import { post } from '../lib/api';
 import { date, num, relative } from '../lib/format';
 import { useAuth, useRateLimit } from '../lib/queries';
+import { LaunchSetting, QuitSetting } from '../components/launch';
 
 const SOURCES = { device: 'GitHub sign-in', token: 'a personal access token', gh: 'the GitHub CLI session' };
 
@@ -189,6 +190,13 @@ export function Settings() {
         </Row>
 
         <Row
+          title="Open like an app"
+          description="Open GitMetrics without a terminal: from a shortcut among your apps, or started with your computer."
+        >
+          <LaunchSetting />
+        </Row>
+
+        <Row
           title="Local data"
           description="Your token, pinned repositories, saved traffic history and caches. Clearing the cache keeps the traffic history."
         >
@@ -204,6 +212,13 @@ export function Settings() {
               Clear cache
             </Button>
           </Group>
+        </Row>
+
+        <Row
+          title="Quit"
+          description="Stops GitMetrics on this computer, as Ctrl+C in its terminal would. Open it again from its shortcut."
+        >
+          <QuitSetting />
         </Row>
 
         <Row

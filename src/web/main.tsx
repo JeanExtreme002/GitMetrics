@@ -13,6 +13,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { ApiError } from './lib/api';
 import { theme } from './theme';
+import { listenForInstall } from './lib/launch';
+
+// The browser's offer to install GitMetrics as an app comes once, early: kept for Settings.
+listenForInstall();
 
 const client: QueryClient = new QueryClient({
   queryCache: new QueryCache({
