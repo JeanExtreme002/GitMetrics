@@ -1,6 +1,6 @@
 {
   "name": "@gitmetrics/app",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "A beautiful, zero-config dashboard for your GitHub repositories. Stars, traffic, commits, pull requests, Actions and more, running locally on your machine.",
   "type": "module",
   "bin": {
