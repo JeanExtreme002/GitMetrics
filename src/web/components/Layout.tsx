@@ -388,7 +388,10 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
       )}
 
       <GroupLabel>Pinned</GroupLabel>
-      {pinned.length ? (
+      {/* Until your repositories load, which are pinned isn't known: no "nothing pinned" yet. */}
+      {!data ? (
+        <NavSkeleton rows={2} />
+      ) : pinned.length ? (
         pinned.map((r) => (
           <NavItemLink
             key={r.id}
@@ -545,8 +548,9 @@ function SearchButton() {
     <UnstyledButton onClick={() => spotlight.open()} className="search-button" visibleFrom="sm">
       <Group gap="xs" wrap="nowrap">
         <IconSearch size={16} stroke={1.6} />
-        <Text size="sm" c="dimmed" style={{ flex: 1 }}>
-          Search repositories
+        {/* What the search finds: repositories, accounts and pull requests, by name or by link. */}
+        <Text size="sm" c="dimmed" truncate style={{ flex: 1 }}>
+          Search repositories, accounts and PRs
         </Text>
         <Kbd size="xs">{IS_MAC ? '⌘ K' : 'Ctrl K'}</Kbd>
       </Group>

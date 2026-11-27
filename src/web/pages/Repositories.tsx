@@ -88,7 +88,7 @@ function RepoTable({
                         </Badge>
                       )}
                       {repo.archived && (
-                        <Badge size="xs" variant="outline" color="yellow">
+                        <Badge size="xs" variant="outline" color="yellow" style={{ flex: 'none' }}>
                           Archived
                         </Badge>
                       )}
@@ -235,6 +235,10 @@ export function Repositories({
 
   const setOwner = (value: string | null) => {
     setLimit(PAGE);
+    // Another account may not have the language or visibility picked: an empty list with a blank
+    // filter otherwise. Start its list unfiltered.
+    setLanguage(null);
+    setVisibility(null);
     setParams(value && value !== 'all' ? { owner: value } : {});
   };
 

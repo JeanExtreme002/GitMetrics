@@ -219,7 +219,8 @@ export function AccountRepositories() {
   // Until the account is known, its own list can't be asked for: wait rather than show another.
   if (account.isLoading) return <PageSkeleton />;
   if (account.error || !data) return <ErrorState error={account.error} onRetry={() => account.refetch()} />;
-  return <Repositories owner={data.login} organization={data.kind === 'organization'} />;
+  // Keyed by account, so another one's list starts with its own filters, not this one's.
+  return <Repositories key={data.login} owner={data.login} organization={data.kind === 'organization'} />;
 }
 
 // People ------------------------------------------------------------------------------------------
@@ -500,7 +501,14 @@ export function Teams() {
                           {t.name}
                         </Text>
                         {t.secret && (
-                          <Badge variant="light" color="gray" tt="none" radius="sm" size="sm">
+                          <Badge
+                            variant="light"
+                            color="gray"
+                            tt="none"
+                            radius="sm"
+                            size="sm"
+                            style={{ flex: 'none' }}
+                          >
                             Secret
                           </Badge>
                         )}
