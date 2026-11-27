@@ -1310,3 +1310,77 @@ a.pull-row {
 .pr-link:hover {
   background: var(--mantine-color-default-hover);
 }
+
+/* A small toast at the bottom center: a fill runs across it, and when it ends the toast goes. */
+.toast-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  padding: 8px 16px 8px 13px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 99px;
+  background: var(--mantine-color-body);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  transform: translateX(-50%);
+  animation: toast-in 180ms ease-out;
+}
+
+[data-mantine-color-scheme='light'] .toast-pill {
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.12);
+}
+
+.toast-pill > :not(.toast-fill) {
+  position: relative;
+}
+
+.toast-pill.leaving {
+  animation: toast-out 200ms ease-in forwards;
+}
+
+.toast-icon {
+  color: var(--mantine-color-teal-5);
+}
+
+/* The time left, as a soft tint filling the toast from the left. */
+.toast-fill {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--mantine-color-teal-5) 14%, transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: toast-fill 2200ms linear forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+@keyframes toast-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* On a phone, the profile's buttons share the row under it. */
+@media (max-width: 48em) {
+  .profile-actions > * {
+    flex: 1;
+  }
+}
