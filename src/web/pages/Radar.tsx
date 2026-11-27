@@ -40,6 +40,7 @@ import {
   IconRadar,
   IconTarget,
   IconThumbUp,
+  IconUser,
   IconUserCheck,
   IconWorld,
   type Icon,
@@ -957,6 +958,26 @@ function Pulls({
   );
 }
 
+/** What can be done with the person looked at: their report, and their page. */
+function WhoActions({ login, onReport }: { login: string; onReport: () => void }) {
+  return (
+    <>
+      {/* What they did, as a Markdown file. */}
+      <Button variant="default" leftSection={<IconFileText size={16} stroke={1.7} />} onClick={onReport}>
+        Generate report
+      </Button>
+      <Button
+        component={Link}
+        to={`/a/${login}`}
+        variant="default"
+        leftSection={<IconUser size={16} stroke={1.7} />}
+      >
+        View profile
+      </Button>
+    </>
+  );
+}
+
 /** Who was looked at, where and over what, with their page and GitHub a click away. */
 function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void }) {
   return (
@@ -987,16 +1008,10 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
             </Tooltip>
           </Group>
         </Box>
-        {/* What they did, as a Markdown file: beside who they are. */}
-        <Button
-          variant="default"
-          ml="md"
-          leftSection={<IconFileText size={16} stroke={1.7} />}
-          onClick={onReport}
-          style={{ flex: 'none' }}
-        >
-          Report
-        </Button>
+        {/* Beside who they are, where there's room. */}
+        <Group gap="xs" wrap="nowrap" ml="md" visibleFrom="sm" style={{ flex: 'none' }}>
+          <WhoActions login={data.user.login} onReport={onReport} />
+        </Group>
       </Group>
       {/* Where and over what, as two quiet facts, like the numbers below them. */}
       <Group gap="lg" wrap="wrap" align="center">
@@ -1052,6 +1067,10 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
             </Group>
           </Box>
         </Group>
+      </Group>
+      {/* On a phone, a row of their own under the rest, rather than over their name. */}
+      <Group gap="xs" grow w="100%" hiddenFrom="sm">
+        <WhoActions login={data.user.login} onReport={onReport} />
       </Group>
     </Group>
   );
