@@ -594,7 +594,7 @@ export function Toast({ id, icon, children }: { id: number; icon?: ReactNode; ch
     <div
       key={id}
       role="status"
-      className={leaving === id ? 'toast-pill leaving' : 'toast-pill'}
+      className={leaving === id ? 'toast leaving' : 'toast'}
       onAnimationEnd={(e) => {
         if (e.animationName === 'toast-out') setGone(id);
       }}

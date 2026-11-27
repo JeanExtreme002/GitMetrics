@@ -1299,8 +1299,9 @@ a.pull-row {
   background: var(--mantine-color-default-hover);
 }
 
-/* A small toast at the bottom center: a fill runs across it, and when it ends the toast goes. */
-.toast-pill {
+/* A small toast at the bottom center, a rectangle with soft corners: a fill runs across it, and
+   when it ends the toast goes. */
+.toast {
   position: fixed;
   left: 50%;
   bottom: 32px;
@@ -1309,9 +1310,9 @@ a.pull-row {
   align-items: center;
   gap: 8px;
   overflow: hidden;
-  padding: 8px 16px 8px 13px;
+  padding: 9px 16px 9px 13px;
   border: 1px solid var(--mantine-color-default-border);
-  border-radius: 99px;
+  border-radius: 6px;
   background: var(--mantine-color-body);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
   font-size: var(--mantine-font-size-sm);
@@ -1320,15 +1321,15 @@ a.pull-row {
   animation: toast-in 180ms ease-out;
 }
 
-[data-mantine-color-scheme='light'] .toast-pill {
+[data-mantine-color-scheme='light'] .toast {
   box-shadow: 0 8px 24px rgb(15 23 42 / 0.12);
 }
 
-.toast-pill > :not(.toast-fill) {
+.toast > :not(.toast-fill) {
   position: relative;
 }
 
-.toast-pill.leaving {
+.toast.leaving {
   animation: toast-out 200ms ease-in forwards;
 }
 
