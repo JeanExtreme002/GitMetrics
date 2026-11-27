@@ -77,6 +77,7 @@ import { parsePullQuery } from '../lib/pulls';
 import type { OverviewResponse, SearchResponse, SecurityResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
+import { LaunchOffer } from './launch';
 
 interface NavItem {
   to: string;
@@ -891,6 +892,8 @@ export function Layout() {
       navbar={{ width: 248, breakpoint: 'sm', collapsed: { mobile: !opened } }}
       padding={{ base: 'md', md: 'xl' }}
     >
+      {/* Once per computer, after signing in: open GitMetrics like any app next time. */}
+      <LaunchOffer />
       <AppShell.Header className="app-header">
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">

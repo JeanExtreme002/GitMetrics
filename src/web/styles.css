@@ -1672,3 +1672,135 @@ a.pull-row {
     animation: none;
   }
 }
+
+/* The offer to open GitMetrics like an app: a dock, and GitMetrics dropping into it. */
+.launch-hero {
+  overflow: hidden;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0;
+  background: var(--mantine-color-gray-0);
+  outline: none;
+}
+
+[data-mantine-color-scheme='dark'] .launch-hero {
+  background: var(--mantine-color-dark-8);
+}
+
+.launch-hero svg {
+  display: block;
+}
+
+.launch-dock {
+  fill: rgb(255 255 255 / 0.85);
+  stroke: var(--mantine-color-gray-3);
+}
+
+.launch-slot {
+  fill: var(--mantine-color-gray-2);
+}
+
+.launch-tile {
+  fill: #fff;
+  stroke: var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme='dark'] .launch-dock {
+  fill: rgb(255 255 255 / 0.05);
+  stroke: var(--mantine-color-dark-4);
+}
+
+[data-mantine-color-scheme='dark'] .launch-slot {
+  fill: var(--mantine-color-dark-5);
+}
+
+[data-mantine-color-scheme='dark'] .launch-tile {
+  fill: var(--mantine-color-dark-6);
+  stroke: var(--mantine-color-dark-4);
+}
+
+.launch-drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: launch-drop 900ms cubic-bezier(0.2, 0.9, 0.3, 1.25) 300ms both;
+}
+
+.launch-running {
+  fill: var(--mantine-color-text);
+  opacity: 0;
+  animation: launch-appear 300ms ease-out 1.15s forwards;
+}
+
+.launch-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: launch-ring 2.6s ease-out 1.2s infinite;
+}
+
+@keyframes launch-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-78px) scale(0.7);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes launch-appear {
+  to {
+    opacity: 0.7;
+  }
+}
+
+@keyframes launch-ring {
+  from {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-drop,
+  .launch-ring {
+    animation: none;
+  }
+
+  .launch-running {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* Its choices: a card each, its icon on a soft tile, the ticked one picked out. */
+.launch-choice {
+  padding: 12px 14px;
+  border-color: var(--mantine-color-default-border);
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.launch-choice[data-checked] {
+  border-color: color-mix(in srgb, var(--mantine-color-teal-6) 55%, transparent);
+  background: color-mix(in srgb, var(--mantine-color-teal-6) 6%, transparent);
+}
+
+.launch-choice-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--mantine-color-default-hover);
+  color: var(--mantine-color-text);
+}

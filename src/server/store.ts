@@ -17,6 +17,8 @@ export interface StoredAuth {
 interface StoredConfig {
   auth?: StoredAuth;
   favorites: string[];
+  /** Whether opening GitMetrics like an app was offered on this computer. */
+  launchOffered?: boolean;
 }
 
 export function readJson<T>(file: string, fallback: T): T {
@@ -72,6 +74,14 @@ export class ConfigStore {
 
   clearAuth() {
     this.update({ auth: undefined });
+  }
+
+  get launchOffered(): boolean {
+    return this.read().launchOffered === true;
+  }
+
+  setLaunchOffered() {
+    this.update({ launchOffered: true });
   }
 
   get favorites(): string[] {
