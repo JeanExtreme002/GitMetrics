@@ -60,6 +60,62 @@ export interface RepoSummary {
   ownerAvatarUrl: string;
 }
 
+/** A user or an organization, and the repositories it owns. */
+export interface AccountResponse {
+  kind: 'user' | 'organization';
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+  url: string;
+  /** A user's bio or an organization's description. */
+  bio: string | null;
+  company: string | null;
+  location: string | null;
+  websiteUrl: string | null;
+  twitter: string | null;
+  createdAt: string;
+  /** Organizations only: whether GitHub verified its domain. */
+  verified: boolean;
+  /** Users only. */
+  followers: number | null;
+  following: number | null;
+  /** Organizations only: the members your account can see. */
+  members: number | null;
+  /** Users only: the organizations they show publicly. */
+  organizations: { login: string; avatarUrl: string }[];
+  /** Repositories it owns, by kind; counted by GitHub, so always exact. */
+  repositories: { total: number; sources: number; forks: number; archived: number; private: number };
+  /** Its repositories in GitHub's own order: pushed to most recently first, forks included. */
+  repos: RepoSummary[];
+  /** The most starred repositories that aren't forks, those with no star left out. */
+  top: RepoSummary[];
+}
+
+/**
+ * Added up over every repository an account owns, as on the home page. Read apart from the account,
+ * as it takes a request per hundred repositories; null when there are too many to read.
+ */
+export interface AccountTotals {
+  stars: number;
+  forks: number;
+  /** By main language, over the repositories that aren't forks, most used first. */
+  languages: { name: string; count: number }[];
+}
+
+/** The public repositories of an account outside your own list. */
+export interface AccountReposResponse {
+  repos: RepoSummary[];
+  /** False when there were more than could be read. */
+  complete: boolean;
+}
+
+/** An account found by the quick search. */
+export interface AccountHit {
+  login: string;
+  avatarUrl: string;
+  kind: 'user' | 'organization';
+}
+
 export interface ReposResponse {
   repos: RepoSummary[];
   favorites: string[];

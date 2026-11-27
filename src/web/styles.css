@@ -334,6 +334,57 @@
   background: var(--mantine-color-yellow-6);
 }
 
+/* On an account page, What it owns reads without lines between its rows. */
+.no-lines .rank-list {
+  border-top: none;
+}
+
+.no-lines .legend-row {
+  padding-block: 7px;
+  border-bottom: none;
+}
+
+.no-lines .owns-bar {
+  border-top: none;
+}
+
+/* Languages (home and account pages): lines between the rows only, none above the first or below the last. */
+.lines-between .rank-list {
+  border-top: none;
+}
+
+.lines-between .legend-row:last-child {
+  border-bottom: none;
+}
+
+/* Archived and private on an account page: a label and its share, over a bar of the whole. */
+.owns-bar {
+  padding: 9px 4px 11px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.owns-bar .rank-track {
+  margin-top: 8px;
+}
+
+/* A row on an account page: a label and its number, or an organization to open. */
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.account-link {
+  transition: background 120ms ease;
+}
+
+.account-link:hover {
+  background: var(--mantine-color-default-hover);
+}
+
 .legend-row {
   display: grid;
   grid-template-columns: 10px 1fr auto;

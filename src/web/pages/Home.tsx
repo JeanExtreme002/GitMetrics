@@ -1,4 +1,3 @@
-import { DonutChart } from '@mantine/charts';
 import {
   Anchor,
   Avatar,
@@ -10,21 +9,20 @@ import {
   Group,
   SimpleGrid,
   Text,
-  Timeline,
   Title,
   Tooltip,
 } from '@mantine/core';
 import { IconArrowRight, IconBook2, IconGitFork, IconStar, IconUsers } from '@tabler/icons-react';
 import { useLocalStorage } from '@mantine/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router';
 import type { RankingEntry, RankingResponse, RepoSummary } from '../../shared/types';
 import { api } from '../lib/api';
-import { RepoCard, repoPath } from '../components/repo';
+import { LanguagesDonut, RecentActivity, SectionTitle } from '../components/overview';
+import { RepoCard } from '../components/repo';
 import { EmptyState, ErrorState, MiniStat, PageSkeleton } from '../components/ui';
-import { compact, num, percent, relative } from '../lib/format';
-import { languageColor } from '../lib/languages';
+import { compact, num, percent } from '../lib/format';
 import { useAuth, useRepos } from '../lib/queries';
 
 function greeting() {
@@ -32,24 +30,6 @@ function greeting() {
   if (hour >= 5 && hour < 12) return 'Good morning';
   if (hour >= 12 && hour < 18) return 'Good afternoon';
   return 'Good evening';
-}
-
-function SectionTitle({ title, action, caption }: { title: string; action?: ReactNode; caption?: string }) {
-  return (
-    <Group justify="space-between" mb="sm" mih={28} align="flex-end">
-      <Box>
-        <Text fw={600} size="lg">
-          {title}
-        </Text>
-        {caption && (
-          <Text size="xs" c="dimmed" mt={2}>
-            {caption}
-          </Text>
-        )}
-      </Box>
-      {action}
-    </Group>
-  );
 }
 
 type TopMode = 'stars' | 'activity' | 'traffic';
@@ -185,104 +165,17 @@ function TopRepositories({ repos }: { repos: RepoSummary[] }) {
   );
 }
 
-/** A donut of your repositories by primary language, with a legend in the same hairline rows. */
+/** Your repositories by primary language. */
 function Languages({ repos, owned }: { repos: RepoSummary[]; owned: number }) {
   const counts = new Map<string, number>();
   for (const r of repos) if (r.language) counts.set(r.language, (counts.get(r.language) ?? 0) + 1);
-  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  const other = sorted.slice(5).reduce((s, [, c]) => s + c, 0);
-  const items: [string, number][] = [
-    ...sorted.slice(0, 5),
-    ...(other ? [['Other', other] as [string, number]] : []),
-  ];
-  const total = items.reduce((s, [, c]) => s + c, 0) || 1;
-  const color = (name: string) => (name === 'Other' ? '#8c959f' : languageColor(name));
-  const [active, setActive] = useState<string | null>(null);
-
+  const total = [...counts.values()].reduce((sum, c) => sum + c, 0);
   return (
-    <Box>
-      <SectionTitle
-        title="Languages you build with"
-        caption={`${total} of your ${owned} repositories, leaving out forks and those without code`}
-      />
-      <Group gap="xl" wrap="nowrap" align="center">
-        <Box className="donut">
-          <DonutChart
-            data={items.map(([name, value]) => ({
-              name,
-              value,
-              color: active && active !== name ? 'var(--mantine-color-default-border)' : color(name),
-            }))}
-            size={176}
-            thickness={14}
-            paddingAngle={2}
-            startAngle={90}
-            endAngle={-270}
-            pieProps={{ cornerRadius: 2, isAnimationActive: false }}
-            strokeWidth={0}
-            tooltipDataSource="segment"
-            valueFormatter={(v) => `${v} repositories`}
-          />{' '}
-          <div className="donut-label">
-            <Text fz={30} fw={600} lh={1} className="tabular">
-              {total}
-            </Text>
-            <Text size="xs" c="dimmed" mt={4}>
-              repositories
-            </Text>
-          </div>
-        </Box>{' '}
-        <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
-          {items.map(([name, count]) => (
-            <div
-              key={name}
-              className="legend-row"
-              onMouseEnter={() => setActive(name)}
-              onMouseLeave={() => setActive(null)}
-            >
-              <span className="lang-dot" style={{ background: color(name), margin: 0 }} />
-              <Text size="sm" truncate>
-                {name}
-              </Text>
-              <Text size="sm" c="dimmed" ta="right" className="tabular">
-                {percent(count / total)}
-              </Text>
-            </div>
-          ))}
-        </div>
-      </Group>
-    </Box>
-  );
-}
-
-function RecentActivity({ repos }: { repos: RepoSummary[] }) {
-  const recent = repos
-    .filter((r) => r.pushedAt)
-    .sort((a, b) => b.pushedAt!.localeCompare(a.pushedAt!))
-    .slice(0, 5);
-  return (
-    <Box pl={6} pt={18} pb={14} className="activity-card">
-      <Timeline bulletSize={9} lineWidth={2} className="activity">
-        {recent.map((r) => (
-          <Timeline.Item key={r.id}>
-            <Anchor
-              component={Link}
-              to={repoPath(r)}
-              c="inherit"
-              fw={500}
-              size="sm"
-              underline="hover"
-              truncate
-            >
-              {r.name}
-            </Anchor>
-            <Text size="xs" c="dimmed" mt={2}>
-              Pushed {relative(r.pushedAt)}
-            </Text>
-          </Timeline.Item>
-        ))}
-      </Timeline>
-    </Box>
+    <LanguagesDonut
+      title="Languages you build with"
+      caption={`${total} of your ${owned} repositories, leaving out forks and those without code`}
+      counts={[...counts.entries()]}
+    />
   );
 }
 
@@ -397,7 +290,7 @@ export function Home() {
         <Grid.Col span={{ base: 12, md: 7 }} pr={{ md: 'xl' }}>
           <TopRepositories repos={sources} />
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
+        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col lines-between">
           <Languages repos={sources} owned={mine.length} />
         </Grid.Col>
       </Grid>

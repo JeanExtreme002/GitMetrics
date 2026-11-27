@@ -2,6 +2,10 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import type {
+  AccountHit,
+  AccountReposResponse,
+  AccountResponse,
+  AccountTotals,
   AuthStatus,
   MyPullsResponse,
   PullChurn,
@@ -187,4 +191,44 @@ export const usePullChurn = (owner: string, repo: string, number: string) =>
     queryKey: ['pull-churn', owner.toLowerCase(), repo.toLowerCase(), number],
     queryFn: () => api<{ churn: PullChurn | null }>(`/repos/${owner}/${repo}/pull/${number}/churn`),
     staleTime: 10 * 60_000,
+  });
+
+// Accounts ------------------------------------------------------------------
+
+export const accountKey = (login: string) => ['account', login.toLowerCase()];
+
+/** A user or an organization. */
+export const useAccount = (login: string) =>
+  useQuery({
+    queryKey: accountKey(login),
+    queryFn: () => api<AccountResponse>(`/accounts/${login}`),
+    staleTime: 10 * 60_000,
+  });
+
+/** Stars, forks and languages over an account's repositories; null when there are too many. */
+export const useAccountTotals = (login: string) =>
+  useQuery({
+    queryKey: ['account-totals', login.toLowerCase()],
+    queryFn: () => api<{ totals: AccountTotals | null }>(`/accounts/${login}/totals`),
+    staleTime: 10 * 60_000,
+  });
+
+/** The repositories of an account outside your own list. */
+export const useAccountRepos = (login: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['account-repos', login.toLowerCase()],
+    queryFn: () => api<AccountReposResponse>(`/accounts/${login}/repos`),
+    enabled,
+    staleTime: 10 * 60_000,
+  });
+
+/** Accounts whose login matches, for the quick search. */
+export const useAccountSearch = (text: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['search-accounts', text.toLowerCase()],
+    queryFn: () => api<{ accounts: AccountHit[] }>(`/search/accounts?q=${encodeURIComponent(text)}`),
+    enabled,
+    staleTime: 10 * 60_000,
+    // A failed account search never gets in the way of the repository search beside it.
+    retry: false,
   });

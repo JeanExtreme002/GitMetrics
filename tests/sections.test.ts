@@ -215,6 +215,42 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
     if (p === '/graphql') {
       const body = JSON.parse(String(init?.body)) as { query: string; variables?: Record<string, unknown> };
       const query = String(body.query);
+      // A user's page, its totals, and an account that doesn't exist.
+      if (query.includes('repositoryOwner(login: $login)')) {
+        if (body.variables?.login !== 'octo') return json({ data: { repositoryOwner: null } });
+        const sources = {
+          totalCount: 2,
+          pageInfo: { hasNextPage: false, endCursor: null },
+          nodes: [
+            { isFork: false, stargazerCount: 3, forkCount: 1, primaryLanguage: { name: 'TypeScript' } },
+            { isFork: false, stargazerCount: 2, forkCount: 0, primaryLanguage: null },
+          ],
+        };
+        if (query.includes('after: $after')) return json({ data: { repositoryOwner: { sources } } });
+        const count = (totalCount: number) => ({ totalCount });
+        return json({
+          data: {
+            repositoryOwner: {
+              __typename: 'User',
+              login: 'octo',
+              avatarUrl: '',
+              url: 'https://github.com/octo',
+              name: 'Octo',
+              bio: null,
+              createdAt: REPO.created_at,
+              followers: count(4),
+              following: count(1),
+              organizations: { nodes: [] },
+              all: count(3),
+              forks: count(1),
+              archived: count(0),
+              private: count(0),
+              repos: { nodes: [] },
+              top: { nodes: [] },
+            },
+          },
+        });
+      }
       // Your pull requests: one search per filter, a repository's baseline, one pull request.
       if (query.includes('search(query: $q')) {
         const q = String(body.variables?.q);
@@ -453,6 +489,37 @@ describe('repository pages, end to end', () => {
     };
     return { ...github, send, page };
   }
+
+  it("an account's page, its totals and repositories, and the accounts search", async () => {
+    const { send } = await signedIn({
+      '/users/octo/repos': () => json([REPO]),
+      '/search/users': () => json({ items: [{ login: 'octo', avatar_url: '', type: 'User' }] }),
+    });
+    const account = (await (await send('/api/accounts/octo')).json()) as Record<string, unknown>;
+    expect(account).toMatchObject({
+      kind: 'user',
+      login: 'octo',
+      followers: 4,
+      repositories: { total: 3, sources: 2 },
+    });
+    const { totals } = (await (await send('/api/accounts/octo/totals')).json()) as { totals: unknown };
+    expect(totals).toEqual({ stars: 5, forks: 1, languages: [{ name: 'TypeScript', count: 1 }] });
+    const repos = (await (await send('/api/accounts/octo/repos')).json()) as {
+      repos: { fullName: string }[];
+    };
+    expect(repos.repos.map((r) => r.fullName)).toEqual(['octo/app']);
+    const search = (await (await send('/api/search/accounts?q=octo')).json()) as { accounts: unknown[] };
+    expect(search.accounts).toEqual([{ login: 'octo', avatarUrl: '', kind: 'user' }]);
+
+    expect((await send('/api/accounts/nobody')).status).toBe(404);
+    for (const path of [
+      '/api/accounts/bad..name',
+      '/api/accounts/-x/totals',
+      '/api/search/accounts?q=two%20words',
+    ]) {
+      expect((await send(path)).status, path).toBe(400);
+    }
+  });
 
   it('keeps the traffic history growing on its own, for your repositories and the ones you open', async () => {
     const day = isoDaysAgo(1);

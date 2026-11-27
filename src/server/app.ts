@@ -12,6 +12,7 @@ import type {
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
+import { getAccount, getAccountRepos, getAccountTotals, searchAccounts } from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
 import { getCommits } from './metrics/commits.js';
 import { getContributors } from './metrics/contributors.js';
@@ -321,6 +322,61 @@ export function createApp(options: AppOptions = {}) {
       searchRepos(github()!, text),
     );
     return c.json({ repos } satisfies SearchResponse);
+  });
+
+  // Accounts ------------------------------------------------------------------
+
+  // A user's or an organization's page.
+  app.get('/api/accounts/:login', async (c) => {
+    const login = c.req.param('login');
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    const account = await memory.wrap(
+      `${config.auth!.login}:account:${login.toLowerCase()}`,
+      10 * MINUTE,
+      () => getAccount(github()!, login),
+      c.req.query('refresh') === '1',
+    );
+    if (!account) return c.json({ error: 'No user or organization has this name.', status: 404 }, 404);
+    return c.json(account);
+  });
+
+  // Stars, forks and languages over an account's repositories: apart, as they take longer.
+  app.get('/api/accounts/:login/totals', async (c) => {
+    const login = c.req.param('login');
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    const totals = await memory.wrap(
+      `${config.auth!.login}:account-totals:${login.toLowerCase()}`,
+      10 * MINUTE,
+      () => getAccountTotals(github()!, login),
+      c.req.query('refresh') === '1',
+    );
+    return c.json({ totals });
+  });
+
+  // The repositories of an account outside your own list.
+  app.get('/api/accounts/:login/repos', async (c) => {
+    const login = c.req.param('login');
+    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+    return c.json(
+      await memory.wrap(
+        `${config.auth!.login}:account-repos:${login.toLowerCase()}`,
+        10 * MINUTE,
+        () => getAccountRepos(github()!, login),
+        c.req.query('refresh') === '1',
+      ),
+    );
+  });
+
+  // Accounts whose login matches, for the quick search.
+  app.get('/api/search/accounts', async (c) => {
+    const text = (c.req.query('q') ?? '').trim();
+    if (!ACCOUNT.test(text)) return c.json({ error: 'Invalid search.', status: 400 }, 400);
+    const accounts = await memory.wrap(
+      `${config.auth!.login}:search-accounts:${text.toLowerCase()}`,
+      10 * MINUTE,
+      () => searchAccounts(github()!, text),
+    );
+    return c.json({ accounts });
   });
 
   app.get('/api/rankings/:mode', async (c) => {
