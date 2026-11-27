@@ -478,8 +478,8 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // Someone's activity with pull requests over a period, in all of GitHub, one account or one repo.
-  const ACTIVITY_DAYS = new Set([30, 90, 180, 365]);
-  /** The period: the last ?days= days (30, 90, 180 or 365), or ?from= to ?to=, days both included. */
+  const ACTIVITY_DAYS = new Set([30, 90, 180, 365, 730]);
+  /** The period: the last ?days= days (30, 90, 180, 365 or 730), or ?from= to ?to=, days both included. */
   const activityPeriod = (c: Context): Period | null => {
     const from = c.req.query('from');
     const to = c.req.query('to');

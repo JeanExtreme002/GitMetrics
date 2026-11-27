@@ -1512,3 +1512,35 @@ a.pull-row {
   padding: 12px 10px 6px;
   border-top: 1px solid var(--mantine-color-default-border);
 }
+
+/* Radar: where and over what, beside the person, split by a hairline. */
+.radar-facts {
+  min-width: 0;
+}
+
+.radar-fact {
+  min-width: 0;
+  max-width: 260px;
+  padding: 2px 22px;
+}
+
+.radar-fact + .radar-fact {
+  border-left: 1px solid var(--mantine-color-default-border);
+}
+
+.radar-fact:last-child {
+  padding-right: 0;
+}
+
+@media (max-width: 48em) {
+  .radar-fact:first-child {
+    padding-left: 0;
+  }
+}
+
+/* Radar's numbers: a little smaller, to fit five across. */
+@media (min-width: 36em) {
+  .radar-strip .alert-value {
+    font-size: 30px;
+  }
+}

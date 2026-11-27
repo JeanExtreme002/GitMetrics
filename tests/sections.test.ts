@@ -541,6 +541,7 @@ describe('repository pages, end to end', () => {
       // Activity: a user, a scope and a period it knows.
       '/api/activity/-x',
       '/api/activity/octo?days=7',
+      '/api/activity/octo?days=731',
       '/api/activity/octo?in=a/b/c',
       '/api/activity/octo?in=bad..name',
       '/api/activity/octo/commented?days=abc',

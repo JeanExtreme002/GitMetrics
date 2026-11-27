@@ -28,13 +28,14 @@ import {
   IconCalendarTime,
   IconCheck,
   IconChevronDown,
+  IconClockHour4,
+  IconEye,
   IconGitMerge,
   IconGitPullRequest,
   IconGitPullRequestClosed,
   IconGitPullRequestDraft,
   IconInfoCircle,
   IconRadar,
-  IconScale,
   IconTarget,
   IconThumbUp,
   IconUserCheck,
@@ -73,6 +74,8 @@ const PERIODS = [
   { value: '90', label: '90 days' },
   { value: '180', label: '6 months' },
   { value: '365', label: '1 year' },
+  // As far back as can be asked for.
+  { value: '730', label: '2 years' },
 ];
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 const REPO = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}\/[A-Za-z0-9_.-]{1,100}$/;
@@ -103,6 +106,8 @@ const FULL_DAYS = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 
 const FIRST = 6;
 const PAGE = 10;
 const RECENT = 8;
+/** Repositories shown at first: as many as keep the column beside the review donut. */
+const REPOS_FIRST = 4;
 
 /** A short period, as "Sep 1 – Nov 27". */
 const span = (from: string, to: string) => `${dayLabel(from)} – ${dayLabel(to)}`;
@@ -447,12 +452,25 @@ function RecentLooks({
 // Pieces of the results ---------------------------------------------------------------------------
 
 /** One of the numbers across the top: large, with what it counts and a note under it. */
-function Stat({ label, value, note }: { label: string; value: ReactNode; note?: ReactNode }) {
+function Stat({
+  icon: StatIcon,
+  label,
+  value,
+  note,
+}: {
+  icon: Icon;
+  label: string;
+  value: ReactNode;
+  note?: ReactNode;
+}) {
   return (
     <Box className="quality-stat">
-      <Text size="sm" c="dimmed">
-        {label}
-      </Text>
+      <Group gap={6} wrap="nowrap" c="dimmed">
+        <StatIcon size={15} stroke={1.7} style={{ flex: 'none' }} />
+        <Text size="sm" c="dimmed" truncate>
+          {label}
+        </Text>
+      </Group>
       <Text fw={650} lh={1.1} mt={8} className="tabular alert-value">
         {value}
       </Text>
@@ -583,19 +601,6 @@ function insights(data: ActivityResponse, when: ReturnType<typeof useWhen>): Ins
       ),
     });
   }
-  if (o.total > 0 && r.pulls > 0) {
-    const ratio = r.pulls / o.total;
-    const amount = (n: number) => (n >= 10 ? String(Math.round(n)) : n.toFixed(1));
-    out.push({
-      icon: IconScale,
-      text:
-        ratio >= 1 ? (
-          <>Reviews {strong(amount(ratio))} pull requests for each one they open.</>
-        ) : (
-          <>Opens {strong(amount(1 / ratio))} pull requests for each one they review.</>
-        ),
-    });
-  }
   return out;
 }
 
@@ -630,7 +635,7 @@ function Repositories({
   selected: string | null;
   onSelect: (repo: string | null) => void;
 }) {
-  const [limit, setLimit] = useState(FIRST);
+  const [limit, setLimit] = useState(REPOS_FIRST);
   if (!repos.length) return null;
   const max = Math.max(1, ...repos.map((r) => r.opened + r.reviews));
   return (
@@ -928,7 +933,6 @@ function Pulls({
 
 /** Who was looked at, where and over what, with their page and GitHub a click away. */
 function Who({ data }: { data: ActivityResponse }) {
-  const scope = data.scope.kind === 'all' ? 'All of GitHub' : data.scope.name;
   return (
     <Group justify="space-between" wrap="wrap" gap="md" mb={28}>
       <Group gap="md" wrap="nowrap" miw={0}>
@@ -958,27 +962,58 @@ function Who({ data }: { data: ActivityResponse }) {
           </Group>
         </Box>
       </Group>
-      <Group gap={8} wrap="wrap">
-        <Badge
-          variant="light"
-          color="gray"
-          tt="none"
-          radius="sm"
-          size="lg"
-          leftSection={<IconWorld size={13} />}
-        >
-          {scope}
-        </Badge>
-        <Badge
-          variant="light"
-          color="gray"
-          tt="none"
-          radius="sm"
-          size="lg"
-          leftSection={<IconCalendarTime size={13} />}
-        >
-          {span(data.from, data.to)}
-        </Badge>
+      {/* Where and over what, as two quiet facts, like the numbers below them. */}
+      <Group gap={0} wrap="nowrap" className="radar-facts">
+        <Box className="radar-fact">
+          <Text size="xs" c="dimmed">
+            Where
+          </Text>
+          <Group gap={7} wrap="nowrap" mt={4} miw={0}>
+            {data.scope.kind === 'all' ? (
+              <IconWorld
+                size={16}
+                stroke={1.6}
+                color="var(--mantine-color-dimmed)"
+                style={{ flex: 'none' }}
+              />
+            ) : (
+              <Avatar
+                src={`https://github.com/${data.scope.name.split('/')[0]}.png?size=40`}
+                size={18}
+                radius="sm"
+              />
+            )}
+            {data.scope.kind === 'all' ? (
+              <Text size="sm" fw={500}>
+                All of GitHub
+              </Text>
+            ) : (
+              <Anchor
+                component={Link}
+                to={data.scope.kind === 'repo' ? `/r/${data.scope.name}` : `/a/${data.scope.name}`}
+                size="sm"
+                fw={500}
+                c="inherit"
+                truncate
+              >
+                {data.scope.name}
+              </Anchor>
+            )}
+          </Group>
+        </Box>
+        <Box className="radar-fact">
+          <Text size="xs" c="dimmed">
+            Period
+          </Text>
+          <Group gap={8} wrap="nowrap" mt={4} align="baseline">
+            <Text size="sm" fw={500} className="tabular" style={{ whiteSpace: 'nowrap' }}>
+              {span(data.from, data.to)}
+            </Text>
+            <Text size="xs" c="dimmed" className="tabular" style={{ whiteSpace: 'nowrap' }}>
+              {num(data.days)} days
+            </Text>
+          </Group>
+        </Box>
       </Group>
     </Group>
   );
@@ -1022,19 +1057,32 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
             verticalSpacing="lg"
             className="quality-strip radar-strip"
           >
-            <Stat label="Opened" value={num(o.total)} note={`${num(o.open)} still open`} />
             <Stat
+              icon={IconGitPullRequest}
+              label="Opened"
+              value={num(o.total)}
+              note={`${num(o.open)} still open`}
+            />
+            <Stat
+              icon={IconGitMerge}
               label="Merged"
               value={num(o.merged)}
               note={o.total ? `${percent(o.merged / o.total)} of those opened` : 'None opened'}
             />
-            <Stat label="Reviews" value={num(r.total)} note={`On ${num(r.pulls)} pull requests`} />
             <Stat
+              icon={IconEye}
+              label="Reviews"
+              value={num(r.total)}
+              note={`On ${num(r.pulls)} pull requests`}
+            />
+            <Stat
+              icon={IconClockHour4}
               label="Time to merge"
               value={o.medianMergeHours === null ? '—' : hours(o.medianMergeHours)}
               note="Median, for theirs merged"
             />
             <Stat
+              icon={IconUserCheck}
               label="First review"
               value={r.medianFirstReviewHours === null ? '—' : hours(r.medianFirstReviewHours)}
               note="Median, after one opens"
@@ -1102,6 +1150,7 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
             </Grid.Col>
           </Grid>
 
+          {/* Their own work on the left, their reviews on the right, each with its people under it. */}
           <Grid gap="md" mt={44}>
             <Grid.Col span={{ base: 12, md: 6 }} pr={{ md: 'xl' }}>
               <Repositories
@@ -1112,6 +1161,16 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
                   if (next) pullsAt();
                 }}
               />
+              <Box mt={44}>
+                <People
+                  title="Who reviews theirs"
+                  caption="Reviews on the pull requests they opened in the period"
+                  people={data.reviewsReceived}
+                  range={range}
+                  where={where}
+                  empty="No one reviewed the ones they opened."
+                />
+              </Box>
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
               {r.total > 0 ? (
@@ -1134,29 +1193,16 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
                   </Text>
                 </>
               )}
-            </Grid.Col>
-          </Grid>
-
-          <Grid gap="md" mt={44}>
-            <Grid.Col span={{ base: 12, md: 6 }} pr={{ md: 'xl' }}>
-              <People
-                title="Whose pull requests they review"
-                caption="By how many of their reviews each got: a click points the radar at them"
-                people={data.reviewsGiven}
-                range={range}
-                where={where}
-                empty="No reviews in this period."
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 6 }} pl={{ md: 'xl' }} className="split-col">
-              <People
-                title="Who reviews theirs"
-                caption="Reviews on the pull requests they opened in the period"
-                people={data.reviewsReceived}
-                range={range}
-                where={where}
-                empty="No one reviewed the ones they opened."
-              />
+              <Box mt={44}>
+                <People
+                  title="Whose pull requests they review"
+                  caption="By how many of their reviews each got: a click points the radar at them"
+                  people={data.reviewsGiven}
+                  range={range}
+                  where={where}
+                  empty="No reviews in this period."
+                />
+              </Box>
             </Grid.Col>
           </Grid>
 
@@ -1263,7 +1309,7 @@ export function Radar() {
       <PageHeader
         title="Radar"
         icon={<IconRadar size={26} stroke={1.6} />}
-        description="Point it at anyone on GitHub: what they open and review, where, when and with whom. As far as your access lets you see."
+        description="What anyone on GitHub opens and reviews: where, when and with whom. Only what your access lets you see."
         onRefresh={user && query.data ? refresh : undefined}
         refreshing={refreshing}
       />

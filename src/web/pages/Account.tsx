@@ -415,6 +415,20 @@ export function Account() {
             </Group>
             <Group gap={8} mt={2} wrap="wrap">
               <Text c="dimmed">{account.login}</Text>
+              <Tooltip label="Open on GitHub">
+                <ActionIcon
+                  component="a"
+                  href={account.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  aria-label="Open on GitHub"
+                >
+                  <MarkGithubIcon size={15} />
+                </ActionIcon>
+              </Tooltip>
               <Badge variant="light" color="gray" tt="none" radius="sm">
                 {own ? 'You' : user ? 'User' : 'Organization'}
               </Badge>
@@ -435,19 +449,6 @@ export function Account() {
                 Radar
               </Button>
             )}
-            <Tooltip label="Open on GitHub">
-              <ActionIcon
-                component="a"
-                href={account.url}
-                target="_blank"
-                rel="noreferrer"
-                variant="default"
-                size={36}
-                aria-label="Open on GitHub"
-              >
-                <MarkGithubIcon size={16} />
-              </ActionIcon>
-            </Tooltip>
             <RefreshButton onRefresh={refresh} refreshing={refreshing} />
           </Group>
         </Group>
