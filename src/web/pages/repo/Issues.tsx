@@ -24,7 +24,7 @@ import {
 } from '../../components/ui';
 import { hours, num, percent, relative, sampleScope } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
-import { semantic } from '../../theme';
+import { semantic, useVisibleColor } from '../../theme';
 
 function IssueStats({ data }: { data: IssuesResponse }) {
   const total = data.counts.open + data.counts.closed;
@@ -51,8 +51,10 @@ function IssueStats({ data }: { data: IssuesResponse }) {
 /** The labels in use as a donut in their own GitHub colors, with a legend beside it. */
 function Labels({ labels }: { labels: IssuesResponse['labels'] }) {
   const [active, setActive] = useState<string | null>(null);
+  const visible = useVisibleColor();
   if (!labels.length) return <NoData>No labels in use.</NoData>;
   const top = labels.slice(0, 6);
+  const max = Math.max(1, ...top.map((l) => l.count));
   return (
     <Group gap="xl" wrap="nowrap" align="center">
       <Box className="donut">
@@ -60,7 +62,7 @@ function Labels({ labels }: { labels: IssuesResponse['labels'] }) {
           data={top.map((l) => ({
             name: l.name,
             value: l.count,
-            color: active && active !== l.name ? 'var(--mantine-color-default-border)' : `#${l.color}`,
+            color: active && active !== l.name ? 'var(--mantine-color-default-border)' : visible(l.color),
           }))}
           size={176}
           thickness={14}
@@ -81,7 +83,7 @@ function Labels({ labels }: { labels: IssuesResponse['labels'] }) {
           </Text>
         </div>
       </Box>
-      <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+      <div className="rank-list no-lines" style={{ flex: 1, minWidth: 0 }}>
         {top.map((l) => (
           <div
             key={l.name}
@@ -89,13 +91,20 @@ function Labels({ labels }: { labels: IssuesResponse['labels'] }) {
             onMouseEnter={() => setActive(l.name)}
             onMouseLeave={() => setActive(null)}
           >
-            <span className="lang-dot" style={{ background: `#${l.color}`, margin: 0 }} />
+            <span className="lang-dot" style={{ background: visible(l.color), margin: 0 }} />
             <Text size="sm" truncate>
               {l.name}
             </Text>
             <Text size="sm" fw={600} ta="right" className="tabular">
               {num(l.count)}
             </Text>
+            {/* How often it's used next to the most used one, in the label's own color. */}
+            <div className="rank-track legend-bar">
+              <div
+                className="rank-fill"
+                style={{ width: `${(l.count / max) * 100}%`, background: visible(l.color) }}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -109,7 +118,7 @@ function Reporters({ people, analyzed }: { people: PersonCount[]; analyzed: numb
   const top = people.slice(0, 10);
   const max = Math.max(1, ...top.map((p) => p.count));
   return (
-    <div className="rank-list">
+    <div className="rank-list lines-between">
       {top.map((p, i) => (
         <Anchor
           key={p.login}
@@ -150,7 +159,7 @@ function Reporters({ people, analyzed }: { people: PersonCount[]; analyzed: numb
 function IssueList({ issues, empty }: { issues: IssueItem[]; empty: string }) {
   if (!issues.length) return <NoData>{empty}</NoData>;
   return (
-    <div className="rank-list">
+    <div className="rank-list lines-between">
       {issues.map((i) => (
         <Anchor
           key={i.number}

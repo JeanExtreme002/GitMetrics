@@ -11,7 +11,14 @@ import {
   Text,
   Tooltip,
 } from '@mantine/core';
-import { IconArrowUpRight, IconCalendarWeek, IconClock, IconFlame, IconGitCommit } from '@tabler/icons-react';
+import {
+  IconArrowUpRight,
+  IconCalendarWeek,
+  IconChevronDown,
+  IconClock,
+  IconFlame,
+  IconGitCommit,
+} from '@tabler/icons-react';
 import { useElementSize } from '@mantine/hooks';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useState } from 'react';
@@ -154,35 +161,55 @@ function ContributionCalendar({ daily }: { daily: CommitsResponse['daily'] }) {
   );
 }
 
+/** Latest commits shown at first, and how many each "Show more" adds. */
+const FIRST = 6;
+const PAGE = 10;
+
 function LatestCommits({ commits }: { commits: CommitsResponse['recent'] }) {
+  const [limit, setLimit] = useState(FIRST);
   if (!commits.length) return <NoData>No commits yet.</NoData>;
   return (
-    <div className="rank-list">
-      {commits.map((c) => (
-        <Anchor
-          key={c.sha}
-          href={c.url}
-          target="_blank"
-          underline="never"
-          c="inherit"
-          className="commit-row commit-row-sha"
-        >
-          <Avatar src={c.avatarUrl} size={22} radius="xl" />
-          <Text size="sm" truncate>
-            {c.message}
-          </Text>
-          <Text size="xs" c="dimmed" truncate>
-            {c.author}
-          </Text>
-          <Text size="xs" c="dimmed" ff="monospace">
-            {c.sha.slice(0, 7)}
-          </Text>
-          <Text size="xs" c="dimmed" ta="right" style={{ whiteSpace: 'nowrap' }}>
-            {relative(c.date)}
-          </Text>
-        </Anchor>
-      ))}
-    </div>
+    <>
+      <div className="rank-list lines-between">
+        {commits.slice(0, limit).map((c) => (
+          <Anchor
+            key={c.sha}
+            href={c.url}
+            target="_blank"
+            underline="never"
+            c="inherit"
+            className="commit-row commit-row-sha"
+          >
+            <Avatar src={c.avatarUrl} size={22} radius="xl" />
+            <Text size="sm" truncate>
+              {c.message}
+            </Text>
+            <Text size="xs" c="dimmed" truncate>
+              {c.author}
+            </Text>
+            <Text size="xs" c="dimmed" ff="monospace">
+              {c.sha.slice(0, 7)}
+            </Text>
+            <Text size="xs" c="dimmed" ta="right" style={{ whiteSpace: 'nowrap' }}>
+              {relative(c.date)}
+            </Text>
+          </Anchor>
+        ))}
+      </div>
+      {commits.length > limit && (
+        <Group justify="center" mt="sm">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            rightSection={<IconChevronDown size={14} />}
+            onClick={() => setLimit((l) => l + PAGE)}
+          >
+            Show {num(Math.min(PAGE, commits.length - limit))} more
+          </Button>
+        </Group>
+      )}
+    </>
   );
 }
 

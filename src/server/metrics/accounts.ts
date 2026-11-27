@@ -18,7 +18,7 @@ import { type RawRepo, toSummary } from './repos.js';
 export const MAX_SOURCES = 1000;
 
 const REPO = `
-  databaseId name nameWithOwner description isPrivate isFork isArchived stargazerCount forkCount
+  databaseId name nameWithOwner description isPrivate visibility isFork isArchived stargazerCount forkCount
   pushedAt createdAt url owner { login avatarUrl } primaryLanguage { name }
   watchers { totalCount } issues(states: OPEN) { totalCount }
   repositoryTopics(first: 10) { nodes { topic { name } } }`;
@@ -31,20 +31,27 @@ query ($login: String!) {
       name bio company location websiteUrl twitterUsername createdAt
       followers { totalCount } following { totalCount }
       organizations(first: 30) { nodes { login avatarUrl } }
+      sponsoring { totalCount } sponsors { totalCount }
     }
     ... on Organization {
       name description location websiteUrl twitterUsername createdAt isVerified
       membersWithRole { totalCount }
+      viewerIsAMember
+      teams { totalCount }
+      sponsoring { totalCount } sponsors { totalCount }
     }
     all: repositories(ownerAffiliations: OWNER) { totalCount }
     forks: repositories(ownerAffiliations: OWNER, isFork: true) { totalCount }
     archived: repositories(ownerAffiliations: OWNER, isArchived: true) { totalCount }
     private: repositories(ownerAffiliations: OWNER, privacy: PRIVATE) { totalCount }
+    # Private alone, not internal: the rest of the private count above is internal. GitHub's own
+    # internal filter counts repositories you can't see when you're outside the enterprise.
+    privateOnly: repositories(ownerAffiliations: OWNER, visibility: PRIVATE) { totalCount }
     # In GitHub's own order, as on its repositories tab: pushed to most recently first, forks too.
     repos: repositories(first: 6, ownerAffiliations: OWNER, orderBy: { field: PUSHED_AT, direction: DESC }) {
       nodes { ${REPO} }
     }
-    top: repositories(first: 5, ownerAffiliations: OWNER, isFork: false, orderBy: { field: STARGAZERS, direction: DESC }) {
+    top: repositories(first: 3, ownerAffiliations: OWNER, isFork: false, orderBy: { field: STARGAZERS, direction: DESC }) {
       nodes { ${REPO} }
     }
   }
@@ -67,6 +74,7 @@ interface RawGraphRepo {
   nameWithOwner: string;
   description: string | null;
   isPrivate: boolean;
+  visibility?: 'PUBLIC' | 'PRIVATE' | 'INTERNAL';
   isFork: boolean;
   isArchived: boolean;
   stargazerCount: number;
@@ -111,11 +119,16 @@ export interface RawAccount {
   followers?: { totalCount: number };
   following?: { totalCount: number };
   membersWithRole?: { totalCount: number };
+  viewerIsAMember?: boolean;
+  teams?: { totalCount: number };
+  sponsoring?: { totalCount: number };
+  sponsors?: { totalCount: number };
   organizations?: { nodes: { login: string; avatarUrl: string }[] };
   all: { totalCount: number };
   forks: { totalCount: number };
   archived: { totalCount: number };
   private: { totalCount: number };
+  privateOnly?: { totalCount: number };
   repos: { nodes: RawGraphRepo[] };
   top: { nodes: RawGraphRepo[] };
 }
@@ -127,6 +140,7 @@ export const fromGraph = (r: RawGraphRepo): RepoSummary => ({
   fullName: r.nameWithOwner,
   description: r.description,
   private: r.isPrivate,
+  visibility: r.visibility === 'INTERNAL' ? 'internal' : r.isPrivate ? 'private' : 'public',
   fork: r.isFork,
   archived: r.isArchived,
   stars: r.stargazerCount,
@@ -160,13 +174,18 @@ export function buildAccount(raw: RawAccount): AccountResponse {
     followers: user ? (raw.followers?.totalCount ?? 0) : null,
     following: user ? (raw.following?.totalCount ?? 0) : null,
     members: user ? null : (raw.membersWithRole?.totalCount ?? null),
+    member: user ? null : Boolean(raw.viewerIsAMember),
+    teams: user ? null : (raw.teams?.totalCount ?? 0),
+    sponsoring: raw.sponsoring?.totalCount ?? 0,
+    sponsors: raw.sponsors?.totalCount ?? 0,
     organizations: user ? (raw.organizations?.nodes ?? []) : [],
     repositories: {
       total: raw.all.totalCount,
       sources: raw.all.totalCount - raw.forks.totalCount,
       forks: raw.forks.totalCount,
       archived: raw.archived.totalCount,
-      private: raw.private.totalCount,
+      private: raw.privateOnly?.totalCount ?? raw.private.totalCount,
+      internal: Math.max(0, raw.private.totalCount - (raw.privateOnly?.totalCount ?? raw.private.totalCount)),
     },
     repos: raw.repos.nodes.map(fromGraph),
     top: raw.top.nodes.filter((r) => r.stargazerCount > 0).map(fromGraph),
@@ -222,9 +241,19 @@ export async function getAccountTotals(gh: GitHubClient, login: string): Promise
   return nodes.length === total ? buildTotals(nodes) : null;
 }
 
-/** The repositories an account shows to you, most recently pushed first, up to a thousand. */
-export async function getAccountRepos(gh: GitHubClient, login: string): Promise<AccountReposResponse> {
-  const pages = await gh.pages<RawRepo[]>(`/users/${login}/repos`, { type: 'owner', sort: 'pushed' });
+/**
+ * The repositories an account shows to you, most recently pushed first, up to a thousand. An
+ * organization's are listed as the organization's: every one you can see, public, internal and
+ * private, where the user listing would show its public ones alone.
+ */
+export async function getAccountRepos(
+  gh: GitHubClient,
+  login: string,
+  organization = false,
+): Promise<AccountReposResponse> {
+  const pages = organization
+    ? await gh.pages<RawRepo[]>(`/orgs/${login}/repos`, { type: 'all', sort: 'pushed' })
+    : await gh.pages<RawRepo[]>(`/users/${login}/repos`, { type: 'owner', sort: 'pushed' });
   const repos = pages.flat();
   return { repos: repos.map(toSummary), complete: repos.length < MAX_SOURCES };
 }

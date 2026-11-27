@@ -3,7 +3,7 @@ import { Anchor, Box, Group, Text, Timeline } from '@mantine/core';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { RepoSummary } from '../../shared/types';
-import { percent, relative } from '../lib/format';
+import { num, percent, relative } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { repoPath } from './repo';
 
@@ -45,10 +45,16 @@ export function LanguagesDonut({
   title,
   caption,
   counts,
+  colorOf = languageColor,
+  unit = 'repositories',
 }: {
   title: string;
   caption: string;
   counts: [string, number][];
+  /** Each name's color: the languages' own colors unless given. */
+  colorOf?: (name: string) => string;
+  /** What's counted, under the total and in the tooltip. */
+  unit?: string;
 }) {
   const sorted = [...counts].sort((a, b) => b[1] - a[1]);
   const other = sorted.slice(5).reduce((s, [, c]) => s + c, 0);
@@ -57,7 +63,8 @@ export function LanguagesDonut({
     ...(other ? [['Other', other] as [string, number]] : []),
   ];
   const total = items.reduce((s, [, c]) => s + c, 0) || 1;
-  const color = (name: string) => (name === 'Other' ? '#8c959f' : languageColor(name));
+  const max = Math.max(1, ...items.map(([, c]) => c));
+  const color = (name: string) => (name === 'Other' ? '#8c959f' : colorOf(name));
   const [active, setActive] = useState<string | null>(null);
 
   return (
@@ -79,22 +86,22 @@ export function LanguagesDonut({
             pieProps={{ cornerRadius: 2, isAnimationActive: false }}
             strokeWidth={0}
             tooltipDataSource="segment"
-            valueFormatter={(v) => `${v} repositories`}
+            valueFormatter={(v) => `${num(v)} ${unit}`}
           />{' '}
           <div className="donut-label">
             <Text fz={30} fw={600} lh={1} className="tabular">
-              {total}
+              {num(total)}
             </Text>
             <Text size="xs" c="dimmed" mt={4}>
-              repositories
+              {unit}
             </Text>
           </div>
         </Box>{' '}
-        <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+        <div className="rank-list no-lines" style={{ flex: 1, minWidth: 0 }}>
           {items.map(([name, count]) => (
             <div
               key={name}
-              className="legend-row"
+              className="legend-row label-legend-row"
               onMouseEnter={() => setActive(name)}
               onMouseLeave={() => setActive(null)}
             >
@@ -102,9 +109,21 @@ export function LanguagesDonut({
               <Text size="sm" truncate>
                 {name}
               </Text>
-              <Text size="sm" c="dimmed" ta="right" className="tabular">
-                {percent(count / total)}
-              </Text>
+              <Group gap={10} wrap="nowrap" className="tabular">
+                <Text size="sm" fw={600}>
+                  {num(count)}
+                </Text>
+                <Text size="sm" c="dimmed" w={38} ta="right">
+                  {count > 0 && count / total < 0.005 ? '<1%' : percent(count / total)}
+                </Text>
+              </Group>
+              {/* Its size next to the largest, in its color. */}
+              <div className="rank-track legend-bar">
+                <div
+                  className="rank-fill"
+                  style={{ width: `${(count / max) * 100}%`, background: color(name) }}
+                />
+              </div>
             </div>
           ))}
         </div>

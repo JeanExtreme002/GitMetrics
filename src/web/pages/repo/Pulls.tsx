@@ -116,7 +116,7 @@ function Sizes({ sizes }: { sizes: PullsResponse['sizes'] }) {
           </Text>
         </div>
       </Box>
-      <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+      <div className="rank-list lines-between" style={{ flex: 1, minWidth: 0 }}>
         {sizes.map((x) => (
           <div
             key={x.size}
@@ -150,7 +150,7 @@ function Authors({ people, analyzed }: { people: PersonCount[]; analyzed: number
   const top = people.slice(0, 10);
   const max = Math.max(1, ...top.map((p) => p.count));
   return (
-    <div className="rank-list">
+    <div className="rank-list lines-between">
       {top.map((p, i) => (
         <Anchor
           key={p.login}
@@ -192,7 +192,7 @@ function PullList({ pulls, empty, merged }: { pulls: PullItem[]; empty: string; 
   const { fullName } = useRepoParams();
   if (!pulls.length) return <NoData>{empty}</NoData>;
   return (
-    <div className="rank-list">
+    <div className="rank-list lines-between">
       {pulls.map((p) => (
         <Link key={p.number} to={`/r/${fullName}/pull/${p.number}`} className="pull-row">
           <Avatar src={p.avatarUrl} size={22} radius="xl" />

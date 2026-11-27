@@ -14,6 +14,7 @@ import {
   Progress,
   NavLink as MantineNavLink,
   ScrollArea,
+  Skeleton,
   Text,
   Tooltip,
   Transition,
@@ -45,6 +46,10 @@ import {
   IconUser,
   IconWorld,
   IconCircleDot,
+  IconHeart,
+  IconChecklist,
+  IconShieldCheck,
+  IconUsersGroup,
 } from '@tabler/icons-react';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,6 +62,8 @@ import { useRecentRepos } from '../lib/recent';
 import { snoozed, type Dismissed } from '../lib/update';
 import {
   sectionQuery,
+  accountPageKey,
+  useAccount,
   useAccountSearch,
   useAuth,
   useMyPulls,
@@ -66,7 +73,7 @@ import {
 } from '../lib/queries';
 import { parseAccountQuery } from '../lib/accounts';
 import { parsePullQuery } from '../lib/pulls';
-import type { OverviewResponse, SearchResponse, UpdateInfo } from '../../shared/types';
+import type { OverviewResponse, SearchResponse, SecurityResponse, UpdateInfo } from '../../shared/types';
 import { PinButton, repoPath } from './repo';
 import { Logo } from './ui';
 
@@ -196,15 +203,23 @@ function RepoNavigation({
   return (
     <>
       <Group gap="sm" wrap="nowrap" px="xs" py="sm" mb="xs" className="repo-identity">
-        <Avatar src={summary?.ownerAvatarUrl ?? `https://github.com/${owner}.png`} size={34} radius="md" />
-        <Box miw={0} style={{ flex: 1 }}>
-          <Text fw={600} size="sm" truncate>
-            {repo}
-          </Text>
-          <Text size="xs" c="dimmed" truncate>
-            {owner}
-          </Text>
-        </Box>
+        {/* The owner's logo and name open its page, as a user's or an organization's. */}
+        <NavLink
+          to={`/a/${owner}`}
+          onClick={onNavigate}
+          className="identity-link"
+          title={`Open ${owner}'s page`}
+        >
+          <Avatar src={summary?.ownerAvatarUrl ?? `https://github.com/${owner}.png`} size={34} radius="md" />
+          <Box miw={0} style={{ flex: 1 }}>
+            <Text fw={600} size="sm" truncate>
+              {repo}
+            </Text>
+            <Text size="xs" c="dimmed" truncate className="identity-owner">
+              {owner}
+            </Text>
+          </Box>
+        </NavLink>
         <PinButton fullName={`${owner}/${repo}`} />
       </Group>
       {REPO_SECTIONS.map(({ group, items }) => (
@@ -226,11 +241,89 @@ function RepoNavigation({
   );
 }
 
+/** An organization's own sidebar, as a repository has one: its pages, with their counts. */
+function OrgNavigation({ login, onNavigate }: { login: string; onNavigate: () => void }) {
+  const { data } = useAccount(login);
+  const base = `/a/${data?.login ?? login}`;
+  const security = useQuery<{ security: SecurityResponse | null }>({
+    queryKey: accountPageKey(login, 'security'),
+    enabled: false,
+  });
+  const securityCount = security.data?.security?.alerts?.open;
+  const items: (NavItem & { count?: number | null })[] = [
+    { to: '', label: 'Overview', icon: icon(IconLayoutDashboard) },
+    { to: 'repositories', label: 'Repositories', icon: icon(IconBook2), count: data?.repositories.total },
+    { to: 'people', label: 'People', icon: icon(IconUsers), count: data?.members },
+    ...(data?.teams ? [{ to: 'teams', label: 'Teams', icon: icon(IconUsersGroup), count: data.teams }] : []),
+    { to: 'quality', label: 'Quality', icon: icon(IconChecklist) },
+    // The count only once the page has read it: asking for it here would make the sidebar slow.
+    { to: 'security', label: 'Security', icon: icon(IconShieldCheck), count: securityCount },
+    ...(data && data.sponsoring + data.sponsors > 0
+      ? [{ to: 'sponsors', label: 'Sponsors', icon: icon(IconHeart), count: data.sponsoring + data.sponsors }]
+      : []),
+  ];
+  return (
+    <>
+      <Group gap="sm" wrap="nowrap" px="xs" py="sm" mb="xs" className="repo-identity">
+        <Avatar src={data?.avatarUrl ?? `https://github.com/${login}.png`} size={34} radius="md" />
+        <Box miw={0} style={{ flex: 1 }}>
+          <Text fw={600} size="sm" truncate>
+            {data?.name ?? data?.login ?? login}
+          </Text>
+          <Text size="xs" c="dimmed" truncate>
+            Organization
+          </Text>
+        </Box>
+      </Group>
+      {items.map(({ count, ...item }) => (
+        <NavItemLink
+          key={item.to}
+          {...item}
+          to={item.to ? `${base}/${item.to}` : base}
+          end={!item.to}
+          right={count != null ? <Count>{compact(count)}</Count> : undefined}
+          onClick={onNavigate}
+        />
+      ))}
+    </>
+  );
+}
+
 const Count = ({ children }: { children: ReactNode }) => (
   <Text size="xs" c="dimmed" className="tabular">
     {children}
   </Text>
 );
+
+/** Rows of the sidebar still loading: an icon and a label, at the size of the real ones. */
+function NavSkeleton({ rows }: { rows: number }) {
+  return (
+    <Box px="sm" aria-busy="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <Group key={i} gap={12} h={42} wrap="nowrap">
+          <Skeleton height={18} width={18} radius="sm" />
+          <Skeleton height={10} width={`${70 - i * 12}%`} radius="xl" />
+        </Group>
+      ))}
+    </Box>
+  );
+}
+
+/** An account's sidebar before it's known whether the account is an organization. */
+function AccountNavigationLoading() {
+  return (
+    <>
+      <Group gap="sm" wrap="nowrap" px="xs" py="sm" mb="xs" className="repo-identity" aria-busy="true">
+        <Skeleton height={34} width={34} radius="md" />
+        <Box style={{ flex: 1 }}>
+          <Skeleton height={10} width="70%" radius="xl" />
+          <Skeleton height={8} width="45%" radius="xl" mt={8} />
+        </Box>
+      </Group>
+      <NavSkeleton rows={6} />
+    </>
+  );
+}
 
 function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   const { data } = useRepos();
@@ -266,24 +359,13 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         onClick={onNavigate}
       />
 
-      <GroupLabel>Pinned</GroupLabel>
-      {pinned.length ? (
-        pinned.map((r) => (
-          <NavItemLink
-            key={r.id}
-            to={repoPath(r)}
-            label={r.name}
-            icon={<span className="lang-dot" style={{ background: languageColor(r.language) }} />}
-            right={<Count>{compact(r.stars)}</Count>}
-            onClick={onNavigate}
-          />
-        ))
-      ) : (
-        <Text size="xs" c="dimmed" px="sm" lh={1.5}>
-          Use the pin on any repository to keep it one click away.
-        </Text>
+      {/* While your repositories load, the accounts they belong to aren't known yet: hold their place. */}
+      {!data && (
+        <>
+          <GroupLabel>Accounts</GroupLabel>
+          <NavSkeleton rows={3} />
+        </>
       )}
-
       {owners.length > 1 && (
         <>
           <GroupLabel>Accounts</GroupLabel>
@@ -303,6 +385,27 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
             />
           ))}
         </>
+      )}
+
+      <GroupLabel>Pinned</GroupLabel>
+      {/* Until your repositories load, which are pinned isn't known: no "nothing pinned" yet. */}
+      {!data ? (
+        <NavSkeleton rows={2} />
+      ) : pinned.length ? (
+        pinned.map((r) => (
+          <NavItemLink
+            key={r.id}
+            to={repoPath(r)}
+            label={r.name}
+            icon={<span className="lang-dot" style={{ background: languageColor(r.language) }} />}
+            right={<Count>{compact(r.stars)}</Count>}
+            onClick={onNavigate}
+          />
+        ))
+      ) : (
+        <Text size="xs" c="dimmed" px="sm" lh={1.5}>
+          Use the pin on any repository to keep it one click away.
+        </Text>
       )}
 
       {recentShown.length > 0 && (
@@ -445,8 +548,9 @@ function SearchButton() {
     <UnstyledButton onClick={() => spotlight.open()} className="search-button" visibleFrom="sm">
       <Group gap="xs" wrap="nowrap">
         <IconSearch size={16} stroke={1.6} />
-        <Text size="sm" c="dimmed" style={{ flex: 1 }}>
-          Search repositories
+        {/* What the search finds: repositories, accounts and pull requests, by name or by link. */}
+        <Text size="sm" c="dimmed" truncate style={{ flex: 1 }}>
+          Search repositories, accounts and PRs
         </Text>
         <Kbd size="xs">{IS_MAC ? '⌘ K' : 'Ctrl K'}</Kbd>
       </Group>
@@ -739,6 +843,33 @@ function RepoSpotlight() {
 export function Layout() {
   const [opened, { toggle, close }] = useDisclosure();
   const repoMatch = useMatch('/r/:owner/:repo/*');
+  const accountMatch = useMatch('/a/:login/*');
+  const account = useAccount(accountMatch?.params.login ?? '');
+  const { data: auth } = useAuth();
+  const owners = useOwners();
+  // An account's kind before it's read, so its sidebar shows at once: your own login is a user, and
+  // any other owner in your repositories is an organization, as your list holds only yours and your
+  // organizations'. Anyone else waits for the account, a placeholder in the meantime.
+  const login = accountMatch?.params.login?.toLowerCase();
+  const kind =
+    account.data?.kind ??
+    (!login
+      ? undefined
+      : login === auth?.viewer?.login.toLowerCase()
+        ? 'user'
+        : owners.some((o) => o.login.toLowerCase() === login)
+          ? 'organization'
+          : undefined);
+  const orgLogin = kind === 'organization' ? accountMatch?.params.login : undefined;
+  const accountPending = Boolean(accountMatch) && !kind && account.isLoading;
+  // From a repository, back to its owner's repositories: an organization's own list, or the list
+  // filtered to the user, under GitHub's spelling of the login once known.
+  const repoOwner = useAccount(repoMatch?.params.owner ?? '');
+  const ownerLogin = repoOwner.data?.login ?? repoMatch?.params.owner ?? '';
+  const ownerRepositories =
+    repoOwner.data?.kind === 'organization'
+      ? `/a/${ownerLogin}/repositories`
+      : `/repositories?owner=${encodeURIComponent(ownerLogin)}`;
   const location = useLocation();
 
   useEffect(() => {
@@ -795,7 +926,7 @@ export function Layout() {
             {repoMatch ? (
               <>
                 <NavItemLink
-                  to="/repositories"
+                  to={ownerRepositories}
                   label="All repositories"
                   icon={icon(IconArrowLeft)}
                   onClick={close}
@@ -806,6 +937,16 @@ export function Layout() {
                   repo={repoMatch.params.repo!}
                   onNavigate={close}
                 />
+              </>
+            ) : orgLogin || accountPending ? (
+              <>
+                <NavItemLink to="/" label="Home" icon={icon(IconArrowLeft)} onClick={close} />
+                <Box mt="sm" />
+                {orgLogin ? (
+                  <OrgNavigation login={orgLogin} onNavigate={close} />
+                ) : (
+                  <AccountNavigationLoading />
+                )}
               </>
             ) : (
               <MainNavigation onNavigate={close} />

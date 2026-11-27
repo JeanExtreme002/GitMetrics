@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { GitHubClient } from '../src/server/github';
+import { GitHubError, type GitHubClient } from '../src/server/github';
+import { listRepos } from '../src/server/metrics/repos';
 import {
   MAX_SOURCES,
   buildAccount,
@@ -104,6 +105,13 @@ describe('an account', () => {
     });
   });
 
+  it("tells internal repositories apart from private ones, which GitHub's count adds them to", () => {
+    const account = buildAccount(
+      raw({ __typename: 'Organization', private: { totalCount: 9 }, privateOnly: { totalCount: 5 } }),
+    );
+    expect(account.repositories).toMatchObject({ private: 5, internal: 4 });
+  });
+
   it('is null when no user or organization has the login', async () => {
     const gh = { graphql: async () => ({ repositoryOwner: null }) } as unknown as GitHubClient;
     expect(await getAccount(gh, 'nobody')).toBeNull();
@@ -183,6 +191,19 @@ describe('repositories and search', () => {
     expect(asked).toBe('/users/octo/repos');
     expect(result).toMatchObject({ complete: true, repos: [{ fullName: 'octo/a' }] });
 
+    // An organization's: its own list, every one you can see, not only its public ones.
+    let query: Record<string, unknown> = {};
+    const org = {
+      pages: async (path: string, q: Record<string, unknown>) => {
+        asked = path;
+        query = q;
+        return [[rawRepo]];
+      },
+    } as unknown as GitHubClient;
+    await getAccountRepos(org, 'acme', true);
+    expect(asked).toBe('/orgs/acme/repos');
+    expect(query.type).toBe('all');
+
     const full = { pages: async () => [Array.from({ length: MAX_SOURCES }, () => rawRepo)] };
     expect((await getAccountRepos(full as unknown as GitHubClient, 'octo')).complete).toBe(false);
   });
@@ -216,5 +237,36 @@ describe('repositories and search', () => {
     for (const text of ['octo/app', 'github.com/octo/app', 'two words', '-octo', 'a--b', '@', '']) {
       expect(parseAccountQuery(text)).toBeNull();
     }
+  });
+});
+
+describe('your repositories', () => {
+  const raw = (id: number, fullName: string, pushed: string) => ({
+    id,
+    name: fullName.split('/')[1],
+    full_name: fullName,
+    owner: { login: fullName.split('/')[0], avatar_url: '' },
+    private: false,
+    fork: false,
+    archived: false,
+    pushed_at: pushed,
+  });
+
+  it("adds each organization's own list, where its public and internal ones are", async () => {
+    const gh = {
+      paginate: async (path: string) =>
+        path === '/user/orgs'
+          ? [{ login: 'acme' }, { login: 'sso' }]
+          : [raw(1, 'me/tool', '2026-01-03T00:00:00Z'), raw(2, 'acme/given', '2026-01-01T00:00:00Z')],
+      pages: async (path: string) => {
+        // An organization that refuses, as with single sign-on, adds nothing.
+        if (path === '/orgs/sso/repos') throw new GitHubError(403, 'SAML enforcement');
+        return [
+          [raw(2, 'acme/given', '2026-01-01T00:00:00Z'), raw(3, 'acme/internal', '2026-01-02T00:00:00Z')],
+        ];
+      },
+    } as unknown as GitHubClient;
+    // Each once, pushed to most recently first.
+    expect((await listRepos(gh)).map((r) => r.fullName)).toEqual(['me/tool', 'acme/internal', 'acme/given']);
   });
 });

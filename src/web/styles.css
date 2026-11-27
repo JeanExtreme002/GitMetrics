@@ -46,6 +46,22 @@
   background: var(--mantine-color-default-hover);
 }
 
+/* A repository's owner, in its sidebar: opens the owner's page. */
+.identity-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.identity-link:hover .identity-owner {
+  color: var(--mantine-color-text);
+  text-decoration: underline;
+}
+
 .search-button {
   width: min(380px, 40vw);
   height: 36px;
@@ -335,11 +351,13 @@
 }
 
 /* On an account page, What it owns reads without lines between its rows. */
-.no-lines .rank-list {
+.no-lines .rank-list,
+.rank-list.no-lines {
   border-top: none;
 }
 
-.no-lines .legend-row {
+.no-lines .legend-row,
+.rank-list.no-lines > .legend-row {
   padding-block: 7px;
   border-bottom: none;
 }
@@ -349,11 +367,18 @@
 }
 
 /* Languages (home and account pages): lines between the rows only, none above the first or below the last. */
-.lines-between .rank-list {
+.lines-between .rank-list,
+.rank-list.lines-between {
   border-top: none;
 }
 
-.lines-between .legend-row:last-child {
+.lines-between .legend-row:last-child,
+.lines-between .account-row:last-child {
+  border-bottom: none;
+}
+
+/* A list with lines only between its rows, none at its ends. */
+.rank-list.lines-between > :last-child {
   border-bottom: none;
 }
 
@@ -383,6 +408,159 @@
 
 .account-link:hover {
   background: var(--mantine-color-default-hover);
+}
+
+/* A person on an organization's People page: no box, a soft highlight on hover. */
+.person-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--mantine-radius-md);
+  transition: background 120ms ease;
+}
+
+.person-tile:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* A row of the alert lists: a name and count over a bar, a soft highlight on hover, no lines. */
+.bar-link {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--mantine-radius-md);
+  transition: background 120ms ease;
+}
+
+.bar-link .rank-track {
+  margin-top: 8px;
+}
+
+a.bar-link:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* Open alerts by how long they've been open: one column per span, the longest the most alerts. */
+.age-columns {
+  display: grid;
+  gap: 18px;
+  align-items: end;
+}
+
+.age-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.age-track {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  max-width: 64px;
+  height: 160px;
+}
+
+.age-fill {
+  flex: none;
+  width: 100%;
+  min-height: 3px;
+  border-radius: 6px 6px 2px 2px;
+}
+
+/* An untouched repository: a dot colored by how long, its name, last push and language. */
+.stale-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--mantine-radius-md);
+  transition: background 120ms ease;
+}
+
+.stale-tile:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.stale-mark {
+  flex: none;
+  align-self: flex-start;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+
+/* Open alerts split by severity: one bar for all of them, and one within each repository's. */
+.severity-split {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 99px;
+}
+
+.severity-split > span {
+  min-width: 3px;
+}
+
+.severity-fill {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 99px;
+}
+
+.severity-fill > span {
+  min-width: 2px;
+}
+
+.quality-strip.alert-strip > * {
+  padding-left: 0;
+}
+
+.quality-strip.alert-strip > :nth-child(n + 2) {
+  padding-left: 14px;
+  border-left: 1px solid var(--mantine-color-default-border);
+}
+
+.alert-value {
+  font-size: 24px;
+}
+
+@media (min-width: 36em) {
+  .quality-strip.alert-strip > :nth-child(n + 2) {
+    padding-left: 24px;
+  }
+
+  .alert-value {
+    font-size: 34px;
+  }
+}
+
+/* The quality measures side by side, hairlines between them on wide screens. */
+.quality-stat {
+  padding-inline: 24px;
+}
+
+.quality-strip > :first-child,
+.quality-strip > :nth-child(3) {
+  padding-left: 0;
+}
+
+@media (min-width: 62em) {
+  .quality-strip > :nth-child(3) {
+    padding-left: 24px;
+  }
+
+  .quality-strip > * + * {
+    border-left: 1px solid var(--mantine-color-default-border);
+  }
 }
 
 .legend-row {
@@ -635,7 +813,13 @@
 
 .label-legend-row {
   grid-template-columns: 10px minmax(0, 1fr) auto;
+  row-gap: 7px;
   padding: 11px 4px;
+}
+
+/* Under a legend row's name and number: its size next to the largest, in its own color. */
+.legend-bar {
+  grid-column: 2 / -1;
 }
 
 .share-legend-row {

@@ -25,7 +25,7 @@ import { useAccountRepos, useOwners, useRepos } from '../lib/queries';
 type Kind = 'sources' | 'forks' | 'archived' | 'all';
 type Sort = 'stars' | 'pushed' | 'name';
 
-type Visibility = 'public' | 'private';
+type Visibility = RepoSummary['visibility'];
 
 const PAGE = 30;
 const NO_LANGUAGE = '__none__';
@@ -37,7 +37,15 @@ const ORDER_LABELS: Record<Sort, [string, string]> = {
   name: ['A to Z', 'Z to A'],
 };
 
-function RepoTable({ repos, showOwner }: { repos: RepoSummary[]; showOwner: boolean }) {
+function RepoTable({
+  repos,
+  showOwner,
+  showAvatar,
+}: {
+  repos: RepoSummary[];
+  showOwner: boolean;
+  showAvatar: boolean;
+}) {
   const navigate = useNavigate();
   return (
     <Table.ScrollContainer minWidth={680}>
@@ -63,24 +71,24 @@ function RepoTable({ repos, showOwner }: { repos: RepoSummary[]; showOwner: bool
             <Table.Tr key={repo.id} className="clickable-row" onClick={() => navigate(repoPath(repo))}>
               <Table.Td>
                 <Group gap="sm" wrap="nowrap">
-                  {showOwner && <Avatar src={repo.ownerAvatarUrl} size={24} radius="sm" />}
+                  {showAvatar && <Avatar src={repo.ownerAvatarUrl} size={24} radius="sm" />}
                   <Box miw={0}>
                     <Group gap={6} wrap="nowrap">
                       <Text size="sm" fw={600} truncate>
                         {showOwner ? repo.fullName : repo.name}
                       </Text>
-                      {repo.private && (
-                        <Badge size="xs" variant="outline" color="gray">
-                          Private
+                      {repo.visibility !== 'public' && (
+                        <Badge size="xs" variant="outline" color="gray" style={{ flex: 'none' }}>
+                          {repo.visibility === 'internal' ? 'Internal' : 'Private'}
                         </Badge>
                       )}
                       {repo.fork && (
-                        <Badge size="xs" variant="outline" color="gray">
+                        <Badge size="xs" variant="outline" color="gray" style={{ flex: 'none' }}>
                           Fork
                         </Badge>
                       )}
                       {repo.archived && (
-                        <Badge size="xs" variant="outline" color="yellow">
+                        <Badge size="xs" variant="outline" color="yellow" style={{ flex: 'none' }}>
                           Archived
                         </Badge>
                       )}
@@ -118,13 +126,21 @@ function RepoTable({ repos, showOwner }: { repos: RepoSummary[]; showOwner: bool
   );
 }
 
-export function Repositories() {
+/**
+ * Every repository you can reach, or one account's. `owner` fixes the account, as on an
+ * organization's own Repositories page, where there's no account to pick; an `organization`'s are
+ * read as its own list, every one you can see, rather than the part of your list that it owns.
+ */
+export function Repositories({
+  owner: fixed,
+  organization = false,
+}: { owner?: string; organization?: boolean } = {}) {
   const repos = useRepos();
   const owners = useOwners();
   const [params, setParams] = useSearchParams();
-  const owner = params.get('owner') ?? 'all';
+  const owner = fixed ?? params.get('owner') ?? 'all';
   const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<Kind>('sources');
+  const [kind, setKind] = useState<Kind>('all');
   const [sort, setSort] = useState<Sort>('pushed');
   const [reversed, setReversed] = useState(false);
   const [language, setLanguage] = useState<string | null>(null);
@@ -132,11 +148,14 @@ export function Repositories() {
   const [limit, setLimit] = useState(PAGE);
 
   // An account outside your own list (opened from its page): its own repositories, read apart.
+  // An organization's own page reads its own list: yours holds only the repositories you were given
+  // access to, not its public and internal ones.
   const external =
-    Boolean(repos.data) &&
-    owner !== 'all' &&
-    !owners.some((o) => o.login.toLowerCase() === owner.toLowerCase());
-  const outside = useAccountRepos(owner, external);
+    (organization && owner !== 'all') ||
+    (Boolean(repos.data) &&
+      owner !== 'all' &&
+      !owners.some((o) => o.login.toLowerCase() === owner.toLowerCase()));
+  const outside = useAccountRepos(owner, external, organization);
   const source = useMemo(
     () => (external ? (outside.data?.repos ?? []) : (repos.data?.repos ?? [])),
     [external, outside.data, repos.data],
@@ -159,14 +178,17 @@ export function Repositories() {
     [source, external, owner, kind],
   );
   const visibilities = useMemo(() => {
-    const priv = byKind.filter((r) => r.private).length;
+    const count = (v: Visibility) => byKind.filter((r) => r.visibility === v).length;
+    const internal = count('internal');
     return [
-      { value: 'public', label: `Public (${num(byKind.length - priv)})` },
-      { value: 'private', label: `Private (${num(priv)})` },
+      { value: 'public', label: `Public (${num(count('public'))})` },
+      { value: 'private', label: `Private (${num(count('private'))})` },
+      // Only organizations in an enterprise have internal repositories.
+      ...(internal ? [{ value: 'internal', label: `Internal (${num(internal)})` }] : []),
     ];
   }, [byKind]);
   const scoped = useMemo(
-    () => byKind.filter((r) => !visibility || r.private === (visibility === 'private')),
+    () => byKind.filter((r) => !visibility || r.visibility === visibility),
     [byKind, visibility],
   );
 
@@ -202,14 +224,21 @@ export function Repositories() {
       .sort((a, b) => (reversed ? -compare(a, b) : compare(a, b)));
   }, [scoped, language, search, sort, reversed]);
 
-  if (repos.isLoading || (external && outside.isLoading)) return <PageSkeleton />;
-  if (repos.error || !repos.data) return <ErrorState error={repos.error} onRetry={() => repos.refetch()} />;
+  // An organization's own page reads its own list alone: no waiting on yours, nor failing with it.
+  if ((!organization && repos.isLoading) || (external && outside.isLoading)) return <PageSkeleton />;
+  if (!organization && (repos.error || !repos.data)) {
+    return <ErrorState error={repos.error} onRetry={() => repos.refetch()} />;
+  }
   if (external && (outside.error || !outside.data)) {
     return <ErrorState error={outside.error} onRetry={() => outside.refetch()} />;
   }
 
   const setOwner = (value: string | null) => {
     setLimit(PAGE);
+    // Another account may not have the language or visibility picked: an empty list with a blank
+    // filter otherwise. Start its list unfiltered.
+    setLanguage(null);
+    setVisibility(null);
     setParams(value && value !== 'all' ? { owner: value } : {});
   };
 
@@ -219,9 +248,13 @@ export function Repositories() {
         title="Repositories"
         icon={<IconBook2 size={26} stroke={1.6} />}
         description={
-          external
-            ? `The public repositories of ${owner}${outside.data?.complete ? '' : ', the 1,000 pushed to most recently'}.`
-            : 'Everything you own, plus what you can reach through your organizations.'
+          organization
+            ? `Everything ${owner} owns that you can see${outside.data?.complete === false ? ', the 1,000 pushed to most recently' : ''}.`
+            : external
+              ? `The public repositories of ${owner}${outside.data?.complete ? '' : ', the 1,000 pushed to most recently'}.`
+              : fixed
+                ? `Everything ${owner} owns that you can see.`
+                : 'Everything you own, plus what you can reach through your organizations.'
         }
       />
 
@@ -237,17 +270,19 @@ export function Repositories() {
           style={{ flex: 1 }}
           miw={170}
         />
-        <Select
-          value={owner}
-          onChange={setOwner}
-          allowDeselect={false}
-          w={190}
-          data={[
-            { value: 'all', label: `All accounts (${num(repos.data.repos.length)})` },
-            ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
-            ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
-          ]}
-        />
+        {!fixed && (
+          <Select
+            value={owner}
+            onChange={setOwner}
+            allowDeselect={false}
+            w={190}
+            data={[
+              { value: 'all', label: `All accounts (${num(repos.data?.repos.length ?? 0)})` },
+              ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
+              ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
+            ]}
+          />
+        )}
         <Select
           value={language && languages.some((l) => l.value === language) ? language : null}
           onChange={(v) => {
@@ -280,10 +315,10 @@ export function Repositories() {
             setLimit(PAGE);
           }}
           data={[
+            { label: 'All', value: 'all' },
             { label: 'Sources', value: 'sources' },
             { label: 'Forks', value: 'forks' },
             { label: 'Archived', value: 'archived' },
-            { label: 'All', value: 'all' },
           ]}
         />
       </Group>
@@ -326,7 +361,12 @@ export function Repositories() {
       </Group>
       <Paper p={0} style={{ overflow: 'hidden' }}>
         {filtered.length ? (
-          <RepoTable repos={filtered.slice(0, limit)} showOwner={owner === 'all'} />
+          <RepoTable
+            repos={filtered.slice(0, limit)}
+            showOwner={owner === 'all'}
+            // The account's logo even when filtered by it; an organization's own page has it in its sidebar.
+            showAvatar={!fixed}
+          />
         ) : (
           <Text c="dimmed" ta="center" p="xl" size="sm">
             No repository matches these filters.

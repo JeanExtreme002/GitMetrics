@@ -2,11 +2,17 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import type {
+  AlertDetailsResponse,
   AccountHit,
   AccountReposResponse,
   AccountResponse,
   AccountTotals,
   AuthStatus,
+  QualityResponse,
+  SecurityResponse,
+  PeopleResponse,
+  SponsorsResponse,
+  TeamsResponse,
   MyPullsResponse,
   PullChurn,
   PullDetail,
@@ -203,6 +209,7 @@ export const useAccount = (login: string) =>
     queryKey: accountKey(login),
     queryFn: () => api<AccountResponse>(`/accounts/${login}`),
     staleTime: 10 * 60_000,
+    enabled: Boolean(login),
   });
 
 /** Stars, forks and languages over an account's repositories; null when there are too many. */
@@ -214,10 +221,11 @@ export const useAccountTotals = (login: string) =>
   });
 
 /** The repositories of an account outside your own list. */
-export const useAccountRepos = (login: string, enabled: boolean) =>
+export const useAccountRepos = (login: string, enabled: boolean, organization = false) =>
   useQuery({
-    queryKey: ['account-repos', login.toLowerCase()],
-    queryFn: () => api<AccountReposResponse>(`/accounts/${login}/repos`),
+    queryKey: ['account-repos', login.toLowerCase(), organization],
+    queryFn: () =>
+      api<AccountReposResponse>(`/accounts/${login}/repos${organization ? '?kind=organization' : ''}`),
     enabled,
     staleTime: 10 * 60_000,
   });
@@ -231,4 +239,38 @@ export const useAccountSearch = (text: string, enabled: boolean) =>
     staleTime: 10 * 60_000,
     // A failed account search never gets in the way of the repository search beside it.
     retry: false,
+  });
+
+/** An organization's people, teams, security and quality, and sponsors: one query per page. */
+export const accountPageKey = (login: string, page: string) => [`account-${page}`, login.toLowerCase()];
+const accountPage =
+  <T>(page: string) =>
+  (login: string) =>
+    useQuery({
+      queryKey: accountPageKey(login, page),
+      queryFn: () => api<T>(`/accounts/${login}/${page}`),
+      staleTime: 10 * 60_000,
+    });
+export const usePeople = accountPage<PeopleResponse>('people');
+export const useTeams = accountPage<TeamsResponse>('teams');
+export const useQuality = accountPage<{ quality: QualityResponse | null }>('quality');
+export const useSecurity = accountPage<{ security: SecurityResponse | null }>('security');
+export const useSponsors = accountPage<SponsorsResponse>('sponsors');
+
+/** Open Dependabot alerts by severity, asked once the page has found some. */
+export const useAlertDetails = (login: string, enabled: boolean) =>
+  useQuery({
+    queryKey: accountPageKey(login, 'alerts'),
+    queryFn: () => api<AlertDetailsResponse>(`/accounts/${login}/alerts`),
+    enabled,
+    staleTime: 10 * 60_000,
+  });
+
+/** The teams one member of an organization belongs to, by slug. */
+export const useMemberTeams = (login: string, member: string | null) =>
+  useQuery({
+    queryKey: ['member-teams', login.toLowerCase(), member?.toLowerCase()],
+    queryFn: () => api<{ teams: string[]; complete: boolean }>(`/accounts/${login}/teams/${member}`),
+    enabled: Boolean(member),
+    staleTime: 10 * 60_000,
   });

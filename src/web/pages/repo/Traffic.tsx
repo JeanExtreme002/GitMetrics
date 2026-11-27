@@ -67,7 +67,7 @@ function TrafficRanking({ items, empty }: { items: RankItem[]; empty: string }) 
   const max = Math.max(1, ...items.map((i) => i.count));
   const total = items.reduce((s, i) => s + i.count, 0);
   return (
-    <div className="rank-list">
+    <div className="rank-list lines-between">
       {items.map((item, i) => {
         const row = (
           <>

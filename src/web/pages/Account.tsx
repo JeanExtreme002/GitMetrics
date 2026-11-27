@@ -126,9 +126,19 @@ function Owns({ account }: { account: AccountResponse }) {
   const share = (value: number) => (r.total ? value / r.total : 0);
   const bars = [
     { name: 'Archived', value: r.archived, color: 'yellow.6', hint: 'Read-only, kept for reference' },
-    ...(r.private
-      ? [{ name: 'Private', value: r.private, color: 'gray.5', hint: 'Visible to you through your access' }]
-      : []),
+    // Always shown, zero included: none of them is an answer too. Each counts those you can see.
+    {
+      name: 'Private',
+      value: r.private,
+      color: 'gray.5',
+      hint: 'Only people given access see them; counted are those you can see',
+    },
+    {
+      name: 'Internal',
+      value: r.internal,
+      color: 'indigo.4',
+      hint: 'Everyone in its enterprise sees them; counted are those you can see',
+    },
   ];
   return (
     <Box>
@@ -449,7 +459,11 @@ export function Account() {
             action={
               <Button
                 component={Link}
-                to={`/repositories?owner=${encodeURIComponent(account.login)}`}
+                to={
+                  account.kind === 'organization'
+                    ? `/a/${account.login}/repositories`
+                    : `/repositories?owner=${encodeURIComponent(account.login)}`
+                }
                 variant="subtle"
                 size="compact-sm"
                 rightSection={<IconArrowRight size={14} />}
@@ -481,7 +495,7 @@ export function Account() {
             <Languages account={account} totals={sums} />
           </Box>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col">
+        <Grid.Col span={{ base: 12, md: 5 }} pl={{ md: 'xl' }} className="split-col lines-between">
           {/* Its most starred, each opening its Stars page, as the home page's ranking does. */}
           <SectionTitle title="Most starred" />
           {account.top.length ? (

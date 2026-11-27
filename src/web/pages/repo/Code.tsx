@@ -246,6 +246,8 @@ function HotspotMap({ tree, scope }: { tree: FilesResponse['tree']; scope: strin
   );
 }
 
+/** Rows shown at first, and how many each "Show more" adds. */
+const FIRST = 6;
 const PAGE = 10;
 
 /**
@@ -254,13 +256,13 @@ const PAGE = 10;
  */
 function HotList({ rows, kind }: { rows: FileStat[]; kind: 'blob' | 'tree' }) {
   const { fullName } = useRepoParams();
-  const [limit, setLimit] = useState(PAGE);
+  const [limit, setLimit] = useState(FIRST);
   if (!rows.length) return <NoData>Nothing changed in these commits.</NoData>;
   const top = Math.max(1, rows[0]!.changes);
   const Icon = kind === 'blob' ? IconFile : IconFolder;
   return (
     <>
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         <div className="hot-row rank-head">
           <span />
           <div className="rank-head-label">{kind === 'blob' ? 'File' : 'Folder'}</div>
@@ -343,6 +345,7 @@ function FileTypes({ types }: { types: FilesResponse['extensions'] }) {
   if (!types.length) return <NoData>No file changes.</NoData>;
   const total = types.reduce((s, t) => s + t.count, 0);
   const color = (i: number) => PALETTE[i % PALETTE.length]!;
+  const max = Math.max(1, ...types.map((t) => t.count));
   return (
     <Group gap="xl" wrap="nowrap" align="center">
       <Box className="donut">
@@ -371,11 +374,11 @@ function FileTypes({ types }: { types: FilesResponse['extensions'] }) {
           </Text>
         </div>
       </Box>
-      <div className="rank-list" style={{ flex: 1, minWidth: 0 }}>
+      <div className="rank-list no-lines" style={{ flex: 1, minWidth: 0 }}>
         {types.map((t, i) => (
           <div
             key={t.name}
-            className="legend-row"
+            className="legend-row label-legend-row"
             onMouseEnter={() => setActive(t.name)}
             onMouseLeave={() => setActive(null)}
           >
@@ -386,6 +389,13 @@ function FileTypes({ types }: { types: FilesResponse['extensions'] }) {
             <Text size="sm" c="dimmed" ta="right" className="tabular">
               {percent(t.count / total)}
             </Text>
+            {/* How many changes next to the most changed type, in its color. */}
+            <div className="rank-track legend-bar">
+              <div
+                className="rank-fill"
+                style={{ width: `${(t.count / max) * 100}%`, background: color(i) }}
+              />
+            </div>
           </div>
         ))}
       </div>

@@ -355,7 +355,7 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
     if (p === '/repos/octo/app/stats/code_frequency') return json([[weekStart(1), 120, -30]]);
     if (p === '/repos/octo/app/stats/punch_card') return json([[1, 14, 3]]);
     if (p === '/repos/octo/app/commits') {
-      if (url.searchParams.get('per_page') === '8') {
+      if (url.searchParams.get('per_page') === '30') {
         return json([
           {
             sha: 'c3',
@@ -512,9 +512,31 @@ describe('repository pages, end to end', () => {
     expect(search.accounts).toEqual([{ login: 'octo', avatarUrl: '', kind: 'user' }]);
 
     expect((await send('/api/accounts/nobody')).status).toBe(404);
+    // An organization's pages answer for any account; quality and security always, the rest only
+    // when found.
+    expect(await (await send('/api/accounts/octo/quality')).json()).toEqual({ quality: null });
+    expect(await (await send('/api/accounts/octo/security')).json()).toEqual({ security: null });
+    expect(await (await send('/api/accounts/octo/alerts')).json()).toEqual({
+      severity: { critical: 0, high: 0, moderate: 0, low: 0 },
+      repositories: [],
+      details: {
+        age: { month: 0, quarter: 0, year: 0, older: 0 },
+        oldestCritical: null,
+        ecosystems: [],
+        packages: [],
+      },
+    });
+    expect((await send('/api/accounts/nobody/sponsors')).status).toBe(404);
+    expect((await send('/api/accounts/octo/projects')).status).toBe(404);
+    // Only the pages' own names: not any address with one of them in it.
+    expect((await send('/api/accounts/octo/peoplex')).status).toBe(404);
     for (const path of [
       '/api/accounts/bad..name',
       '/api/accounts/-x/totals',
+      '/api/accounts/-x/people',
+      '/api/accounts/octo/teams/bad..name',
+      '/api/accounts/bad..name/quality',
+      '/api/accounts/bad..name/security',
       '/api/search/accounts?q=two%20words',
     ]) {
       expect((await send(path)).status, path).toBe(400);

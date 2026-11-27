@@ -102,7 +102,7 @@ function TopRepositories({ repos }: { repos: RepoSummary[] }) {
           />
         }
       />
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {loading &&
           Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="rank-row">
@@ -255,14 +255,15 @@ export function Home() {
           <SectionTitle
             title={title}
             action={
+              // Your own, as the page is about you: the list opens on them, the count matching it.
               <Button
                 component={Link}
-                to="/repositories"
+                to={viewer ? `/repositories?owner=${encodeURIComponent(viewer.login)}` : '/repositories'}
                 variant="subtle"
                 size="compact-sm"
                 rightSection={<IconArrowRight size={14} />}
               >
-                All {num(all.length)} repositories
+                All {num(mine.length)} repositories
               </Button>
             }
           />

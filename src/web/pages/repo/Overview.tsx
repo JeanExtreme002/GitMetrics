@@ -268,7 +268,7 @@ function LatestCommits() {
         </Text>
         <DetailsLink to="commits" label="All" />
       </Group>
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {data.recent.slice(0, 7).map((c) => (
           <Anchor
             key={c.sha}

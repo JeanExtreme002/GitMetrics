@@ -190,78 +190,96 @@ function History({ data }: { data: DeploymentsResponse }) {
   );
 }
 
+/** Rows shown at first, and how many each "Show more" adds. */
+const FIRST = 6;
+const PAGE = 10;
+
 /** Environments as rows: name with its live link, share of deployments and the latest outcome. */
 function Environments({ environments }: { environments: DeploymentsResponse['environments'] }) {
+  const [limit, setLimit] = useState(FIRST);
   if (!environments.length) return <NoData />;
   // Exact all-time totals when GitHub gave them, otherwise the count among the fetched ones.
   const count = (e: DeploymentsResponse['environments'][number]) => e.total ?? e.deployments;
   const max = Math.max(1, ...environments.map(count));
   return (
-    <div className="rank-list">
-      <div className="env-row rank-head">
-        <div className="rank-head-label">Environment</div>
-        <span />
-        <div className="rank-head-label rank-head-right">Deploys</div>
-        <div className="rank-head-label rank-head-right">Latest</div>
-      </div>
-      {environments.map((e) => (
-        <div key={e.name} className="env-row">
-          <Group gap={8} wrap="nowrap" miw={0}>
-            <Text size="sm" fw={500} truncate>
-              {e.name}
-            </Text>
-            {e.url && (
-              <Tooltip label={`Open ${e.url.replace(/^https?:\/\//, '')}`}>
-                <ActionIcon
-                  component="a"
-                  href={e.url}
-                  target="_blank"
-                  variant="subtle"
-                  color="gray"
-                  size="sm"
-                  aria-label={`Open ${e.name}`}
-                >
-                  <IconWorld size={14} />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </Group>
-          <div className="rank-track">
-            <div
-              className="rank-fill"
-              style={{
-                width: `${(count(e) / max) * 100}%`,
-                background: 'var(--mantine-color-indigo-5)',
-              }}
-            />
-          </div>
-          <Text size="sm" fw={600} ta="right" className="tabular">
-            {num(count(e))}
-          </Text>
-          <Group gap={6} wrap="nowrap" justify="flex-end">
-            <Tooltip label={stateLabel(e.lastState)}>
-              <span className="state-dot" style={{ background: stateColor(e.lastState) }} />
-            </Tooltip>
-            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-              {relative(e.lastDeployedAt)}
-            </Text>
-          </Group>
+    <>
+      <div className="rank-list lines-between">
+        <div className="env-row rank-head">
+          <div className="rank-head-label">Environment</div>
+          <span />
+          <div className="rank-head-label rank-head-right">Deploys</div>
+          <div className="rank-head-label rank-head-right">Latest</div>
         </div>
-      ))}
-    </div>
+        {environments.slice(0, limit).map((e) => (
+          <div key={e.name} className="env-row">
+            <Group gap={8} wrap="nowrap" miw={0}>
+              <Text size="sm" fw={500} truncate>
+                {e.name}
+              </Text>
+              {e.url && (
+                <Tooltip label={`Open ${e.url.replace(/^https?:\/\//, '')}`}>
+                  <ActionIcon
+                    component="a"
+                    href={e.url}
+                    target="_blank"
+                    variant="subtle"
+                    color="gray"
+                    size="sm"
+                    aria-label={`Open ${e.name}`}
+                  >
+                    <IconWorld size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </Group>
+            <div className="rank-track">
+              <div
+                className="rank-fill"
+                style={{
+                  width: `${(count(e) / max) * 100}%`,
+                  background: 'var(--mantine-color-indigo-5)',
+                }}
+              />
+            </div>
+            <Text size="sm" fw={600} ta="right" className="tabular">
+              {num(count(e))}
+            </Text>
+            <Group gap={6} wrap="nowrap" justify="flex-end">
+              <Tooltip label={stateLabel(e.lastState)}>
+                <span className="state-dot" style={{ background: stateColor(e.lastState) }} />
+              </Tooltip>
+              <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                {relative(e.lastDeployedAt)}
+              </Text>
+            </Group>
+          </div>
+        ))}
+      </div>
+      {environments.length > limit && (
+        <Group justify="center" mt="sm">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="compact-sm"
+            rightSection={<IconChevronDown size={14} />}
+            onClick={() => setLimit((l) => l + PAGE)}
+          >
+            Show {num(Math.min(PAGE, environments.length - limit))} more
+          </Button>
+        </Group>
+      )}
+    </>
   );
 }
-
-const PAGE = 8;
 
 /** Recent deployments as hairline rows: who, where, which ref and how it went. */
 function RecentDeployments({ deployments }: { deployments: DeploymentItem[] }) {
   const { fullName } = useRepoParams();
-  const [limit, setLimit] = useState(PAGE);
+  const [limit, setLimit] = useState(FIRST);
   if (!deployments.length) return <NoData />;
   return (
     <>
-      <div className="rank-list">
+      <div className="rank-list lines-between">
         {deployments.slice(0, limit).map((d) => (
           <Anchor
             key={d.id}
