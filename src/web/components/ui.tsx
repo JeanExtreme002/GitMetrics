@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Anchor,
   Box,
   Button,
   Center,
@@ -14,6 +15,7 @@ import {
   ThemeIcon,
   Title,
   Tooltip,
+  type AnchorProps,
 } from '@mantine/core';
 import {
   IconAlertTriangle,
@@ -30,6 +32,7 @@ import {
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
+import { LOGIN } from '../lib/accounts';
 import { ApiError } from '../lib/api';
 
 /** Brand red of the logo; the same in light and dark mode. */
@@ -315,6 +318,27 @@ export function EmptyState({
         {action && <Box mt="sm">{action}</Box>}
       </Stack>
     </Paper>
+  );
+}
+
+/**
+ * A person's name or row, leading to their page in GitMetrics. An account with no page here (an app
+ * like dependabot[bot], or a commit author GitHub doesn't know) opens on GitHub instead.
+ */
+export function PersonAnchor({
+  login,
+  url,
+  children,
+  ...props
+}: AnchorProps & { login: string; url?: string; children: ReactNode; title?: string }) {
+  return LOGIN.test(login) ? (
+    <Anchor component={Link} to={`/a/${login}`} {...props}>
+      {children}
+    </Anchor>
+  ) : (
+    <Anchor href={url ?? `https://github.com/${login}`} target="_blank" rel="noreferrer" {...props}>
+      {children}
+    </Anchor>
   );
 }
 

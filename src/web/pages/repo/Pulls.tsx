@@ -1,5 +1,5 @@
 import { DonutChart } from '@mantine/charts';
-import { Anchor, Avatar, Badge, Box, Button, Grid, Group, SegmentedControl, Text } from '@mantine/core';
+import { Avatar, Badge, Box, Button, Grid, Group, SegmentedControl, Text } from '@mantine/core';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { Link } from 'react-router';
 import {
@@ -20,6 +20,7 @@ import {
   EmptyState,
   NoData,
   PageHeader,
+  PersonAnchor,
   QueryView,
   SectionHeader,
 } from '../../components/ui';
@@ -152,14 +153,7 @@ function Authors({ people, analyzed }: { people: PersonCount[]; analyzed: number
   return (
     <div className="rank-list lines-between">
       {top.map((p, i) => (
-        <Anchor
-          key={p.login}
-          href={`https://github.com/${p.login}`}
-          target="_blank"
-          underline="never"
-          c="inherit"
-          className="rank-row"
-        >
+        <PersonAnchor key={p.login} login={p.login} underline="never" c="inherit" className="rank-row">
           <Text size="xs" c="dimmed" className="tabular rank-pos">
             {String(i + 1).padStart(2, '0')}
           </Text>
@@ -181,7 +175,7 @@ function Authors({ people, analyzed }: { people: PersonCount[]; analyzed: number
           <Text size="xs" c="dimmed" ta="right" className="tabular">
             {percent(analyzed ? p.count / analyzed : 0)}
           </Text>
-        </Anchor>
+        </PersonAnchor>
       ))}
     </div>
   );

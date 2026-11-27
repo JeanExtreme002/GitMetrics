@@ -19,6 +19,7 @@ import {
   EmptyState,
   NoData,
   PageHeader,
+  PersonAnchor,
   QueryView,
   SectionHeader,
 } from '../../components/ui';
@@ -120,14 +121,7 @@ function Reporters({ people, analyzed }: { people: PersonCount[]; analyzed: numb
   return (
     <div className="rank-list lines-between">
       {top.map((p, i) => (
-        <Anchor
-          key={p.login}
-          href={`https://github.com/${p.login}`}
-          target="_blank"
-          underline="never"
-          c="inherit"
-          className="rank-row"
-        >
+        <PersonAnchor key={p.login} login={p.login} underline="never" c="inherit" className="rank-row">
           <Text size="xs" c="dimmed" className="tabular rank-pos">
             {String(i + 1).padStart(2, '0')}
           </Text>
@@ -149,7 +143,7 @@ function Reporters({ people, analyzed }: { people: PersonCount[]; analyzed: numb
           <Text size="xs" c="dimmed" ta="right" className="tabular">
             {percent(analyzed ? p.count / analyzed : 0)}
           </Text>
-        </Anchor>
+        </PersonAnchor>
       ))}
     </div>
   );

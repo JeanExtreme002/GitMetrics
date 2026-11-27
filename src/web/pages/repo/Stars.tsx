@@ -1,16 +1,5 @@
 import { AreaChart, BarChart } from '@mantine/charts';
-import {
-  Anchor,
-  Avatar,
-  Badge,
-  Box,
-  Button,
-  Grid,
-  Group,
-  SegmentedControl,
-  Text,
-  Tooltip,
-} from '@mantine/core';
+import { Avatar, Badge, Box, Button, Grid, Group, SegmentedControl, Text, Tooltip } from '@mantine/core';
 import {
   IconArrowUpRight,
   IconCalendarStats,
@@ -22,7 +11,15 @@ import {
 import { useState } from 'react';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import type { StarPoint, StarsResponse } from '../../../shared/types';
-import { Counter, Counters, EmptyState, PageHeader, QueryView, SectionHeader } from '../../components/ui';
+import {
+  Counter,
+  Counters,
+  EmptyState,
+  PageHeader,
+  PersonAnchor,
+  QueryView,
+  SectionHeader,
+} from '../../components/ui';
 import {
   compact,
   date,
@@ -120,10 +117,10 @@ function RecentStargazers({ people, total }: { people: StarsResponse['recent']; 
       <SectionHeader title="Recent stargazers" caption="The latest people to star this repository" />
       <div className="rank-list lines-between">
         {people.map((p) => (
-          <Anchor
+          <PersonAnchor
             key={p.login}
-            href={p.url}
-            target="_blank"
+            login={p.login}
+            url={p.url}
             underline="never"
             c="inherit"
             className="stargazer-row"
@@ -142,7 +139,7 @@ function RecentStargazers({ people, total }: { people: StarsResponse['recent']; 
             <Text size="xs" c="dimmed" ta="right" style={{ whiteSpace: 'nowrap' }}>
               {relative(p.starredAt)}
             </Text>
-          </Anchor>
+          </PersonAnchor>
         ))}
       </div>
       {total > people.length && (
