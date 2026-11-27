@@ -249,9 +249,12 @@ export function Repositories({
       ...(internal ? [{ value: 'internal', label: 'Internal', count: internal }] : []),
     ];
   }, [byKind]);
+  // A choice the list no longer offers (Internal, after picking forks where there are none) no
+  // longer narrows it: otherwise the field reads "All" while the list stays empty.
+  const shownVisibility = visibility && visibilities.some((v) => v.value === visibility) ? visibility : null;
   const scoped = useMemo(
-    () => byKind.filter((r) => !visibility || r.visibility === visibility),
-    [byKind, visibility],
+    () => byKind.filter((r) => !shownVisibility || r.visibility === shownVisibility),
+    [byKind, shownVisibility],
   );
 
   const languages = useMemo(() => {
@@ -263,6 +266,8 @@ export function Repositories({
       .map(([value, count]) => ({ value, label: value === NO_LANGUAGE ? 'No language' : value, count }));
   }, [scoped]);
 
+  // The same for a language none of these repositories has.
+  const shownLanguage = language && languages.some((l) => l.value === language) ? language : null;
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const compare = (a: RepoSummary, b: RepoSummary) =>
@@ -272,7 +277,7 @@ export function Repositories({
           ? a.name.localeCompare(b.name)
           : (b.pushedAt ?? '').localeCompare(a.pushedAt ?? '');
     return scoped
-      .filter((r) => !language || (r.language ?? NO_LANGUAGE) === language)
+      .filter((r) => !shownLanguage || (r.language ?? NO_LANGUAGE) === shownLanguage)
       .filter(
         (r) =>
           !term ||
@@ -281,7 +286,7 @@ export function Repositories({
           ),
       )
       .sort((a, b) => (reversed ? -compare(a, b) : compare(a, b)));
-  }, [scoped, language, search, sort, reversed]);
+  }, [scoped, shownLanguage, search, sort, reversed]);
 
   // An organization's own page reads its own list alone: no waiting on yours, nor failing with it.
   if ((!organization && repos.isLoading) || (external && outside.isLoading)) return <PageSkeleton />;
@@ -375,7 +380,7 @@ export function Repositories({
           />
         )}
         <Select
-          value={language && languages.some((l) => l.value === language) ? language : null}
+          value={shownLanguage}
           onChange={(v) => {
             setLanguage(v);
             setLimit(PAGE);
@@ -388,11 +393,7 @@ export function Repositories({
           w={190}
           // As the accounts: the language's color in the field, and each one's count on its right.
           leftSection={
-            language && languages.some((l) => l.value === language) ? (
-              <LanguageMark language={language} />
-            ) : (
-              <IconCode size={15} stroke={1.7} />
-            )
+            shownLanguage ? <LanguageMark language={shownLanguage} /> : <IconCode size={15} stroke={1.7} />
           }
           renderOption={({ option }) => (
             <OptionRow
@@ -405,7 +406,7 @@ export function Repositories({
           maxDropdownHeight={360}
         />
         <Select
-          value={visibility}
+          value={shownVisibility}
           onChange={(v) => {
             setVisibility(v as Visibility | null);
             setLimit(PAGE);
@@ -416,7 +417,7 @@ export function Repositories({
           w={170}
           aria-label="Visibility"
           leftSection={(() => {
-            const Mark = VISIBILITY_ICON[visibility ?? 'all'];
+            const Mark = VISIBILITY_ICON[shownVisibility ?? 'all'];
             return <Mark size={15} stroke={1.7} />;
           })()}
           renderOption={({ option }) => {
