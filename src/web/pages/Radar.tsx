@@ -306,10 +306,20 @@ function PeriodPicker({
 }) {
   const [opened, setOpened] = useState(false);
   const [draft, setDraft] = useState({ from: '', to: '' });
-  // Opening starts the days from what's shown, to be moved from there.
+  // Opening starts the days from what's shown, to be moved from there. By the days themselves, not
+  // the object holding them, made anew on every render: the page re-rendering while they're being
+  // picked (a look finishing loading) would put them back.
+  const customFrom = custom?.from;
+  const customTo = custom?.to;
   useEffect(() => {
-    if (opened) setDraft(custom ?? { from: daysAgo(days - 1), to: today() });
-  }, [opened, custom, days]);
+    if (opened) {
+      setDraft(
+        customFrom && customTo
+          ? { from: customFrom, to: customTo }
+          : { from: daysAgo(days - 1), to: today() },
+      );
+    }
+  }, [opened, customFrom, customTo, days]);
   const problem = rangeProblem(draft.from, draft.to);
   const label = custom
     ? `${longDay(custom.from)} – ${longDay(custom.to)}`
@@ -510,12 +520,18 @@ function useWhen(data: ActivityResponse) {
     const byDay = Array.from({ length: 7 }, (_, d) =>
       cells.filter((c) => c.day === d).reduce((s, c) => s + c.count, 0),
     );
-    const byHour = Array.from({ length: 24 }, (_, h) =>
-      cells.filter((c) => c.hour === h).reduce((s, c) => s + c.count, 0),
-    );
     const top = (values: number[]) => values.indexOf(Math.max(...values));
+    const busiestDay = top(byDay);
+    // The busiest hour of that day, so the sentence points at a dot in that day's row: the busiest
+    // hour of the whole week can be another day's, and be small on this one.
+    const busiestHour = top(
+      Array.from(
+        { length: 24 },
+        (_, h) => cells.find((c) => c.day === busiestDay && c.hour === h)?.count ?? 0,
+      ),
+    );
     const total = byDay.reduce((s, n) => s + n, 0);
-    return { cells, total, busiestDay: top(byDay), busiestHour: top(byHour) };
+    return { cells, total, busiestDay, busiestHour };
   }, [data]);
 }
 

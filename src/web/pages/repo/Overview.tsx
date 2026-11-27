@@ -10,6 +10,7 @@ import {
   Group,
   Progress,
   SegmentedControl,
+  Skeleton,
   Text,
   Title,
   Tooltip,
@@ -176,15 +177,16 @@ function GrowthChart() {
           }}
           valueFormatter={num}
         />
+      ) : !data && !stars.isError ? (
+        // The chart's own place, while the history is read.
+        <Skeleton height={260} radius="md" />
       ) : (
         <NoData>
           {data?.historyHidden
             ? 'GitHub only shares the star history with people who can push to this repository.'
             : data
               ? 'No stars yet.'
-              : stars.isError
-                ? "Couldn't load the star history."
-                : 'Loading…'}
+              : "Couldn't load the star history."}
         </NoData>
       );
   } else {
@@ -200,13 +202,11 @@ function GrowthChart() {
           xAxisProps={{ tickFormatter: dayLabel, minTickGap: 40 }}
           barProps={{ radius: [3, 3, 0, 0] }}
         />
+      ) : !data && !commits.isError ? (
+        <Skeleton height={260} radius="md" />
       ) : (
         <NoData>
-          {data
-            ? 'GitHub is still computing commit statistics.'
-            : commits.isError
-              ? "Couldn't load the commit activity."
-              : 'Loading…'}
+          {data ? 'GitHub is still computing commit statistics.' : "Couldn't load the commit activity."}
         </NoData>
       );
   }

@@ -318,6 +318,36 @@ describe("putting someone's activity together", () => {
     ).rejects.toBeInstanceOf(UnknownScope);
   });
 
+  it('finds a review in a past period on a pull request updated again since', async () => {
+    // Reviewed on Nov 5, then touched on Nov 20: last updated after a period of Nov 1 to 10.
+    const reviewed = pull(7, {
+      author: { login: 'al', avatarUrl: '' },
+      createdAt: '2026-11-04T10:00:00Z',
+      updatedAt: '2026-11-20T10:00:00Z',
+      reviews: { totalCount: 1, nodes: [{ state: 'APPROVED', submittedAt: '2026-11-05T10:00:00Z' }] },
+    });
+    const gh = {
+      graphql: async (query: string, v: { q?: string }) => {
+        if (query.includes('user(login')) return { user: { login: 'bo', name: null, avatarUrl: '' } };
+        const [, start, end] = /updated:(\S+)\.\.(\S+)/.exec(v.q ?? '') ?? [];
+        const found =
+          v.q?.includes('reviewed-by:') && start && end
+            ? [reviewed].filter((p) => p.updatedAt >= start && p.updatedAt <= end)
+            : [];
+        return {
+          search: {
+            issueCount: found.length,
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: found,
+          },
+        };
+      },
+    } as unknown as GitHubClient;
+    const data = await getActivity(gh, 'bo', { kind: 'all' }, { from: '2026-11-01', to: '2026-11-10' }, NOW);
+    expect(data!.reviews.total).toBe(1);
+    expect(data!.pulls.reviewed.map((p) => p.number)).toEqual([7]);
+  });
+
   it('is null for a login no user has', async () => {
     const gh = { graphql: async () => ({ user: null }) } as unknown as GitHubClient;
     expect(await getActivity(gh, 'acme', { kind: 'all' }, period(30, NOW))).toBeNull();

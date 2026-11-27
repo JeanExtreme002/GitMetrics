@@ -17,8 +17,9 @@ import { sizeLabel } from './pulls.js';
  *
  * Search returns at most 1,000 results a query: a period with more is split into shorter ones
  * until each fits, so the lists are whole. Reviews are found through the pull requests a person
- * reviewed that changed in the period, with that person's reviews read on each: a review in the
- * period always leaves its pull request updated in it, so none is missed.
+ * reviewed that were last updated from the period's start to today, with that person's reviews
+ * read on each: a review in the period leaves its pull request updated then or later, so none is
+ * missed, even when the period ended long ago and the pull request moved on since.
  */
 
 const DAY_MS = 86_400_000;
@@ -293,10 +294,8 @@ const toPull = (r: RawActivityPull, at: string): ActivityPull => ({
 });
 
 /** People by how often they come up, the most first, ties by login. */
-function rank(counts: Map<string, ActivityPerson>, limit = 30): ActivityPerson[] {
-  return [...counts.values()]
-    .sort((a, b) => b.count - a.count || a.login.localeCompare(b.login))
-    .slice(0, limit);
+function rank(counts: Map<string, ActivityPerson>): ActivityPerson[] {
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.login.localeCompare(b.login));
 }
 
 function tally(counts: Map<string, ActivityPerson>, who: { login: string; avatarUrl: string }) {
@@ -412,9 +411,10 @@ export function buildActivity(input: {
       complete: reviewsComplete,
     },
     timeline: buckets,
-    repos: [...repos.values()]
-      .sort((a, b) => b.opened + b.reviews - (a.opened + a.reviews) || a.name.localeCompare(b.name))
-      .slice(0, 30),
+    // All of them: the page shows a few, and its counts and shares are of the whole.
+    repos: [...repos.values()].sort(
+      (a, b) => b.opened + b.reviews - (a.opened + a.reviews) || a.name.localeCompare(b.name),
+    ),
     reviewsGiven: rank(given),
     reviewsReceived: rank(received),
     pulls: {
@@ -468,10 +468,14 @@ export async function getActivity(
   login: string,
   scope: ActivityScope,
   range: Period,
+  now = new Date(),
 ): Promise<ActivityResponse | null> {
   const [user, place] = await Promise.all([getUser(gh, login), resolveScope(gh, scope)]);
   if (!user) return null;
   const { from, to } = range;
+  // Search knows when a pull request was last updated, not each update: one reviewed in the period
+  // and touched again after it is found only by reading on to today.
+  const today = period(1, now).to;
   const days = periodDays(range);
   const where = qualifier(place);
   const [opened, reviewed] = await Promise.all([
@@ -481,7 +485,7 @@ export async function getActivity(
       `is:pr reviewed-by:${user.login}${where}`,
       'updated',
       from,
-      to,
+      today,
       REVIEWED,
       100,
       user.login,

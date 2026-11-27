@@ -277,7 +277,6 @@ export const useMemberTeams = (login: string, member: string | null) =>
     staleTime: 10 * 60_000,
   });
 
-/** The ?in= of an activity: nothing for all of GitHub, a login, or owner/name. */
 /**
  * Where an activity is read. `range` is the period as the address writes it: days=90, or
  * from=2026-01-01&to=2026-03-31.
