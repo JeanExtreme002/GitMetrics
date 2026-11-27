@@ -20,7 +20,7 @@ import {
   IconTimeline,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ActivityCommentedResponse, ActivityResponse } from '../../shared/types';
 import { api, post } from '../lib/api';
 import { dayLabel, num } from '../lib/format';
@@ -97,6 +97,9 @@ const LAYOUT: Record<ReportOptions['groupBy'], string> = {
   month: 'By month',
 };
 
+/** Descriptions asked for at a time, within what the server takes in one asking. */
+const DESCRIPTIONS_PER_ASK = 500;
+
 /** A file's size, as "12 KB". */
 const size = (bytes: number) =>
   bytes < 1024 ? `${num(bytes)} bytes` : `${(bytes / 1024).toFixed(bytes < 10_240 ? 1 : 0)} KB`;
@@ -152,16 +155,31 @@ export function ReportModal({
   const setReviewed = (next: Partial<ReportOptions['reviewed']>) =>
     setOptions((o) => ({ ...o, reviewed: { ...o.reviewed, ...next } }));
 
+  // Which making is current: closing the modal ends one, so a late answer doesn't come back as done.
+  const run = useRef(0);
+
   const make = async () => {
+    const ticket = ++run.current;
+    const current = () => run.current === ticket;
     try {
       // Only what's asked for and not on the page: each one's description, the ones commented on.
-      let descriptions: Record<string, string> = {};
+      const descriptions: Record<string, string> = {};
       const ids = options.opened.descriptions ? contents.opened.map((p) => p.id).filter(Boolean) : [];
-      if (ids.length) {
-        setStep({ kind: 'making', what: 'Reading descriptions…' });
-        descriptions = (
-          await post<{ descriptions: Record<string, string> }>('/activity/descriptions', { ids })
-        ).descriptions;
+      // In parts, as a long period of a busy person can hold more than one asking takes.
+      for (let i = 0; i < ids.length && current(); i += DESCRIPTIONS_PER_ASK) {
+        setStep({
+          kind: 'making',
+          what:
+            ids.length > DESCRIPTIONS_PER_ASK
+              ? `Reading descriptions… ${num(i)} of ${num(ids.length)}`
+              : 'Reading descriptions…',
+        });
+        const part = ids.slice(i, i + DESCRIPTIONS_PER_ASK);
+        Object.assign(
+          descriptions,
+          (await post<{ descriptions: Record<string, string> }>('/activity/descriptions', { ids: part }))
+            .descriptions,
+        );
       }
       let commented: ActivityCommentedResponse | undefined;
       if (options.reviewed.commented) {
@@ -173,6 +191,7 @@ export function ReportModal({
           staleTime: 10 * 60_000,
         });
       }
+      if (!current()) return;
       const input = { activity: data, options, descriptions, commented: commented?.pulls };
       const parts = reportContents(input);
       setStep({
@@ -181,6 +200,7 @@ export function ReportModal({
         pulls: parts.opened.length + parts.reviewed.length + parts.commented.length,
       });
     } catch (error) {
+      if (!current()) return;
       setStep({
         kind: 'choose',
         error: error instanceof Error ? error.message : "The report couldn't be made.",
@@ -193,10 +213,16 @@ export function ReportModal({
     const link = document.createElement('a');
     link.href = url;
     link.download = reportFileName(data);
+    // In the page while clicked, and the file let go only after: some browsers drop a download
+    // whose address is gone, or whose link was never in the page.
+    document.body.append(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
   const close = () => {
+    // A report being made is let go: it won't come back as done when the modal opens again.
+    run.current++;
     onClose();
     // Back to the choices next time, kept as they were.
     setTimeout(() => setStep({ kind: 'choose' }), 200);

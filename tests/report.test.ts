@@ -117,7 +117,8 @@ describe('a report of what someone did with pull requests', () => {
       );
     expect(numbers(options())).toEqual([]);
     expect(numbers(options({ reviewed: { commented: true } }))).toEqual([20, 21]);
-    expect(numbers(options({ reviewed: { commented: true, onlyMerged: true } }))).toEqual([21]);
+    // "Only merged" is about the reviewed ones: it leaves these alone.
+    expect(numbers(options({ reviewed: { commented: true, onlyMerged: true } }))).toEqual([20, 21]);
   });
 
   it('writes Markdown: a summary, then each list grouped, with descriptions quoted', () => {

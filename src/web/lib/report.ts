@@ -20,7 +20,7 @@ export interface ReportOptions {
   reviewed: {
     /** Which of their reviews count: any of them, or only those they approved. */
     reviews: 'any' | 'approved' | 'none';
-    /** Only pull requests that were merged in the end. */
+    /** Only those they reviewed that were merged in the end. */
     onlyMerged: boolean;
     /** Those they commented on without a review too. */
     commented: boolean;
@@ -123,7 +123,7 @@ function chosen(options: ReportOptions): string[] {
   );
   out.push(
     r.commented
-      ? `Pull requests they only commented on: included${r.onlyMerged ? ', only those merged' : ''}.`
+      ? 'Pull requests they only commented on: included.'
       : 'Pull requests they only commented on: not included.',
   );
   return out;
@@ -178,15 +178,11 @@ export interface ReportInput {
 export function reportContents({ activity, options, commented }: ReportInput) {
   const opened = activity.pulls.opened.filter((p) => keepOpened(p, options.opened));
   const reviewed = activity.pulls.reviewed.filter((p) => keepReviewed(p, options.reviewed));
-  // Commented on only: none they reviewed in the period (that's a review, listed or not), and as
-  // merged as asked for.
+  // Commented on only: none they reviewed in the period (that's a review, listed or not). "Only
+  // merged" is a choice about the reviewed ones, under them, so it leaves these as they are.
   const reviewedKeys = new Set(activity.pulls.reviewed.map((p) => `${p.repo}#${p.number}`));
   const onlyCommented = options.reviewed.commented
-    ? (commented ?? []).filter(
-        (p) =>
-          !reviewedKeys.has(`${p.repo}#${p.number}`) &&
-          (!options.reviewed.onlyMerged || p.state === 'merged'),
-      )
+    ? (commented ?? []).filter((p) => !reviewedKeys.has(`${p.repo}#${p.number}`))
     : [];
   return { opened, reviewed, commented: onlyCommented };
 }
