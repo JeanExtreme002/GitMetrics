@@ -494,6 +494,8 @@ describe('repository pages, end to end', () => {
     const { send } = await signedIn({
       '/users/octo/repos': () => json([REPO]),
       '/search/users': () => json({ items: [{ login: 'octo', avatar_url: '', type: 'User' }] }),
+      '/users/Copilot[bot]': () =>
+        json({ login: 'Copilot[bot]', type: 'Bot', html_url: 'https://github.com/apps/copilot' }),
     });
     const account = (await (await send('/api/accounts/octo')).json()) as Record<string, unknown>;
     expect(account).toMatchObject({
@@ -512,6 +514,12 @@ describe('repository pages, end to end', () => {
     expect(search.accounts).toEqual([{ login: 'octo', avatarUrl: '', kind: 'user' }]);
 
     expect((await send('/api/accounts/nobody')).status).toBe(404);
+    // An app's name, as GitHub writes it on pull requests: told apart, with its page on GitHub.
+    const app = await send('/api/accounts/Copilot');
+    expect(app.status).toBe(404);
+    expect(await app.json()).toMatchObject({
+      app: { login: 'Copilot[bot]', url: 'https://github.com/apps/copilot' },
+    });
     // An organization's pages answer for any account; quality and security always, the rest only
     // when found.
     expect(await (await send('/api/accounts/octo/quality')).json()).toEqual({ quality: null });

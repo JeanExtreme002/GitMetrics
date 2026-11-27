@@ -1,21 +1,9 @@
-import {
-  ActionIcon,
-  Anchor,
-  Avatar,
-  Badge,
-  Box,
-  Group,
-  Paper,
-  Stack,
-  Text,
-  Tooltip,
-  UnstyledButton,
-} from '@mantine/core';
+import { ActionIcon, Badge, Box, Group, Paper, Text, Tooltip } from '@mantine/core';
 import { IconGitFork, IconPin, IconPinFilled, IconStar } from '@tabler/icons-react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
-import type { PersonCount, RepoSummary } from '../../shared/types';
-import { cleanText, compact, num, relative } from '../lib/format';
+import type { RepoSummary } from '../../shared/types';
+import { cleanText, compact, relative } from '../lib/format';
 import { languageColor } from '../lib/languages';
 import { useFavorites } from '../lib/queries';
 
@@ -109,66 +97,6 @@ export function RepoCard({ repo, showOwner = false }: { repo: RepoSummary; showO
         </Text>
       </Group>
     </Paper>
-  );
-}
-
-export function PeopleList({ people, unit }: { people: PersonCount[]; unit: string }) {
-  const max = Math.max(1, ...people.map((p) => p.count));
-  return (
-    <Stack gap="sm">
-      {people.map((p) => (
-        <Group key={p.login} gap="sm" wrap="nowrap">
-          <Avatar src={p.avatarUrl} size={28} radius="xl" />
-          <Box style={{ flex: 1 }} miw={0}>
-            <Group justify="space-between" gap="xs" wrap="nowrap">
-              <Anchor href={`https://github.com/${p.login}`} target="_blank" size="sm" c="inherit" truncate>
-                {p.login}
-              </Anchor>
-              <Text size="sm" c="dimmed" className="tabular">
-                {num(p.count)} {unit}
-              </Text>
-            </Group>
-            <Box mt={4} h={4} bg="var(--mantine-color-default-border)" style={{ borderRadius: 4 }}>
-              <Box h={4} w={`${(p.count / max) * 100}%`} bg="indigo.4" style={{ borderRadius: 4 }} />
-            </Box>
-          </Box>
-        </Group>
-      ))}
-    </Stack>
-  );
-}
-
-/** A clickable row that links out to GitHub, used by the "lists" on most pages. */
-export function LinkRow({
-  href,
-  title,
-  meta,
-  right,
-  avatar,
-}: {
-  href: string;
-  title: ReactNode;
-  meta?: ReactNode;
-  right?: ReactNode;
-  avatar?: string | null;
-}) {
-  return (
-    <UnstyledButton component="a" href={href} target="_blank" rel="noreferrer" className="link-row">
-      <Group gap="sm" wrap="nowrap">
-        {avatar !== undefined && <Avatar src={avatar} size={26} radius="xl" />}
-        <Box style={{ flex: 1 }} miw={0}>
-          <Text size="sm" fw={500} truncate>
-            {title}
-          </Text>
-          {meta && (
-            <Text size="xs" c="dimmed" truncate>
-              {meta}
-            </Text>
-          )}
-        </Box>
-        {right}
-      </Group>
-    </UnstyledButton>
   );
 }
 

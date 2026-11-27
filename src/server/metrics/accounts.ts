@@ -5,7 +5,7 @@ import type {
   AccountTotals,
   RepoSummary,
 } from '../../shared/types.js';
-import type { GitHubClient } from '../github.js';
+import { GitHubError, type GitHubClient } from '../github.js';
 import { type RawRepo, toSummary } from './repos.js';
 
 /*
@@ -196,6 +196,24 @@ export function buildAccount(raw: RawAccount): AccountResponse {
 export async function getAccount(gh: GitHubClient, login: string): Promise<AccountResponse | null> {
   const data = await gh.graphql<{ repositoryOwner: RawAccount | null }>(ACCOUNT_QUERY, { login });
   return data.repositoryOwner ? buildAccount(data.repositoryOwner) : null;
+}
+
+/**
+ * The app behind a name with no account, like Copilot or github-actions: GitHub names an app's
+ * pull requests and reviews by the app's slug, while its account is slug[bot]. Null when there's no
+ * app by that name either.
+ */
+export async function getApp(
+  gh: GitHubClient,
+  login: string,
+): Promise<{ login: string; url: string } | null> {
+  try {
+    const bot = await gh.get<{ login: string; type: string; html_url: string }>(`/users/${login}[bot]`);
+    return bot.type === 'Bot' ? { login: bot.login, url: bot.html_url } : null;
+  } catch (error) {
+    if (error instanceof GitHubError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 /**

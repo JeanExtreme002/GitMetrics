@@ -13,7 +13,7 @@ import type {
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
-import { getAccount, getAccountRepos, getAccountTotals, searchAccounts } from './metrics/accounts.js';
+import { getAccount, getAccountRepos, getAccountTotals, getApp, searchAccounts } from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
 import {
   UnknownScope,
@@ -355,7 +355,15 @@ export function createApp(options: AppOptions = {}) {
       () => getAccount(github()!, login),
       c.req.query('refresh') === '1',
     );
-    if (!account) return c.json({ error: 'No user or organization has this name.', status: 404 }, 404);
+    if (!account) {
+      // An app has no account, but a page on GitHub: say so, rather than that nothing has the name.
+      const app = await memory.wrap(`${config.auth!.login}:app:${login.toLowerCase()}`, 10 * MINUTE, () =>
+        getApp(github()!, login),
+      );
+      return app
+        ? c.json({ error: 'This is an app, not an account.', status: 404, app }, 404)
+        : c.json({ error: 'No user or organization has this name.', status: 404 }, 404);
+    }
     return c.json(account);
   });
 

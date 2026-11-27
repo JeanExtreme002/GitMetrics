@@ -91,18 +91,6 @@
   transform: translateY(-1px);
 }
 
-.link-row {
-  display: block;
-  padding: 8px 10px;
-  margin: 0 -10px;
-  border-radius: var(--mantine-radius-md);
-  transition: background 120ms ease;
-}
-
-.link-row:hover {
-  background: var(--mantine-color-default-hover);
-}
-
 .clickable-row {
   cursor: pointer;
 }
@@ -1549,4 +1537,11 @@ a.pull-row {
 .error-detail {
   font-family: var(--mantine-font-family-monospace);
   overflow-wrap: anywhere;
+}
+
+/* A pull request's author, face and name together, opening their page. */
+.pr-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
