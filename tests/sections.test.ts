@@ -558,6 +558,21 @@ describe('repository pages, end to end', () => {
     ]) {
       expect((await send(path)).status, path).toBe(400);
     }
+    // Descriptions for a report: ids only, and not too many.
+    for (const ids of [
+      undefined,
+      'PR_1',
+      [1],
+      ['bad id'],
+      Array.from({ length: 2001 }, (_, i) => `PR_${i}`),
+    ]) {
+      const res = await send('/api/activity/descriptions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      expect(res.status, JSON.stringify(ids)?.slice(0, 40)).toBe(400);
+    }
   });
 
   it('keeps the traffic history growing on its own, for your repositories and the ones you open', async () => {

@@ -30,6 +30,7 @@ import {
   IconChevronDown,
   IconClockHour4,
   IconEye,
+  IconFileText,
   IconGitMerge,
   IconGitPullRequest,
   IconGitPullRequestClosed,
@@ -48,6 +49,7 @@ import { Link, useSearchParams } from 'react-router';
 import type { ActivityPerson, ActivityPull, ActivityResponse } from '../../shared/types';
 import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { PunchCard } from '../components/punch';
+import { ReportModal } from '../components/report';
 import { EmptyState, ErrorState, PageHeader } from '../components/ui';
 import { parseAccountQuery } from '../lib/accounts';
 import { ApiError, api } from '../lib/api';
@@ -1284,6 +1286,7 @@ export function Radar() {
   const query = useActivity(user, where, range);
   const client = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [recent, setRecent] = useLocalStorage<Recent[]>({
     key: 'gitmetrics:radar-recent',
     defaultValue: [],
@@ -1336,7 +1339,28 @@ export function Radar() {
         description="What anyone on GitHub opens and reviews: where, when and with whom. Only what your access lets you see."
         onRefresh={user && query.data ? refresh : undefined}
         refreshing={refreshing}
+        actions={
+          query.data ? (
+            // What they did, as a Markdown file.
+            <Button
+              variant="default"
+              leftSection={<IconFileText size={16} stroke={1.7} />}
+              onClick={() => setReporting(true)}
+            >
+              Report
+            </Button>
+          ) : undefined
+        }
       />
+      {query.data && (
+        <ReportModal
+          opened={reporting}
+          onClose={() => setReporting(false)}
+          data={query.data}
+          where={where}
+          range={range}
+        />
+      )}
       <Group gap="md" align="flex-start" wrap="wrap" mb={36}>
         <PersonPicker value={user} onPick={(login) => set({ user: login })} />
         <ScopePicker value={where} onPick={(scope) => set({ in: scope })} />

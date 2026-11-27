@@ -20,6 +20,7 @@ import {
   customPeriod,
   getActivity,
   getCommented,
+  getDescriptions,
   period,
   type Period,
 } from './metrics/activity.js';
@@ -543,6 +544,17 @@ export function createApp(options: AppOptions = {}) {
   app.get('/api/activity/:login', activityRoute(getActivity, 'summary'));
   // What they commented on: asked only when it's opened, as it's another search of its own.
   app.get('/api/activity/:login/commented', activityRoute(getCommented, 'commented'));
+  // The descriptions of pull requests, by their ids: for a report, only when it asks for them.
+  app.post('/api/activity/descriptions', async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { ids?: unknown } | null;
+    const ids = body?.ids;
+    const valid =
+      Array.isArray(ids) &&
+      ids.length <= 2000 &&
+      ids.every((id) => typeof id === 'string' && /^[A-Za-z0-9_=-]{1,100}$/.test(id));
+    if (!valid) return c.json({ error: 'Invalid pull request ids.', status: 400 }, 400);
+    return c.json({ descriptions: await getDescriptions(github()!, ids as string[]) });
+  });
 
   // Accounts whose login matches, for the quick search.
   app.get('/api/search/accounts', async (c) => {

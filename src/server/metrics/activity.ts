@@ -31,7 +31,7 @@ const MAX_PAGES = 150;
 const MIN_FIRST_REVIEWS = 3;
 
 const PULL = `
-  number title url state isDraft createdAt mergedAt updatedAt additions deletions
+  id number title url state isDraft createdAt mergedAt updatedAt additions deletions
   repository { nameWithOwner }
   author { login avatarUrl }`;
 
@@ -45,6 +45,8 @@ const REVIEWED = `${PULL}
   reviews(author: $login, first: 50) { totalCount nodes { state submittedAt } }`;
 
 export interface RawActivityPull {
+  /** GitHub's id for it, to read its description later, only if asked for. */
+  id?: string;
   number: number;
   title: string;
   url: string;
@@ -283,6 +285,7 @@ const REVIEW_STATES: Record<string, NonNullable<ActivityPull['review']>> = {
 };
 
 const toPull = (r: RawActivityPull, at: string): ActivityPull => ({
+  id: r.id ?? '',
   repo: r.repository.nameWithOwner,
   number: r.number,
   title: r.title,
@@ -384,7 +387,9 @@ export function buildActivity(input: {
       if (p.author) tally(given, p.author);
     }
     const latest = mine.reduce((a, b) => (a.submittedAt! >= b.submittedAt! ? a : b));
-    reviewed.push({ ...toPull(p, latest.submittedAt!), review: REVIEW_STATES[latest.state] });
+    // Every kind of review they gave it in the period, in the order given, once each.
+    const kinds = [...new Set(mine.map((r) => REVIEW_STATES[r.state]!))];
+    reviewed.push({ ...toPull(p, latest.submittedAt!), review: REVIEW_STATES[latest.state], reviews: kinds });
   }
   const reviewTotal = states.approved + states.changes + states.commented + states.dismissed;
 
@@ -522,4 +527,30 @@ export async function getCommented(
   );
   const pulls = found.pulls.map((p) => toPull(p, p.updatedAt)).sort((a, b) => b.at.localeCompare(a.at));
   return { total: pulls.length, pulls, complete: found.complete };
+}
+
+/** Descriptions read at once: GitHub answers up to 100 ids a query, and long ones weigh. */
+const DESCRIPTIONS_AT_ONCE = 50;
+
+/**
+ * The descriptions of pull requests, by GitHub's id for each: read only when a report asks for
+ * them, as they can be long. One the viewer can't see, or that's gone, is left out.
+ */
+export async function getDescriptions(gh: GitHubClient, ids: string[]): Promise<Record<string, string>> {
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += DESCRIPTIONS_AT_ONCE)
+    batches.push(ids.slice(i, i + DESCRIPTIONS_AT_ONCE));
+  const out: Record<string, string> = {};
+  await Promise.all(
+    batches.map(async (batch) => {
+      const data = await searchGate(() =>
+        gh.graphql<{ nodes: ({ id?: string; body?: string } | null)[] }>(
+          `query ($ids: [ID!]!) { nodes(ids: $ids) { ... on PullRequest { id body } } }`,
+          { ids: batch },
+        ),
+      );
+      for (const node of data.nodes) if (node?.id && typeof node.body === 'string') out[node.id] = node.body;
+    }),
+  );
+  return out;
 }
