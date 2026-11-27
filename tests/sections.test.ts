@@ -528,6 +528,8 @@ describe('repository pages, end to end', () => {
     });
     expect((await send('/api/accounts/nobody/sponsors')).status).toBe(404);
     expect((await send('/api/accounts/octo/projects')).status).toBe(404);
+    // Only the pages' own names: not any address with one of them in it.
+    expect((await send('/api/accounts/octo/peoplex')).status).toBe(404);
     for (const path of [
       '/api/accounts/bad..name',
       '/api/accounts/-x/totals',

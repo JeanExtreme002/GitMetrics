@@ -364,8 +364,7 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // An organization's people and teams, and any account's security and quality and sponsors.
-  // The teams one member of an organization belongs to; before the pages below, whose
-  // pattern would take it for the teams page.
+  // The teams one member of an organization belongs to.
   app.get('/api/accounts/:login/teams/:member', async (c) => {
     const { login, member } = c.req.param();
     if (!ACCOUNT.test(login) || !ACCOUNT.test(member)) {
@@ -386,18 +385,22 @@ export function createApp(options: AppOptions = {}) {
     teams: getTeams,
     sponsors: getSponsors,
   };
-  app.get('/api/accounts/:login/:page{people|teams|sponsors}', async (c) => {
-    const { login, page } = c.req.param() as { login: string; page: string };
-    if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
-    const result = await memory.wrap(
-      `${config.auth!.login}:account-${page}:${login.toLowerCase()}`,
-      10 * MINUTE,
-      () => ORG_PAGES[page]!(github()!, login),
-      c.req.query('refresh') === '1',
-    );
-    if (result === null) return c.json({ error: 'No organization has this name.', status: 404 }, 404);
-    return c.json(result);
-  });
+  // One exact route each: a pattern like {people|teams|sponsors} isn't anchored, and would answer
+  // for any page with one of those words in it.
+  for (const [page, load] of Object.entries(ORG_PAGES)) {
+    app.get(`/api/accounts/:login/${page}`, async (c) => {
+      const login = c.req.param('login');
+      if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
+      const result = await memory.wrap(
+        `${config.auth!.login}:account-${page}:${login.toLowerCase()}`,
+        10 * MINUTE,
+        () => load(github()!, login),
+        c.req.query('refresh') === '1',
+      );
+      if (result === null) return c.json({ error: 'No organization has this name.', status: 404 }, 404);
+      return c.json(result);
+    });
+  }
 
   // An organization's quality and security pages measure the same repositories: read once for both.
   const orgRepos = (login: string, refresh: boolean) =>
