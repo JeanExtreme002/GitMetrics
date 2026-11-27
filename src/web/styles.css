@@ -1544,3 +1544,9 @@ a.pull-row {
     font-size: 30px;
   }
 }
+
+/* An error's own words, under the plain ones: quiet, and kept whole when long. */
+.error-detail {
+  font-family: var(--mantine-font-family-monospace);
+  overflow-wrap: anywhere;
+}
