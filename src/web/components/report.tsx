@@ -23,7 +23,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ActivityCommentedResponse, ActivityResponse } from '../../shared/types';
 import { api, post } from '../lib/api';
-import { dayLabel, num } from '../lib/format';
+import { num } from '../lib/format';
 import { activityPath, useActivityCommented } from '../lib/queries';
 import { PRIMARY_ACTION } from './ui';
 import {
@@ -131,7 +131,6 @@ export function ReportModal({
   const [options, setOptions] = useState<ReportOptions>(DEFAULT_REPORT);
   const [step, setStep] = useState<Step>({ kind: 'choose' });
   const login = data.user.login;
-  const place = data.scope.kind === 'all' ? 'All of GitHub' : data.scope.name;
 
   const mine = data.pulls.opened;
   const counts = {
@@ -240,14 +239,14 @@ export function ReportModal({
       // Room enough on a short window, so it fits whole rather than scrolling.
       yOffset="2dvh"
       title={
-        <Box>
-          <Text fw={650} size="lg" lh={1.2}>
-            Generate report
-          </Text>
-          <Text size="sm" c="dimmed" mt={4}>
-            @{login} · {dayLabel(data.from)} – {dayLabel(data.to)} · {place}
-          </Text>
-        </Box>
+        // Named for the step the user is at: choosing, waiting, or with the file in hand.
+        <Text fw={650} size="lg" lh={1.2}>
+          {step.kind === 'ready'
+            ? 'Report ready'
+            : step.kind === 'making'
+              ? 'Generating report…'
+              : 'Generate report'}
+        </Text>
       }
     >
       {step.kind === 'choose' && (
