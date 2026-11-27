@@ -608,18 +608,27 @@ a.bar-link:hover {
   color: var(--mantine-color-text);
 }
 
-/* Settings: one setting per row, description on the left and the control on the right. */
-.settings-list {
-  border-top: 1px solid var(--mantine-color-default-border);
-}
-
+/* Settings: one setting per row, description on the left and the control on the right, with lines
+   only between them. */
 .setting-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
   align-items: center;
   gap: 48px;
   padding: 24px 0;
-  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.setting-row + .setting-row {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+/* No line above the first or below the last: no room kept for one either. */
+.setting-row:first-child {
+  padding-top: 0;
+}
+
+.setting-row:last-child {
+  padding-bottom: 0;
 }
 
 @media (max-width: 48em) {
