@@ -8,6 +8,7 @@ import {
   getAccount,
   getAccountRepos,
   getAccountTotals,
+  getApp,
   searchAccounts,
   type RawAccount,
 } from '../src/server/metrics/accounts';
@@ -115,6 +116,48 @@ describe('an account', () => {
   it('is null when no user or organization has the login', async () => {
     const gh = { graphql: async () => ({ repositoryOwner: null }) } as unknown as GitHubClient;
     expect(await getAccount(gh, 'nobody')).toBeNull();
+  });
+
+  describe('the app behind a name with no account', () => {
+    const answering = (answer: () => unknown) => {
+      const asked: string[] = [];
+      const gh = {
+        get: async (path: string) => {
+          asked.push(path);
+          return answer();
+        },
+      } as unknown as GitHubClient;
+      return { gh, asked };
+    };
+
+    it("is found under the name's [bot] account, with its page on GitHub", async () => {
+      const { gh, asked } = answering(() => ({
+        login: 'copilot[bot]',
+        type: 'Bot',
+        html_url: 'https://github.com/apps/copilot',
+      }));
+      expect(await getApp(gh, 'Copilot')).toEqual({
+        login: 'copilot[bot]',
+        url: 'https://github.com/apps/copilot',
+      });
+      expect(asked).toEqual(['/users/Copilot[bot]']);
+    });
+
+    it('is null when that account is no app, or there is none', async () => {
+      const user = answering(() => ({ login: 'x[bot]', type: 'User', html_url: '' }));
+      expect(await getApp(user.gh, 'x')).toBeNull();
+      const none = answering(() => {
+        throw new GitHubError(404, 'Not Found');
+      });
+      expect(await getApp(none.gh, 'nobody')).toBeNull();
+    });
+
+    it('lets any other failure through, rather than say there is no app', async () => {
+      const failing = answering(() => {
+        throw new GitHubError(502, 'Bad Gateway');
+      });
+      await expect(getApp(failing.gh, 'Copilot')).rejects.toMatchObject({ status: 502 });
+    });
   });
 });
 
