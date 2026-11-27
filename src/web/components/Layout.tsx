@@ -14,6 +14,7 @@ import {
   Progress,
   NavLink as MantineNavLink,
   ScrollArea,
+  Skeleton,
   Text,
   Tooltip,
   Transition,
@@ -294,6 +295,36 @@ const Count = ({ children }: { children: ReactNode }) => (
   </Text>
 );
 
+/** Rows of the sidebar still loading: an icon and a label, at the size of the real ones. */
+function NavSkeleton({ rows }: { rows: number }) {
+  return (
+    <Box px="sm" aria-busy="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <Group key={i} gap={12} h={42} wrap="nowrap">
+          <Skeleton height={18} width={18} radius="sm" />
+          <Skeleton height={10} width={`${70 - i * 12}%`} radius="xl" />
+        </Group>
+      ))}
+    </Box>
+  );
+}
+
+/** An account's sidebar before it's known whether the account is an organization. */
+function AccountNavigationLoading() {
+  return (
+    <>
+      <Group gap="sm" wrap="nowrap" px="xs" py="sm" mb="xs" className="repo-identity" aria-busy="true">
+        <Skeleton height={34} width={34} radius="md" />
+        <Box style={{ flex: 1 }}>
+          <Skeleton height={10} width="70%" radius="xl" />
+          <Skeleton height={8} width="45%" radius="xl" mt={8} />
+        </Box>
+      </Group>
+      <NavSkeleton rows={6} />
+    </>
+  );
+}
+
 function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   const { data } = useRepos();
   const owners = useOwners();
@@ -328,6 +359,13 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
         onClick={onNavigate}
       />
 
+      {/* While your repositories load, the accounts they belong to aren't known yet: hold their place. */}
+      {!data && (
+        <>
+          <GroupLabel>Accounts</GroupLabel>
+          <NavSkeleton rows={3} />
+        </>
+      )}
       {owners.length > 1 && (
         <>
           <GroupLabel>Accounts</GroupLabel>
@@ -803,7 +841,23 @@ export function Layout() {
   const repoMatch = useMatch('/r/:owner/:repo/*');
   const accountMatch = useMatch('/a/:login/*');
   const account = useAccount(accountMatch?.params.login ?? '');
-  const orgLogin = account.data?.kind === 'organization' ? accountMatch?.params.login : undefined;
+  const { data: auth } = useAuth();
+  const owners = useOwners();
+  // An account's kind before it's read, so its sidebar shows at once: your own login is a user, and
+  // any other owner in your repositories is an organization, as your list holds only yours and your
+  // organizations'. Anyone else waits for the account, a placeholder in the meantime.
+  const login = accountMatch?.params.login?.toLowerCase();
+  const kind =
+    account.data?.kind ??
+    (!login
+      ? undefined
+      : login === auth?.viewer?.login.toLowerCase()
+        ? 'user'
+        : owners.some((o) => o.login.toLowerCase() === login)
+          ? 'organization'
+          : undefined);
+  const orgLogin = kind === 'organization' ? accountMatch?.params.login : undefined;
+  const accountPending = Boolean(accountMatch) && !kind && account.isLoading;
   // From a repository, back to its owner's repositories: an organization's own list, or the list
   // filtered to the user, under GitHub's spelling of the login once known.
   const repoOwner = useAccount(repoMatch?.params.owner ?? '');
@@ -880,11 +934,15 @@ export function Layout() {
                   onNavigate={close}
                 />
               </>
-            ) : orgLogin ? (
+            ) : orgLogin || accountPending ? (
               <>
                 <NavItemLink to="/" label="Home" icon={icon(IconArrowLeft)} onClick={close} />
                 <Box mt="sm" />
-                <OrgNavigation login={orgLogin} onNavigate={close} />
+                {orgLogin ? (
+                  <OrgNavigation login={orgLogin} onNavigate={close} />
+                ) : (
+                  <AccountNavigationLoading />
+                )}
               </>
             ) : (
               <MainNavigation onNavigate={close} />

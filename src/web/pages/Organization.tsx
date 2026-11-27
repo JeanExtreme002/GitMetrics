@@ -214,9 +214,11 @@ function ShowMore({ left, onClick }: { left: number; onClick: () => void }) {
 /** The organization's repositories, in the Repositories page with the account fixed. */
 export function AccountRepositories() {
   const { login = '' } = useParams();
-  const { data } = useAccount(login);
+  const account = useAccount(login);
+  const data = account.data;
   // Until the account is known, its own list can't be asked for: wait rather than show another.
-  if (!data) return <PageSkeleton />;
+  if (account.isLoading) return <PageSkeleton />;
+  if (account.error || !data) return <ErrorState error={account.error} onRetry={() => account.refetch()} />;
   return <Repositories owner={data.login} organization={data.kind === 'organization'} />;
 }
 
@@ -466,6 +468,11 @@ export function Teams() {
                   />
                 }
               />
+              {!data.complete && (
+                <Text size="xs" c="dimmed" mb="sm">
+                  Showing the first {num(data.teams.length)} of its {num(data.total)} teams.
+                </Text>
+              )}
               {member && memberTeams.isLoading && (
                 <Text size="sm" c="dimmed" py="md">
                   Finding the teams of @{member}…

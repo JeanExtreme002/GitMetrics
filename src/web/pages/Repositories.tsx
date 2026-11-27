@@ -224,8 +224,11 @@ export function Repositories({
       .sort((a, b) => (reversed ? -compare(a, b) : compare(a, b)));
   }, [scoped, language, search, sort, reversed]);
 
-  if (repos.isLoading || (external && outside.isLoading)) return <PageSkeleton />;
-  if (repos.error || !repos.data) return <ErrorState error={repos.error} onRetry={() => repos.refetch()} />;
+  // An organization's own page reads its own list alone: no waiting on yours, nor failing with it.
+  if ((!organization && repos.isLoading) || (external && outside.isLoading)) return <PageSkeleton />;
+  if (!organization && (repos.error || !repos.data)) {
+    return <ErrorState error={repos.error} onRetry={() => repos.refetch()} />;
+  }
   if (external && (outside.error || !outside.data)) {
     return <ErrorState error={outside.error} onRetry={() => outside.refetch()} />;
   }
@@ -270,7 +273,7 @@ export function Repositories({
             allowDeselect={false}
             w={190}
             data={[
-              { value: 'all', label: `All accounts (${num(repos.data.repos.length)})` },
+              { value: 'all', label: `All accounts (${num(repos.data?.repos.length ?? 0)})` },
               ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
               ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
             ]}
