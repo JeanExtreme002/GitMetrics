@@ -598,7 +598,7 @@ function insights(data: ActivityResponse, when: ReturnType<typeof useWhen>): Ins
       ),
     });
   }
-  if (r.medianFirstReviewHours !== null && r.pulls >= 3) {
+  if (r.medianFirstReviewHours !== null) {
     out.push({
       icon: IconUserCheck,
       text: (
@@ -1095,13 +1095,21 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
               icon={IconClockHour4}
               label="Time to merge"
               value={o.medianMergeHours === null ? '—' : hours(o.medianMergeHours)}
-              note="Median, for theirs merged"
+              note={
+                o.merged && o.selfMerged / o.merged >= 0.5
+                  ? `Median · ${percent(o.selfMerged / o.merged)} merged by them`
+                  : 'Median, from opening to merge'
+              }
             />
             <Stat
               icon={IconUserCheck}
               label="First review"
               value={r.medianFirstReviewHours === null ? '—' : hours(r.medianFirstReviewHours)}
-              note="Median, after one opens"
+              note={
+                r.medianFirstReviewHours === null && r.pulls > 0
+                  ? 'Too few opened in the period'
+                  : 'Median, opening to their first'
+              }
             />
           </SimpleGrid>
 

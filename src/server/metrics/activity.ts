@@ -27,14 +27,17 @@ const DAY_MS = 86_400_000;
 const SEARCH_LIMIT = 1000;
 /** Pages read for one list at most, across all its slices: past that, it says it's incomplete. */
 const MAX_PAGES = 150;
+/** Pull requests a median of how soon they review needs: fewer say little. */
+const MIN_FIRST_REVIEWS = 3;
 
 const PULL = `
   number title url state isDraft createdAt mergedAt updatedAt additions deletions
   repository { nameWithOwner }
   author { login avatarUrl }`;
 
-/** Their own pull requests, with who reviewed them. */
+/** Their own pull requests, with who merged them and who reviewed them. */
 const OPENED = `${PULL}
+  mergedBy { login }
   reviews(first: 50) { nodes { state author { login avatarUrl } } }`;
 
 /** Pull requests they reviewed, with their reviews alone, each with its date. */
@@ -54,6 +57,7 @@ export interface RawActivityPull {
   deletions: number;
   repository: { nameWithOwner: string };
   author: { login: string; avatarUrl: string } | null;
+  mergedBy?: { login: string } | null;
   reviews?: {
     totalCount?: number;
     nodes: {
@@ -396,6 +400,7 @@ export function buildActivity(input: {
       open: opened.filter((p) => !p.mergedAt && p.state === 'OPEN').length,
       closed: opened.filter((p) => !p.mergedAt && p.state !== 'OPEN').length,
       medianMergeHours: median(mergeHours),
+      selfMerged: opened.filter((p) => p.mergedAt && p.mergedBy?.login.toLowerCase() === login).length,
       sizes: ['XS', 'S', 'M', 'L', 'XL'].map((size) => ({
         size,
         count: opened.filter((p) => sizeLabel(p.additions + p.deletions) === size).length,
@@ -406,7 +411,7 @@ export function buildActivity(input: {
       total: reviewTotal,
       pulls: reviewed.length,
       ...states,
-      medianFirstReviewHours: median(firstReviewHours),
+      medianFirstReviewHours: firstReviewHours.length >= MIN_FIRST_REVIEWS ? median(firstReviewHours) : null,
       times: times.sort(),
       complete: reviewsComplete,
     },

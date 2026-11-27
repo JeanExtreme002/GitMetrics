@@ -163,7 +163,13 @@ describe("putting someone's activity together", () => {
   it('counts what they opened, merged, left open and closed, and how long merging took', () => {
     const activity = build(
       [
-        pull(1, { createdAt: '2026-11-01T00:00:00Z', mergedAt: '2026-11-01T10:00:00Z', state: 'MERGED' }),
+        pull(1, {
+          createdAt: '2026-11-01T00:00:00Z',
+          mergedAt: '2026-11-01T10:00:00Z',
+          state: 'MERGED',
+          // Merged by themselves, under another spelling of their login.
+          mergedBy: { login: 'bo' },
+        }),
         pull(2, { createdAt: '2026-11-02T00:00:00Z', mergedAt: '2026-11-02T20:00:00Z', state: 'MERGED' }),
         pull(3, { createdAt: '2026-11-03T00:00:00Z' }),
         pull(4, { createdAt: '2026-11-04T00:00:00Z', state: 'CLOSED' }),
@@ -178,6 +184,7 @@ describe("putting someone's activity together", () => {
       open: 1,
       closed: 1,
       medianMergeHours: 15,
+      selfMerged: 1,
       sizes: [
         { size: 'XS', count: 4 },
         { size: 'S', count: 0 },
@@ -260,10 +267,29 @@ describe("putting someone's activity together", () => {
           createdAt: '2026-11-12T00:00:00Z',
           reviews: { totalCount: 1, nodes: [review('APPROVED', '2026-11-12T02:00:00Z')] },
         }),
+        pull(3, {
+          createdAt: '2026-11-13T00:00:00Z',
+          reviews: { totalCount: 1, nodes: [review('APPROVED', '2026-11-13T10:00:00Z')] },
+        }),
       ],
     );
-    // 6 hours and 2 hours: the median of the two.
-    expect(activity.reviews.medianFirstReviewHours).toBe(4);
+    // 6, 2 and 10 hours: the median of the three.
+    expect(activity.reviews.medianFirstReviewHours).toBe(6);
+    // Two are too few to say.
+    const two = build(
+      [],
+      [
+        pull(1, {
+          createdAt: '2026-11-10T00:00:00Z',
+          reviews: { totalCount: 1, nodes: [review('APPROVED', '2026-11-10T06:00:00Z')] },
+        }),
+        pull(2, {
+          createdAt: '2026-11-12T00:00:00Z',
+          reviews: { totalCount: 1, nodes: [review('APPROVED', '2026-11-12T02:00:00Z')] },
+        }),
+      ],
+    );
+    expect(two.reviews.medianFirstReviewHours).toBeNull();
   });
 
   it('says reviews are short when a pull request has more of theirs than were read', () => {
