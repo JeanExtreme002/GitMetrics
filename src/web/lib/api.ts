@@ -2,6 +2,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** The rest of what the server said, beyond its message. */
+    public readonly body: Record<string, unknown> | null = null,
   ) {
     super(message);
   }
@@ -16,9 +18,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
-  const body = (await response.json().catch(() => null)) as { error?: string } | null;
+  const body = (await response.json().catch(() => null)) as
+    ({ error?: string } & Record<string, unknown>) | null;
   if (!response.ok) {
-    throw new ApiError(response.status, body?.error ?? `Request failed (${response.status})`);
+    throw new ApiError(response.status, body?.error ?? `Request failed (${response.status})`, body);
   }
   return body as T;
 }

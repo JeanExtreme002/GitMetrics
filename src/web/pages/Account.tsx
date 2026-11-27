@@ -25,6 +25,7 @@ import {
   IconGitFork,
   IconLink,
   IconRadar,
+  IconRobot,
   IconMapPin,
   IconRosetteDiscountCheck,
   IconStar,
@@ -334,6 +335,32 @@ export function Account() {
   const [refreshing, setRefreshing] = useState(false);
 
   if (query.isLoading) return <PageSkeleton />;
+  const app =
+    query.error instanceof ApiError
+      ? (query.error.body?.app as { login: string; url: string } | undefined)
+      : undefined;
+  if (app) {
+    // An app, like Copilot: it acts on GitHub for people, with no account of its own to show here.
+    return (
+      <EmptyState
+        icon={<IconRobot size={28} />}
+        title={`${login} is an app`}
+        description="Apps act on GitHub on people's behalf, opening and reviewing pull requests. They have no account to show here, but GitHub has a page for each."
+        action={
+          <Button
+            component="a"
+            href={app.url}
+            target="_blank"
+            rel="noreferrer"
+            variant="default"
+            leftSection={<MarkGithubIcon size={16} />}
+          >
+            Open on GitHub
+          </Button>
+        }
+      />
+    );
+  }
   if (query.error instanceof ApiError && query.error.status === 404) {
     return (
       <EmptyState

@@ -1,5 +1,5 @@
 import { BarChart, DonutChart } from '@mantine/charts';
-import { Anchor, Avatar, Box, Button, Grid, Group, Loader, SegmentedControl, Text } from '@mantine/core';
+import { Avatar, Box, Button, Grid, Group, Loader, SegmentedControl, Text } from '@mantine/core';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import {
   IconActivity,
@@ -11,7 +11,15 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import type { Contributor, ContributorsResponse } from '../../../shared/types';
-import { Counter, Counters, NoData, PageHeader, QueryView, SectionHeader } from '../../components/ui';
+import {
+  Counter,
+  Counters,
+  NoData,
+  PageHeader,
+  PersonAnchor,
+  QueryView,
+  SectionHeader,
+} from '../../components/ui';
 import { compact, date, monthLabel, num, percent, relative } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
 import { cutoff, rangeOptions, type RangeValue } from '../../lib/ranges';
@@ -207,7 +215,14 @@ function PersonList({
   return (
     <div className="rank-list lines-between">
       {people.map((c) => (
-        <Anchor key={c.login} href={c.url} target="_blank" underline="never" c="inherit" className="pull-row">
+        <PersonAnchor
+          key={c.login}
+          login={c.login}
+          url={c.url}
+          underline="never"
+          c="inherit"
+          className="pull-row"
+        >
           <Avatar src={c.avatarUrl} size={22} radius="xl" />
           <Box miw={0}>
             <Text size="sm" fw={500} truncate>
@@ -220,7 +235,7 @@ function PersonList({
           <Text size="sm" fw={600} className="tabular" style={{ whiteSpace: 'nowrap' }}>
             {value(c)}
           </Text>
-        </Anchor>
+        </PersonAnchor>
       ))}
     </div>
   );
@@ -264,10 +279,10 @@ function Ranking({ contributors, hasHistory }: { contributors: Contributor[]; ha
           <div className="rank-head-label rank-head-right">Share</div>
         </div>
         {contributors.slice(0, limit).map((c, i) => (
-          <Anchor
+          <PersonAnchor
             key={c.login}
-            href={c.url}
-            target="_blank"
+            login={c.login}
+            url={c.url}
             underline="never"
             c="inherit"
             className={rowClass}
@@ -308,7 +323,7 @@ function Ranking({ contributors, hasHistory }: { contributors: Contributor[]; ha
             <Text size="xs" c="dimmed" ta="right" className="tabular">
               {percent(c.commits / Math.max(commits, 1))}
             </Text>
-          </Anchor>
+          </PersonAnchor>
         ))}
       </div>
       {contributors.length > limit && (

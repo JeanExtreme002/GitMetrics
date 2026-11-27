@@ -46,7 +46,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import type { PullCheck, PullDetail, PullPhase, PullReviewMark, PullStage } from '../../../shared/types';
-import { Counter, Counters, NoData, QueryView, RefreshButton, SectionHeader } from '../../components/ui';
+import {
+  Counter,
+  Counters,
+  NoData,
+  PersonAnchor,
+  QueryView,
+  RefreshButton,
+  SectionHeader,
+} from '../../components/ui';
 import { api } from '../../lib/api';
 import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../lib/format';
 import { reviewerActivity, sharedFolder, span, type ReviewerPoint } from '../../lib/pulls';
@@ -153,7 +161,10 @@ function ActivityLine({ pull }: { pull: PullDetail }) {
                     key={p.login}
                     label={`${p.login}${p.approved ? ' · approved' : ''} · ${num(p.actions)} ${p.actions === 1 ? 'action' : 'actions'}`}
                   >
-                    <Avatar src={p.avatarUrl} alt={p.login} size={20} radius="xl" />
+                    {/* Each face opens that person's page. */}
+                    <PersonAnchor login={p.login} underline="never" display="inline-flex">
+                      <Avatar src={p.avatarUrl} alt={p.login} size={20} radius="xl" />
+                    </PersonAnchor>
                   </Tooltip>
                 ))}
               </Avatar.Group>
@@ -562,9 +573,9 @@ function Timeline({ pull }: { pull: PullDetail }) {
                   <Text component="span" inherit fw={400} c="dimmed">
                     {' '}
                     by{' '}
-                    <Text component="span" inherit fw={500} c="var(--mantine-color-text)">
+                    <PersonAnchor login={s.login} inherit fw={500} c="var(--mantine-color-text)">
                       {s.login}
-                    </Text>
+                    </PersonAnchor>
                   </Text>
                 )}
               </Text>
@@ -897,10 +908,26 @@ export function Pull() {
               </Tooltip>
             )}
             <Group gap={6} wrap="wrap" fz={13} c="dimmed" align="center">
-              <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
-              <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
-                {pull.author ?? 'ghost'}
-              </Text>
+              {pull.author ? (
+                // The author's face and name, a way to their page.
+                <PersonAnchor
+                  login={pull.author}
+                  inherit
+                  fw={600}
+                  c="var(--mantine-color-text)"
+                  className="pr-author"
+                >
+                  <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
+                  {pull.author}
+                </PersonAnchor>
+              ) : (
+                <>
+                  <Avatar src={pull.authorAvatarUrl} size={18} radius="xl" />
+                  <Text component="span" inherit fw={600} c="var(--mantine-color-text)">
+                    ghost
+                  </Text>
+                </>
+              )}
               <span>
                 {pull.state === 'MERGED'
                   ? 'merged into'
