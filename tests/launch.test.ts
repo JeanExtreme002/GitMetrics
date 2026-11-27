@@ -108,9 +108,13 @@ describe('a shortcut and the start with the computer', () => {
     await setAutostart(e, true);
     expect(launchStatus(e)).toMatchObject({ shortcut: true, autostart: true });
     expect(paths.shortcut).toBe(path.join(home, '.local', 'share', 'applications', 'gitmetrics.desktop'));
-    expect(readFileSync(paths.shortcut, 'utf8')).toContain(`Exec="${paths.launcher}"`);
+    expect(readFileSync(paths.shortcut, 'utf8')).toContain(
+      // Its path as an Exec line writes it: a backslash, as in a Windows test folder, doubled.
+      `Exec="${paths.launcher.replace(/\\/g, '\\\\')}"`,
+    );
     expect(readFileSync(paths.autostart, 'utf8')).toContain('--no-open');
-    expect(statSync(paths.launcher).mode & 0o111).toBeTruthy();
+    // Executable, where files can be: Windows, running these tests, has no such bit.
+    if (process.platform !== 'win32') expect(statSync(paths.launcher).mode & 0o111).toBeTruthy();
     expect(existsSync(path.join(e.dataDir, 'gitmetrics.png'))).toBe(true);
     await setShortcut(e, false);
     await setAutostart(e, false);
