@@ -13,13 +13,24 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { IconBook2, IconSearch, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import {
+  IconBook2,
+  IconBuilding,
+  IconCode,
+  IconEye,
+  IconLock,
+  IconSearch,
+  IconSortAscending,
+  IconSortDescending,
+  IconWorld,
+} from '@tabler/icons-react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import type { RepoSummary } from '../../shared/types';
 import { LanguageDot, PinButton, repoPath } from '../components/repo';
 import { ErrorState, PageHeader, PageSkeleton } from '../components/ui';
 import { cleanText, num, relative } from '../lib/format';
+import { languageColor } from '../lib/languages';
 import { useAccountRepos, useOwners, useRepos } from '../lib/queries';
 
 type Kind = 'sources' | 'forks' | 'archived' | 'all';
@@ -126,6 +137,50 @@ function RepoTable({
   );
 }
 
+/** An option of the filters: its mark, its name, and how many repositories it holds on the right. */
+function OptionRow({ mark, label, count }: { mark: ReactNode; label: string; count: number }) {
+  return (
+    <Group gap={10} wrap="nowrap" justify="space-between" w="100%">
+      <Group gap={10} wrap="nowrap" miw={0}>
+        <Box w={22} style={{ display: 'flex', justifyContent: 'center', flex: 'none' }}>
+          {mark}
+        </Box>
+        <Text size="sm" truncate>
+          {label}
+        </Text>
+      </Group>
+      <Text size="xs" c="dimmed" className="tabular" style={{ flex: 'none' }}>
+        {num(count)} repos
+      </Text>
+    </Group>
+  );
+}
+
+/** A language's color, as a dot; a hollow one for repositories with none. */
+function LanguageMark({ language }: { language: string }) {
+  const none = language === NO_LANGUAGE;
+  return (
+    <Box
+      w={10}
+      h={10}
+      style={{
+        borderRadius: 99,
+        flex: 'none',
+        background: none ? 'transparent' : languageColor(language),
+        border: none ? '1.5px solid var(--mantine-color-dimmed)' : undefined,
+      }}
+    />
+  );
+}
+
+/** Each visibility's icon, and one for all of them. */
+const VISIBILITY_ICON: Record<Visibility | 'all', typeof IconWorld> = {
+  all: IconEye,
+  public: IconWorld,
+  private: IconLock,
+  internal: IconBuilding,
+};
+
 /**
  * Every repository you can reach, or one account's. `owner` fixes the account, as on an
  * organization's own Repositories page, where there's no account to pick; an `organization`'s are
@@ -137,6 +192,8 @@ export function Repositories({
 }: { owner?: string; organization?: boolean } = {}) {
   const repos = useRepos();
   const owners = useOwners();
+  const avatarOf = (login: string) =>
+    owners.find((o) => o.login === login)?.avatarUrl ?? `https://github.com/${login}.png`;
   const [params, setParams] = useSearchParams();
   const owner = fixed ?? params.get('owner') ?? 'all';
   const [search, setSearch] = useState('');
@@ -160,6 +217,11 @@ export function Repositories({
     () => (external ? (outside.data?.repos ?? []) : (repos.data?.repos ?? [])),
     [external, outside.data, repos.data],
   );
+  // How many each choice holds, as the list showed beside each name.
+  const countOf = (value: string) =>
+    value === 'all'
+      ? (repos.data?.repos.length ?? 0)
+      : (owners.find((o) => o.login === value)?.count ?? (value === owner ? source.length : 0));
 
   // Account and type narrow the list first, so the other options always match what is on screen.
   const byKind = useMemo(
@@ -181,15 +243,18 @@ export function Repositories({
     const count = (v: Visibility) => byKind.filter((r) => r.visibility === v).length;
     const internal = count('internal');
     return [
-      { value: 'public', label: `Public (${num(count('public'))})` },
-      { value: 'private', label: `Private (${num(count('private'))})` },
+      { value: 'public', label: 'Public', count: count('public') },
+      { value: 'private', label: 'Private', count: count('private') },
       // Only organizations in an enterprise have internal repositories.
-      ...(internal ? [{ value: 'internal', label: `Internal (${num(internal)})` }] : []),
+      ...(internal ? [{ value: 'internal', label: 'Internal', count: internal }] : []),
     ];
   }, [byKind]);
+  // A choice the list no longer offers (Internal, after picking forks where there are none) no
+  // longer narrows it: otherwise the field reads "All" while the list stays empty.
+  const shownVisibility = visibility && visibilities.some((v) => v.value === visibility) ? visibility : null;
   const scoped = useMemo(
-    () => byKind.filter((r) => !visibility || r.visibility === visibility),
-    [byKind, visibility],
+    () => byKind.filter((r) => !shownVisibility || r.visibility === shownVisibility),
+    [byKind, shownVisibility],
   );
 
   const languages = useMemo(() => {
@@ -198,12 +263,11 @@ export function Repositories({
       counts.set(r.language ?? NO_LANGUAGE, (counts.get(r.language ?? NO_LANGUAGE) ?? 0) + 1);
     return [...counts.entries()]
       .sort((a, b) => Number(a[0] === NO_LANGUAGE) - Number(b[0] === NO_LANGUAGE) || b[1] - a[1])
-      .map(([value, count]) => ({
-        value,
-        label: `${value === NO_LANGUAGE ? 'No language' : value} (${num(count)})`,
-      }));
+      .map(([value, count]) => ({ value, label: value === NO_LANGUAGE ? 'No language' : value, count }));
   }, [scoped]);
 
+  // The same for a language none of these repositories has.
+  const shownLanguage = language && languages.some((l) => l.value === language) ? language : null;
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const compare = (a: RepoSummary, b: RepoSummary) =>
@@ -213,7 +277,7 @@ export function Repositories({
           ? a.name.localeCompare(b.name)
           : (b.pushedAt ?? '').localeCompare(a.pushedAt ?? '');
     return scoped
-      .filter((r) => !language || (r.language ?? NO_LANGUAGE) === language)
+      .filter((r) => !shownLanguage || (r.language ?? NO_LANGUAGE) === shownLanguage)
       .filter(
         (r) =>
           !term ||
@@ -222,7 +286,7 @@ export function Repositories({
           ),
       )
       .sort((a, b) => (reversed ? -compare(a, b) : compare(a, b)));
-  }, [scoped, language, search, sort, reversed]);
+  }, [scoped, shownLanguage, search, sort, reversed]);
 
   // An organization's own page reads its own list alone: no waiting on yours, nor failing with it.
   if ((!organization && repos.isLoading) || (external && outside.isLoading)) return <PageSkeleton />;
@@ -271,42 +335,102 @@ export function Repositories({
           miw={170}
         />
         {!fixed && (
+          // As Radar's Where: the account's face in the field, and each one's count on its right.
           <Select
             value={owner}
             onChange={setOwner}
             allowDeselect={false}
-            w={190}
+            w={210}
             data={[
-              { value: 'all', label: `All accounts (${num(repos.data?.repos.length ?? 0)})` },
-              ...owners.map((o) => ({ value: o.login, label: `${o.login} (${num(o.count)})` })),
-              ...(external ? [{ value: owner, label: `${owner} (${num(source.length)})` }] : []),
+              { value: 'all', label: 'All accounts' },
+              ...owners.map((o) => ({ value: o.login, label: o.login })),
+              ...(external ? [{ value: owner, label: owner }] : []),
             ]}
+            leftSection={
+              owner === 'all' ? (
+                <IconWorld size={15} stroke={1.7} />
+              ) : (
+                <Avatar src={avatarOf(owner)} size={18} radius="sm" />
+              )
+            }
+            renderOption={({ option }) => (
+              <Group gap={10} wrap="nowrap" justify="space-between" w="100%">
+                <Group gap={10} wrap="nowrap" miw={0}>
+                  {option.value === 'all' ? (
+                    <IconWorld
+                      size={16}
+                      stroke={1.6}
+                      color="var(--mantine-color-dimmed)"
+                      style={{ flex: 'none', margin: '0 3px' }}
+                    />
+                  ) : (
+                    <Avatar src={avatarOf(option.value)} size={22} radius="sm" />
+                  )}
+                  <Text size="sm" truncate>
+                    {option.label}
+                  </Text>
+                </Group>
+                <Text size="xs" c="dimmed" className="tabular" style={{ flex: 'none' }}>
+                  {num(countOf(option.value))} repos
+                </Text>
+              </Group>
+            )}
+            comboboxProps={{ width: 300, position: 'bottom-start' }}
+            maxDropdownHeight={360}
           />
         )}
         <Select
-          value={language && languages.some((l) => l.value === language) ? language : null}
+          value={shownLanguage}
           onChange={(v) => {
             setLanguage(v);
             setLimit(PAGE);
           }}
           placeholder="All languages"
-          data={languages}
+          data={languages.map(({ value, label }) => ({ value, label }))}
           clearable
           searchable
           nothingFoundMessage="No language matches"
-          w={165}
+          w={190}
+          // As the accounts: the language's color in the field, and each one's count on its right.
+          leftSection={
+            shownLanguage ? <LanguageMark language={shownLanguage} /> : <IconCode size={15} stroke={1.7} />
+          }
+          renderOption={({ option }) => (
+            <OptionRow
+              mark={<LanguageMark language={option.value} />}
+              label={option.label}
+              count={languages.find((l) => l.value === option.value)?.count ?? 0}
+            />
+          )}
+          comboboxProps={{ width: 260, position: 'bottom-start' }}
+          maxDropdownHeight={360}
         />
         <Select
-          value={visibility}
+          value={shownVisibility}
           onChange={(v) => {
             setVisibility(v as Visibility | null);
             setLimit(PAGE);
           }}
           placeholder="All visibility"
-          data={visibilities}
+          data={visibilities.map(({ value, label }) => ({ value, label }))}
           clearable
-          w={150}
+          w={170}
           aria-label="Visibility"
+          leftSection={(() => {
+            const Mark = VISIBILITY_ICON[shownVisibility ?? 'all'];
+            return <Mark size={15} stroke={1.7} />;
+          })()}
+          renderOption={({ option }) => {
+            const Mark = VISIBILITY_ICON[option.value as Visibility];
+            return (
+              <OptionRow
+                mark={<Mark size={16} stroke={1.6} color="var(--mantine-color-dimmed)" />}
+                label={option.label}
+                count={visibilities.find((v) => v.value === option.value)?.count ?? 0}
+              />
+            );
+          }}
+          comboboxProps={{ width: 240, position: 'bottom-start' }}
         />
         <SegmentedControl
           value={kind}

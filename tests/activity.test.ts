@@ -5,6 +5,7 @@ import {
   coolDown,
   customPeriod,
   getActivity,
+  getDescriptions,
   period,
   periodDays,
   searchPeriod,
@@ -248,6 +249,8 @@ describe("putting someone's activity together", () => {
     expect(activity.pulls.reviewed[1]).toMatchObject({
       number: 10,
       review: 'approved',
+      // Every kind they gave it in the period, once each: the comment in October isn't one.
+      reviews: ['changes', 'approved'],
       at: '2026-11-06T00:00:00Z',
     });
   });
@@ -377,5 +380,30 @@ describe("putting someone's activity together", () => {
   it('is null for a login no user has', async () => {
     const gh = { graphql: async () => ({ user: null }) } as unknown as GitHubClient;
     expect(await getActivity(gh, 'acme', { kind: 'all' }, period(30, NOW))).toBeNull();
+  });
+});
+
+describe('descriptions, read only for a report', () => {
+  it('reads them in batches, by id, leaving out what GitHub gives back empty', async () => {
+    const asked: string[][] = [];
+    const gh = {
+      graphql: async (_query: string, v: { ids: string[] }) => {
+        asked.push(v.ids);
+        return {
+          nodes: v.ids.map((id) => (id === 'PR_gone' ? null : { id, body: `About ${id}` })),
+        };
+      },
+    } as unknown as GitHubClient;
+    const ids = [...Array.from({ length: 119 }, (_, i) => `PR_${i}`), 'PR_gone'];
+    const descriptions = await getDescriptions(gh, ids);
+    expect(asked.map((batch) => batch.length)).toEqual([50, 50, 20]);
+    expect(Object.keys(descriptions)).toHaveLength(119);
+    expect(descriptions.PR_7).toBe('About PR_7');
+    expect(descriptions.PR_gone).toBeUndefined();
+  });
+
+  it('asks nothing for no pull requests', async () => {
+    const gh = { graphql: async () => ({ nodes: [] }) } as unknown as GitHubClient;
+    expect(await getDescriptions(gh, [])).toEqual({});
   });
 });

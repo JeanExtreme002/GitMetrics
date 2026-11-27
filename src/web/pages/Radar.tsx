@@ -23,6 +23,7 @@ import {
 import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import {
+  IconArrowRight,
   IconAt,
   IconBook2,
   IconCalendarTime,
@@ -30,6 +31,7 @@ import {
   IconChevronDown,
   IconClockHour4,
   IconEye,
+  IconFileText,
   IconGitMerge,
   IconGitPullRequest,
   IconGitPullRequestClosed,
@@ -38,6 +40,7 @@ import {
   IconRadar,
   IconTarget,
   IconThumbUp,
+  IconUser,
   IconUserCheck,
   IconWorld,
   type Icon,
@@ -48,6 +51,7 @@ import { Link, useSearchParams } from 'react-router';
 import type { ActivityPerson, ActivityPull, ActivityResponse } from '../../shared/types';
 import { LanguagesDonut, SectionTitle } from '../components/overview';
 import { PunchCard } from '../components/punch';
+import { ReportModal } from '../components/report';
 import { EmptyState, ErrorState, PageHeader } from '../components/ui';
 import { parseAccountQuery } from '../lib/accounts';
 import { ApiError, api } from '../lib/api';
@@ -135,8 +139,8 @@ function PersonPicker({ value, onPick }: { value: string; onPick: (login: string
   };
   return (
     <Autocomplete
-      label="Person"
-      placeholder="A GitHub login, @login or a link"
+      label="Who"
+      placeholder="GitHub username"
       value={text}
       onChange={setText}
       data={users.map((u) => u.login)}
@@ -369,7 +373,8 @@ function PeriodPicker({
               </Text>
               <Group gap={8} wrap="nowrap">
                 <Text size="xs" c="dimmed" className="tabular">
-                  {dayLabel(daysAgo(n - 1))} – {dayLabel(today())}
+                  {/* A year back or more names its year: 1 and 2 years would read the same otherwise. */}
+                  {n >= 365 ? longDay(daysAgo(n - 1)) : dayLabel(daysAgo(n - 1))} – {dayLabel(today())}
                 </Text>
                 <Box w={14} c="teal.5" style={{ display: 'flex' }}>
                   {active && <IconCheck size={14} stroke={2.2} />}
@@ -410,7 +415,13 @@ function PeriodPicker({
             <Text size="xs" c={problem && problem !== 'Pick both days' ? 'red.6' : 'dimmed'}>
               {problem ?? `${num(daysBetween(draft.from, draft.to))} days`}
             </Text>
-            <Button size="xs" disabled={Boolean(problem)} onClick={() => pick(draft)}>
+            <Button
+              size="xs"
+              variant="default"
+              rightSection={<IconArrowRight size={14} stroke={1.8} />}
+              disabled={Boolean(problem)}
+              onClick={() => pick(draft)}
+            >
               Apply
             </Button>
           </Group>
@@ -947,8 +958,28 @@ function Pulls({
   );
 }
 
+/** What can be done with the person looked at: their report, and their page. */
+function WhoActions({ login, onReport }: { login: string; onReport: () => void }) {
+  return (
+    <>
+      {/* What they did, as a Markdown file. */}
+      <Button variant="default" leftSection={<IconFileText size={16} stroke={1.7} />} onClick={onReport}>
+        Generate report
+      </Button>
+      <Button
+        component={Link}
+        to={`/a/${login}`}
+        variant="default"
+        leftSection={<IconUser size={16} stroke={1.7} />}
+      >
+        View profile
+      </Button>
+    </>
+  );
+}
+
 /** Who was looked at, where and over what, with their page and GitHub a click away. */
-function Who({ data }: { data: ActivityResponse }) {
+function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void }) {
   return (
     <Group justify="space-between" wrap="wrap" gap="md" mb={28}>
       <Group gap="md" wrap="nowrap" miw={0}>
@@ -957,8 +988,9 @@ function Who({ data }: { data: ActivityResponse }) {
           <Text fw={650} fz={20} lh={1.2} truncate>
             {data.user.name ?? data.user.login}
           </Text>
-          <Group gap={6} wrap="nowrap" mt={4}>
-            <Anchor component={Link} to={`/a/${data.user.login}`} size="sm" c="dimmed">
+          <Group gap={6} wrap="nowrap" mt={4} miw={0}>
+            {/* Cut short rather than run under the buttons beside it. */}
+            <Anchor component={Link} to={`/a/${data.user.login}`} size="sm" c="dimmed" truncate miw={0}>
               @{data.user.login}
             </Anchor>
             <Tooltip label="Open on GitHub">
@@ -977,66 +1009,86 @@ function Who({ data }: { data: ActivityResponse }) {
             </Tooltip>
           </Group>
         </Box>
+        {/* Beside who they are, where there's room. */}
+        <Group gap="xs" wrap="nowrap" ml="md" visibleFrom="md" style={{ flex: 'none' }}>
+          <WhoActions login={data.user.login} onReport={onReport} />
+        </Group>
       </Group>
       {/* Where and over what, as two quiet facts, like the numbers below them. */}
-      <Group gap={0} wrap="nowrap" className="radar-facts">
-        <Box className="radar-fact">
-          <Text size="xs" c="dimmed">
-            Where
-          </Text>
-          <Group gap={7} wrap="nowrap" mt={4} miw={0}>
-            {data.scope.kind === 'all' ? (
-              <IconWorld
-                size={16}
-                stroke={1.6}
-                color="var(--mantine-color-dimmed)"
-                style={{ flex: 'none' }}
-              />
-            ) : (
-              <Avatar
-                src={`https://github.com/${data.scope.name.split('/')[0]}.png?size=40`}
-                size={18}
-                radius="sm"
-              />
-            )}
-            {data.scope.kind === 'all' ? (
-              <Text size="sm" fw={500}>
-                All of GitHub
+      <Group gap="lg" wrap="wrap" align="center">
+        <Group gap={0} wrap="nowrap" className="radar-facts">
+          <Box className="radar-fact">
+            <Text size="xs" c="dimmed">
+              Where
+            </Text>
+            <Group gap={7} wrap="nowrap" mt={4} miw={0}>
+              {data.scope.kind === 'all' ? (
+                <IconWorld
+                  size={16}
+                  stroke={1.6}
+                  color="var(--mantine-color-dimmed)"
+                  style={{ flex: 'none' }}
+                />
+              ) : (
+                <Avatar
+                  src={`https://github.com/${data.scope.name.split('/')[0]}.png?size=40`}
+                  size={18}
+                  radius="sm"
+                />
+              )}
+              {data.scope.kind === 'all' ? (
+                <Text size="sm" fw={500}>
+                  All of GitHub
+                </Text>
+              ) : (
+                <Anchor
+                  component={Link}
+                  to={data.scope.kind === 'repo' ? `/r/${data.scope.name}` : `/a/${data.scope.name}`}
+                  size="sm"
+                  fw={500}
+                  c="inherit"
+                  truncate
+                >
+                  {data.scope.name}
+                </Anchor>
+              )}
+            </Group>
+          </Box>
+          <Box className="radar-fact">
+            <Text size="xs" c="dimmed">
+              Period
+            </Text>
+            <Group gap={8} wrap="nowrap" mt={4} align="baseline">
+              <Text size="sm" fw={500} className="tabular" style={{ whiteSpace: 'nowrap' }}>
+                {span(data.from, data.to)}
               </Text>
-            ) : (
-              <Anchor
-                component={Link}
-                to={data.scope.kind === 'repo' ? `/r/${data.scope.name}` : `/a/${data.scope.name}`}
-                size="sm"
-                fw={500}
-                c="inherit"
-                truncate
-              >
-                {data.scope.name}
-              </Anchor>
-            )}
-          </Group>
-        </Box>
-        <Box className="radar-fact">
-          <Text size="xs" c="dimmed">
-            Period
-          </Text>
-          <Group gap={8} wrap="nowrap" mt={4} align="baseline">
-            <Text size="sm" fw={500} className="tabular" style={{ whiteSpace: 'nowrap' }}>
-              {span(data.from, data.to)}
-            </Text>
-            <Text size="xs" c="dimmed" className="tabular" style={{ whiteSpace: 'nowrap' }}>
-              {num(data.days)} days
-            </Text>
-          </Group>
-        </Box>
+              <Text size="xs" c="dimmed" className="tabular" style={{ whiteSpace: 'nowrap' }}>
+                {num(data.days)} days
+              </Text>
+            </Group>
+          </Box>
+        </Group>
+      </Group>
+      {/* On a phone, a row of their own under the rest, rather than over their name. */}
+      <Group gap="xs" grow w="100%" hiddenFrom="md">
+        <WhoActions login={data.user.login} onReport={onReport} />
       </Group>
     </Group>
   );
 }
 
 /** Everything about one person, once read. */
-function Results({ data, where, range }: { data: ActivityResponse; where: string; range: string }) {
+function Results({
+  data,
+  where,
+  range,
+  onReport,
+}: {
+  data: ActivityResponse;
+  where: string;
+  range: string;
+  onReport: () => void;
+}) {
   const o = data.opened;
   const r = data.reviews;
   const when = useWhen(data);
@@ -1047,7 +1099,7 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
 
   return (
     <>
-      <Who data={data} />
+      <Who data={data} onReport={onReport} />
 
       {(!o.complete || !r.complete) && (
         <Group gap={8} wrap="nowrap" c="dimmed" align="flex-start" mb="md">
@@ -1284,6 +1336,7 @@ export function Radar() {
   const query = useActivity(user, where, range);
   const client = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [recent, setRecent] = useLocalStorage<Recent[]>({
     key: 'gitmetrics:radar-recent',
     defaultValue: [],
@@ -1337,6 +1390,15 @@ export function Radar() {
         onRefresh={user && query.data ? refresh : undefined}
         refreshing={refreshing}
       />
+      {query.data && (
+        <ReportModal
+          opened={reporting}
+          onClose={() => setReporting(false)}
+          data={query.data}
+          where={where}
+          range={range}
+        />
+      )}
       <Group gap="md" align="flex-start" wrap="wrap" mb={36}>
         <PersonPicker value={user} onPick={(login) => set({ user: login })} />
         <ScopePicker value={where} onPick={(scope) => set({ in: scope })} />
@@ -1385,7 +1447,13 @@ export function Radar() {
         <ErrorState error={query.error} onRetry={() => query.refetch()} />
       ) : (
         // Keyed by the look, so another person's lists start from their top.
-        <Results key={`${user}:${where}:${range}`} data={query.data} where={where} range={range} />
+        <Results
+          key={`${user}:${where}:${range}`}
+          data={query.data}
+          where={where}
+          range={range}
+          onReport={() => setReporting(true)}
+        />
       )}
     </>
   );

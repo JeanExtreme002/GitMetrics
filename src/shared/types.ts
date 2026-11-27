@@ -846,6 +846,8 @@ export type ActivityScope =
 
 /** A pull request in someone's activity, with the date that put it there. */
 export interface ActivityPull {
+  /** GitHub's id for it: how its description is asked for, for a report. */
+  id: string;
   repo: string;
   number: number;
   title: string;
@@ -861,6 +863,8 @@ export interface ActivityPull {
   at: string;
   /** Their latest review in the period, for one they reviewed. */
   review?: 'approved' | 'changes' | 'commented' | 'dismissed';
+  /** Every kind of review they gave it in the period, once each, for one they reviewed. */
+  reviews?: ('approved' | 'changes' | 'commented' | 'dismissed')[];
 }
 
 export interface ActivityPerson {

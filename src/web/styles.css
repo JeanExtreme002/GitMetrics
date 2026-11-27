@@ -1555,3 +1555,119 @@ a.pull-row {
   align-items: center;
   gap: 6px;
 }
+
+/* The report's choices: a quiet heading over a few rows, each with its count on the right. */
+.report-heading {
+  margin-bottom: 4px;
+}
+
+.report-choice {
+  padding: 4px 0;
+}
+
+.report-choice.sub {
+  padding-left: 30px;
+}
+
+/* The made report, as a file: its page, corner turned, beside its name. */
+.report-file {
+  padding: 14px 16px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.report-page {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: end center;
+  width: 40px;
+  height: 50px;
+  padding-bottom: 8px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 5px 12px 5px 5px;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  color: var(--mantine-color-teal-6);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* The turned corner. */
+.report-page::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  border-left: 1px solid var(--mantine-color-default-border);
+  border-radius: 0 12px 0 4px;
+  background: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+}
+
+.report-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The report's layouts: a calm track, the chosen one lifted on it. */
+:root {
+  --report-track: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --report-track: var(--mantine-color-dark-8);
+}
+
+.report-arrange {
+  padding: 4px;
+}
+
+.report-arrange .mantine-SegmentedControl-label {
+  padding-block: 7px;
+  color: var(--mantine-color-dimmed);
+}
+
+.report-arrange .mantine-SegmentedControl-label[data-active] {
+  color: var(--mantine-color-text);
+}
+
+.report-arrange .mantine-SegmentedControl-indicator {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+
+/* A soft call to look: a faint glow in the logo's red, breathing slowly, edges melting away. */
+.nav-dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #e5383b 0 22%,
+    color-mix(in srgb, #e5383b 35%, transparent) 45%,
+    transparent 72%
+  );
+  opacity: 0.7;
+  animation: nav-dot 3.6s ease-in-out infinite;
+}
+
+@keyframes nav-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-dot {
+    animation: none;
+  }
+}
