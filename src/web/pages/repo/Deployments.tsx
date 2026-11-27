@@ -36,6 +36,7 @@ import {
 import { dayLabel, hourLabel, monthLabel, num, percent, relative } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
 import { cutoff, rangeOptions, type RangeValue } from '../../lib/ranges';
+import { stackedBars } from '../../lib/charts';
 
 /**
  * GitHub marks a deployment "inactive" once a newer one replaces it, so inactive ones did work.
@@ -184,7 +185,7 @@ function History({ data }: { data: DeploymentsResponse }) {
         legendProps={{ verticalAlign: 'top', height: 40 }}
         xAxisProps={{ tickFormatter: tick, minTickGap: 24 }}
         yAxisProps={{ allowDecimals: false }}
-        barProps={{ radius: 3, maxBarSize: 22 }}
+        barProps={stackedBars([...top, ...(hasOthers ? ['__other'] : [])])}
       />
     </Box>
   );
