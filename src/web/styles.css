@@ -1384,3 +1384,15 @@ a.pull-row {
     flex: 1;
   }
 }
+
+/* A repository's bar on the Activity page: opened and reviewed, side by side in one bar. */
+.activity-split-fill {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 99px;
+}
+
+.activity-split-fill > span {
+  min-width: 2px;
+}

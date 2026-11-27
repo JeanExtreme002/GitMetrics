@@ -2,6 +2,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import type {
+  ActivityCommentedResponse,
+  ActivityResponse,
   AlertDetailsResponse,
   AccountHit,
   AccountReposResponse,
@@ -273,4 +275,29 @@ export const useMemberTeams = (login: string, member: string | null) =>
     queryFn: () => api<{ teams: string[]; complete: boolean }>(`/accounts/${login}/teams/${member}`),
     enabled: Boolean(member),
     staleTime: 10 * 60_000,
+  });
+
+/** The ?in= of an activity: nothing for all of GitHub, a login, or owner/name. */
+const activityPath = (login: string, where: string, days: number, rest = '') =>
+  `/activity/${login}${rest}?days=${days}${where ? `&in=${encodeURIComponent(where)}` : ''}`;
+
+/** Someone's activity with pull requests, in a scope and a period. */
+export const useActivity = (login: string, where: string, days: number) =>
+  useQuery({
+    queryKey: ['activity', login.toLowerCase(), where.toLowerCase(), days],
+    queryFn: () => api<ActivityResponse>(activityPath(login, where, days)),
+    enabled: Boolean(login),
+    staleTime: 10 * 60_000,
+    // Reading a busy person takes a while: asking again on a failure would only double it.
+    retry: false,
+  });
+
+/** The pull requests they commented on: another search, asked only when its list is opened. */
+export const useActivityCommented = (login: string, where: string, days: number, enabled: boolean) =>
+  useQuery({
+    queryKey: ['activity-commented', login.toLowerCase(), where.toLowerCase(), days],
+    queryFn: () => api<ActivityCommentedResponse>(activityPath(login, where, days, '/commented')),
+    enabled: Boolean(login) && enabled,
+    staleTime: 10 * 60_000,
+    retry: false,
   });
