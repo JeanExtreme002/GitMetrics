@@ -336,7 +336,7 @@ export function PersonAnchor({
       {children}
     </Anchor>
   ) : (
-    <Anchor href={url ?? `https://github.com/${login}`} target="_blank" rel="noreferrer" {...props}>
+    <Anchor href={url || `https://github.com/${login}`} target="_blank" rel="noreferrer" {...props}>
       {children}
     </Anchor>
   );
