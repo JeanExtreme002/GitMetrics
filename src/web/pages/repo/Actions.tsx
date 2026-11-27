@@ -27,6 +27,7 @@ import {
 import { compact, dayLabel, duration, num, percent, relative } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
 import { semantic } from '../../theme';
+import { stackedBars } from '../../lib/charts';
 
 const EVENT_COLORS = [
   'var(--mantine-color-indigo-5)',
@@ -412,7 +413,7 @@ export function Actions() {
                   legendProps={{ verticalAlign: 'top', height: 40 }}
                   xAxisProps={{ tickFormatter: dayLabel, minTickGap: 24 }}
                   yAxisProps={{ allowDecimals: false }}
-                  barProps={{ radius: [3, 3, 0, 0], maxBarSize: 22 }}
+                  barProps={stackedBars(['success', 'failure', 'other'])}
                 />
               </Box>
 

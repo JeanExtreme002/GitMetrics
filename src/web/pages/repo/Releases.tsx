@@ -24,6 +24,7 @@ import {
 import { compact, date, monthLabel, num, percent, relative } from '../../lib/format';
 import { useRepoParams, useSection } from '../../lib/queries';
 import { cutoff, rangeOptions, type RangeValue } from '../../lib/ranges';
+import { stackedBars } from '../../lib/charts';
 
 /** "12.5 days" → "every 13 days"; short gaps read better in days, long ones in months. */
 function cadence(days: number | null) {
@@ -114,7 +115,7 @@ function History({ monthly }: { monthly: ReleasesResponse['monthly'] }) {
         legendProps={{ verticalAlign: 'top', height: 40 }}
         xAxisProps={{ tickFormatter: monthLabel, minTickGap: 24 }}
         yAxisProps={{ allowDecimals: false }}
-        barProps={{ radius: 3, maxBarSize: 22 }}
+        barProps={stackedBars(['releases', 'prereleases'])}
       />
     </Box>
   );

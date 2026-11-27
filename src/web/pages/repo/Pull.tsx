@@ -60,6 +60,7 @@ import { date, dateTime, dayLabel, hours, num, percent, relative } from '../../l
 import { reviewerActivity, sharedFolder, span, type ReviewerPoint } from '../../lib/pulls';
 import { usePull, usePullChurn } from '../../lib/queries';
 import { semantic } from '../../theme';
+import { stackedBars } from '../../lib/charts';
 
 const STATE: Record<string, { label: string; color: string; icon: ReactNode }> = {
   OPEN: { label: 'Open', color: 'green.7', icon: <IconGitPullRequest size={14} stroke={2.2} /> },
@@ -539,7 +540,7 @@ function ReviewerChart({ pull }: { pull: PullDetail }) {
         legendProps={{ verticalAlign: 'top', wrapperStyle: { paddingBottom: 12 } }}
         xAxisProps={{ tickFormatter: dayLabel, minTickGap: 24 }}
         yAxisProps={{ allowDecimals: false }}
-        barProps={{ radius: [3, 3, 0, 0], maxBarSize: 22 }}
+        barProps={stackedBars(series.map((s) => s.name))}
       />
     </Box>
   );
