@@ -988,8 +988,9 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
           <Text fw={650} fz={20} lh={1.2} truncate>
             {data.user.name ?? data.user.login}
           </Text>
-          <Group gap={6} wrap="nowrap" mt={4}>
-            <Anchor component={Link} to={`/a/${data.user.login}`} size="sm" c="dimmed">
+          <Group gap={6} wrap="nowrap" mt={4} miw={0}>
+            {/* Cut short rather than run under the buttons beside it. */}
+            <Anchor component={Link} to={`/a/${data.user.login}`} size="sm" c="dimmed" truncate miw={0}>
               @{data.user.login}
             </Anchor>
             <Tooltip label="Open on GitHub">
@@ -1009,7 +1010,7 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
           </Group>
         </Box>
         {/* Beside who they are, where there's room. */}
-        <Group gap="xs" wrap="nowrap" ml="md" visibleFrom="sm" style={{ flex: 'none' }}>
+        <Group gap="xs" wrap="nowrap" ml="md" visibleFrom="md" style={{ flex: 'none' }}>
           <WhoActions login={data.user.login} onReport={onReport} />
         </Group>
       </Group>
@@ -1069,7 +1070,7 @@ function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void 
         </Group>
       </Group>
       {/* On a phone, a row of their own under the rest, rather than over their name. */}
-      <Group gap="xs" grow w="100%" hiddenFrom="sm">
+      <Group gap="xs" grow w="100%" hiddenFrom="md">
         <WhoActions login={data.user.login} onReport={onReport} />
       </Group>
     </Group>
