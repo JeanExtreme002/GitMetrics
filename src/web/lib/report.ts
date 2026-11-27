@@ -73,8 +73,11 @@ const MAX_DESCRIPTION = 6000;
  * lines kept to one, and cut when very long.
  */
 function quote(body: string): string | null {
-  let text = body
-    .replace(/<!--[\s\S]*?-->/g, '')
+  // Hidden notes out, again and again until none is left: removing one can join the pieces of
+  // another around it, and one never closed is dropped with the rest of its opening.
+  let clean = body;
+  while (clean.includes('<!--')) clean = clean.replace(/<!--(?:[\s\S]*?-->)?/g, '');
+  let text = clean
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();

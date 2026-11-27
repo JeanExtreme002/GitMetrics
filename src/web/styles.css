@@ -1612,3 +1612,29 @@ a.pull-row {
   align-items: center;
   gap: 6px;
 }
+
+/* The report's layouts: a calm track, the chosen one lifted on it. */
+:root {
+  --report-track: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --report-track: var(--mantine-color-dark-8);
+}
+
+.report-arrange {
+  padding: 4px;
+}
+
+.report-arrange .mantine-SegmentedControl-label {
+  padding-block: 7px;
+  color: var(--mantine-color-dimmed);
+}
+
+.report-arrange .mantine-SegmentedControl-label[data-active] {
+  color: var(--mantine-color-text);
+}
+
+.report-arrange .mantine-SegmentedControl-indicator {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}

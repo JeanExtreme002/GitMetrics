@@ -23,6 +23,7 @@ import {
 import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
 import { MarkGithubIcon } from '@primer/octicons-react';
 import {
+  IconArrowRight,
   IconAt,
   IconBook2,
   IconCalendarTime,
@@ -137,8 +138,8 @@ function PersonPicker({ value, onPick }: { value: string; onPick: (login: string
   };
   return (
     <Autocomplete
-      label="Person"
-      placeholder="A GitHub login, @login or a link"
+      label="Who"
+      placeholder="GitHub username"
       value={text}
       onChange={setText}
       data={users.map((u) => u.login)}
@@ -371,7 +372,8 @@ function PeriodPicker({
               </Text>
               <Group gap={8} wrap="nowrap">
                 <Text size="xs" c="dimmed" className="tabular">
-                  {dayLabel(daysAgo(n - 1))} – {dayLabel(today())}
+                  {/* A year back or more names its year: 1 and 2 years would read the same otherwise. */}
+                  {n >= 365 ? longDay(daysAgo(n - 1)) : dayLabel(daysAgo(n - 1))} – {dayLabel(today())}
                 </Text>
                 <Box w={14} c="teal.5" style={{ display: 'flex' }}>
                   {active && <IconCheck size={14} stroke={2.2} />}
@@ -412,7 +414,13 @@ function PeriodPicker({
             <Text size="xs" c={problem && problem !== 'Pick both days' ? 'red.6' : 'dimmed'}>
               {problem ?? `${num(daysBetween(draft.from, draft.to))} days`}
             </Text>
-            <Button size="xs" disabled={Boolean(problem)} onClick={() => pick(draft)}>
+            <Button
+              size="xs"
+              variant="default"
+              rightSection={<IconArrowRight size={14} stroke={1.8} />}
+              disabled={Boolean(problem)}
+              onClick={() => pick(draft)}
+            >
               Apply
             </Button>
           </Group>
@@ -950,7 +958,7 @@ function Pulls({
 }
 
 /** Who was looked at, where and over what, with their page and GitHub a click away. */
-function Who({ data }: { data: ActivityResponse }) {
+function Who({ data, onReport }: { data: ActivityResponse; onReport: () => void }) {
   return (
     <Group justify="space-between" wrap="wrap" gap="md" mb={28}>
       <Group gap="md" wrap="nowrap" miw={0}>
@@ -981,64 +989,80 @@ function Who({ data }: { data: ActivityResponse }) {
         </Box>
       </Group>
       {/* Where and over what, as two quiet facts, like the numbers below them. */}
-      <Group gap={0} wrap="nowrap" className="radar-facts">
-        <Box className="radar-fact">
-          <Text size="xs" c="dimmed">
-            Where
-          </Text>
-          <Group gap={7} wrap="nowrap" mt={4} miw={0}>
-            {data.scope.kind === 'all' ? (
-              <IconWorld
-                size={16}
-                stroke={1.6}
-                color="var(--mantine-color-dimmed)"
-                style={{ flex: 'none' }}
-              />
-            ) : (
-              <Avatar
-                src={`https://github.com/${data.scope.name.split('/')[0]}.png?size=40`}
-                size={18}
-                radius="sm"
-              />
-            )}
-            {data.scope.kind === 'all' ? (
-              <Text size="sm" fw={500}>
-                All of GitHub
+      <Group gap="lg" wrap="wrap" align="center">
+        <Group gap={0} wrap="nowrap" className="radar-facts">
+          <Box className="radar-fact">
+            <Text size="xs" c="dimmed">
+              Where
+            </Text>
+            <Group gap={7} wrap="nowrap" mt={4} miw={0}>
+              {data.scope.kind === 'all' ? (
+                <IconWorld
+                  size={16}
+                  stroke={1.6}
+                  color="var(--mantine-color-dimmed)"
+                  style={{ flex: 'none' }}
+                />
+              ) : (
+                <Avatar
+                  src={`https://github.com/${data.scope.name.split('/')[0]}.png?size=40`}
+                  size={18}
+                  radius="sm"
+                />
+              )}
+              {data.scope.kind === 'all' ? (
+                <Text size="sm" fw={500}>
+                  All of GitHub
+                </Text>
+              ) : (
+                <Anchor
+                  component={Link}
+                  to={data.scope.kind === 'repo' ? `/r/${data.scope.name}` : `/a/${data.scope.name}`}
+                  size="sm"
+                  fw={500}
+                  c="inherit"
+                  truncate
+                >
+                  {data.scope.name}
+                </Anchor>
+              )}
+            </Group>
+          </Box>
+          <Box className="radar-fact">
+            <Text size="xs" c="dimmed">
+              Period
+            </Text>
+            <Group gap={8} wrap="nowrap" mt={4} align="baseline">
+              <Text size="sm" fw={500} className="tabular" style={{ whiteSpace: 'nowrap' }}>
+                {span(data.from, data.to)}
               </Text>
-            ) : (
-              <Anchor
-                component={Link}
-                to={data.scope.kind === 'repo' ? `/r/${data.scope.name}` : `/a/${data.scope.name}`}
-                size="sm"
-                fw={500}
-                c="inherit"
-                truncate
-              >
-                {data.scope.name}
-              </Anchor>
-            )}
-          </Group>
-        </Box>
-        <Box className="radar-fact">
-          <Text size="xs" c="dimmed">
-            Period
-          </Text>
-          <Group gap={8} wrap="nowrap" mt={4} align="baseline">
-            <Text size="sm" fw={500} className="tabular" style={{ whiteSpace: 'nowrap' }}>
-              {span(data.from, data.to)}
-            </Text>
-            <Text size="xs" c="dimmed" className="tabular" style={{ whiteSpace: 'nowrap' }}>
-              {num(data.days)} days
-            </Text>
-          </Group>
-        </Box>
+              <Text size="xs" c="dimmed" className="tabular" style={{ whiteSpace: 'nowrap' }}>
+                {num(data.days)} days
+              </Text>
+            </Group>
+          </Box>
+        </Group>
+        {/* What they did, as a Markdown file. */}
+        <Button variant="default" leftSection={<IconFileText size={16} stroke={1.7} />} onClick={onReport}>
+          Report
+        </Button>
       </Group>
     </Group>
   );
 }
 
 /** Everything about one person, once read. */
-function Results({ data, where, range }: { data: ActivityResponse; where: string; range: string }) {
+function Results({
+  data,
+  where,
+  range,
+  onReport,
+}: {
+  data: ActivityResponse;
+  where: string;
+  range: string;
+  onReport: () => void;
+}) {
   const o = data.opened;
   const r = data.reviews;
   const when = useWhen(data);
@@ -1049,7 +1073,7 @@ function Results({ data, where, range }: { data: ActivityResponse; where: string
 
   return (
     <>
-      <Who data={data} />
+      <Who data={data} onReport={onReport} />
 
       {(!o.complete || !r.complete) && (
         <Group gap={8} wrap="nowrap" c="dimmed" align="flex-start" mb="md">
@@ -1339,18 +1363,6 @@ export function Radar() {
         description="What anyone on GitHub opens and reviews: where, when and with whom. Only what your access lets you see."
         onRefresh={user && query.data ? refresh : undefined}
         refreshing={refreshing}
-        actions={
-          query.data ? (
-            // What they did, as a Markdown file.
-            <Button
-              variant="default"
-              leftSection={<IconFileText size={16} stroke={1.7} />}
-              onClick={() => setReporting(true)}
-            >
-              Report
-            </Button>
-          ) : undefined
-        }
       />
       {query.data && (
         <ReportModal
@@ -1409,7 +1421,13 @@ export function Radar() {
         <ErrorState error={query.error} onRetry={() => query.refetch()} />
       ) : (
         // Keyed by the look, so another person's lists start from their top.
-        <Results key={`${user}:${where}:${range}`} data={query.data} where={where} range={range} />
+        <Results
+          key={`${user}:${where}:${range}`}
+          data={query.data}
+          where={where}
+          range={range}
+          onReport={() => setReporting(true)}
+        />
       )}
     </>
   );

@@ -11,7 +11,14 @@ import {
   Stack,
   Text,
 } from '@mantine/core';
-import { IconArrowLeft, IconDownload, IconFileText } from '@tabler/icons-react';
+import {
+  IconArrowLeft,
+  IconBook2,
+  IconCalendarMonth,
+  IconDownload,
+  IconFileText,
+  IconTimeline,
+} from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type ReactNode } from 'react';
 import type { ActivityCommentedResponse, ActivityResponse } from '../../shared/types';
@@ -75,6 +82,13 @@ function Choice({
     </Group>
   );
 }
+
+/** The ways to lay the report out, each with its icon. */
+const ARRANGE = [
+  { value: 'timeline', label: 'Timeline', icon: IconTimeline },
+  { value: 'repo', label: 'Repository', icon: IconBook2 },
+  { value: 'month', label: 'Month', icon: IconCalendarMonth },
+] as const;
 
 /** How the report is laid out, in a word, for what's said about the file. */
 const LAYOUT: Record<ReportOptions['groupBy'], string> = {
@@ -286,13 +300,22 @@ export function ReportModal({
               <SegmentedControl
                 fullWidth
                 mt={6}
+                radius="md"
+                withItemsBorders={false}
+                className="report-arrange"
+                // Set on the control itself: Mantine's own background would win over a class.
+                styles={{ root: { background: 'var(--report-track)' } }}
                 value={options.groupBy}
                 onChange={(v) => setOptions((o) => ({ ...o, groupBy: v as ReportOptions['groupBy'] }))}
-                data={[
-                  { value: 'timeline', label: 'Timeline' },
-                  { value: 'repo', label: 'Repository' },
-                  { value: 'month', label: 'Month' },
-                ]}
+                data={ARRANGE.map(({ value, label, icon: ArrangeIcon }) => ({
+                  value,
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <ArrangeIcon size={15} stroke={1.7} />
+                      {label}
+                    </Group>
+                  ),
+                }))}
               />
             </Box>
           </Stack>

@@ -207,6 +207,17 @@ describe('a report of what someone did with pull requests', () => {
     expect(withComments).toContain('- **Commented on:** a pull request by someone else');
   });
 
+  it('leaves no hidden note in a description, however it was put together', () => {
+    const md = buildReport({
+      activity: activity([pull(1)]),
+      options: options(),
+      descriptions: { PR_1: 'Before <!<!-- a -->-- b --> after, and <!-- never closed' },
+      now: NOW,
+    });
+    expect(md).not.toContain('<!--');
+    expect(md).toContain('  > Before  after, and');
+  });
+
   it("keeps a title's Markdown from turning into links or emphasis", () => {
     const md = buildReport({
       activity: activity([pull(1, { title: 'Fix [link](x) and *stars* in `code`' })]),
