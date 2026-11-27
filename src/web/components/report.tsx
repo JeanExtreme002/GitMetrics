@@ -242,7 +242,7 @@ export function ReportModal({
       title={
         <Box>
           <Text fw={650} size="lg" lh={1.2}>
-            Report
+            Generate report
           </Text>
           <Text size="sm" c="dimmed" mt={4}>
             @{login} · {dayLabel(data.from)} – {dayLabel(data.to)} · {place}
@@ -352,7 +352,11 @@ export function ReportModal({
               {step.error}
             </Text>
           )}
-          <Group justify="flex-end" mt={22}>
+          <Group justify="space-between" mt={22}>
+            {/* Another way out than the X, where the eye already is. */}
+            <Anchor component="button" size="sm" c="dimmed" onClick={close}>
+              Cancel
+            </Anchor>
             <Button
               {...PRIMARY_ACTION}
               leftSection={<IconFileText size={16} stroke={1.7} />}
