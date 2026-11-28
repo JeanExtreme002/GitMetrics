@@ -215,6 +215,8 @@ async function main() {
     const auth = await fetch(`${base}/api/auth/gh`, { method: 'POST', headers: { 'x-gitmetrics': '1' } });
     if (!auth.ok) throw new Error('Could not sign in with the GitHub CLI. Sign in first with: gh auth login');
     step('Signed in with the GitHub CLI.');
+    // The offer to open it like an app comes after signing in: put off, so it covers no picture.
+    await fetch(`${base}/api/launch/offered`, { method: 'POST', headers: { 'x-gitmetrics': '1' } });
 
     // The overview's chart on commits rather than stars: Mantine keeps the choice as JSON.
     const overview = await open(
