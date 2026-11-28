@@ -442,18 +442,18 @@ export function createApp(options: AppOptions = {}) {
   // page, so what one has read the other doesn't read again.
   app.get('/api/people/known', async (c) => {
     const viewer = config.auth!.login;
-    const people = await memory.wrap(`${viewer}:known-people`, 10 * MINUTE, async () => {
+    const known = await memory.wrap(`${viewer}:known-people`, 10 * MINUTE, async () => {
       const organizations = await ownOrganizations(github()!);
-      const known = new Map<string, KnownPerson>();
+      const people = new Map<string, KnownPerson>();
       await mapLimit(organizations, 4, async (org) => {
         // One organization that can't be read leaves the others' people.
         const page = (await orgPage('people', org).catch(() => null)) as PeopleResponse | null;
         for (const person of page?.people ?? []) {
           if (person.login.toLowerCase() === viewer.toLowerCase()) continue;
-          const seen = known.get(person.login);
+          const seen = people.get(person.login);
           if (seen) seen.organizations.push(org);
           else {
-            known.set(person.login, {
+            people.set(person.login, {
               login: person.login,
               name: person.name,
               avatarUrl: person.avatarUrl,
@@ -462,9 +462,12 @@ export function createApp(options: AppOptions = {}) {
           }
         }
       });
-      return [...known.values()].sort((a, b) => a.login.localeCompare(b.login));
+      return {
+        organizations,
+        people: [...people.values()].sort((a, b) => a.login.localeCompare(b.login)),
+      };
     });
-    return c.json({ people });
+    return c.json(known);
   });
 
   // An organization's quality and security pages measure the same repositories: read once for both.

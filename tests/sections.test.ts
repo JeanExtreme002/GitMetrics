@@ -514,7 +514,11 @@ describe('repository pages, end to end', () => {
     });
     const res = await send('/api/people/known');
     expect(res.status).toBe(200);
-    const { people } = (await res.json()) as { people: { login: string; organizations: string[] }[] };
+    const { organizations, people } = (await res.json()) as {
+      organizations: string[];
+      people: { login: string; organizations: string[] }[];
+    };
+    expect(organizations).toEqual(['acme', 'beta', 'broken']);
     expect(people.map((p) => [p.login, p.organizations.sort()])).toEqual([
       ['ana', ['acme', 'beta']],
       ['bo', ['beta']],

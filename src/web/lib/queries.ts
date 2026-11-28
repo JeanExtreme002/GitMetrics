@@ -251,7 +251,7 @@ export const useAccountSearch = (text: string, enabled: boolean, { users = false
 export const useKnownPeople = (enabled: boolean) =>
   useQuery({
     queryKey: ['known-people'],
-    queryFn: () => api<{ people: KnownPerson[] }>('/people/known'),
+    queryFn: () => api<{ organizations: string[]; people: KnownPerson[] }>('/people/known'),
     enabled,
     staleTime: 10 * 60_000,
     // Only suggestions: without them, GitHub's search still offers people.
@@ -273,6 +273,19 @@ export const useTeams = accountPage<TeamsResponse>('teams');
 export const useQuality = accountPage<{ quality: QualityResponse | null }>('quality');
 export const useSecurity = accountPage<{ security: SecurityResponse | null }>('security');
 export const useSponsors = accountPage<SponsorsResponse>('sponsors');
+
+/**
+ * The public members of an organization you don't belong to, for Radar's Who: an account that
+ * isn't an organization just has none.
+ */
+export const useOrgMembers = (login: string, enabled: boolean) =>
+  useQuery({
+    queryKey: accountPageKey(login, 'people'),
+    queryFn: () => api<PeopleResponse>(`/accounts/${login}/people`),
+    enabled,
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
 
 /** Open Dependabot alerts by severity, asked once the page has found some. */
 export const useAlertDetails = (login: string, enabled: boolean) =>
