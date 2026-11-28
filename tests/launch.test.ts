@@ -132,6 +132,9 @@ describe('the macOS app', () => {
     return Date.now() - started;
   }
 
+  /** A word as a POSIX shell reads it, whatever it holds. */
+  const sh = (word: string) => `'${word.replace(/'/g, `'\\''`)}'`;
+
   /** A port nothing listens on. */
   const freePort = () =>
     new Promise<number>((resolve) => {
@@ -146,13 +149,28 @@ describe('the macOS app', () => {
     it('stays until GitMetrics answers, then goes', async () => {
       const port = await freePort();
       const answered = path.join(home, 'answered');
-      // GitMetrics, played by a server that answers after a second.
-      const server = `setTimeout(() => require('http').createServer((q, r) => { require('fs').writeFileSync(${JSON.stringify(answered)}, ''); r.end(); setTimeout(() => process.exit(0), 50); }).listen(${port}, '127.0.0.1'), 1000)`;
-      const stayed = await opening(`exec '${process.execPath}' -e "${server.replace(/"/g, '\\"')}"`, {
-        port,
-        seconds: 10,
-        shown: 0,
-      });
+      // GitMetrics, played by a server that answers after a second: a file of its own, and what it
+      // needs passed as arguments, so no code or shell line is built from them.
+      const server = path.join(home, 'server.cjs');
+      writeFileSync(
+        server,
+        [
+          'const [answered, port] = process.argv.slice(2);',
+          "setTimeout(() => require('http').createServer((q, r) => {",
+          "  require('fs').writeFileSync(answered, '');",
+          '  r.end();',
+          '  setTimeout(() => process.exit(0), 50);',
+          "}).listen(Number(port), '127.0.0.1'), 1000);",
+        ].join('\n'),
+      );
+      const stayed = await opening(
+        `exec ${[process.execPath, server, answered, String(port)].map(sh).join(' ')}`,
+        {
+          port,
+          seconds: 10,
+          shown: 0,
+        },
+      );
       expect(existsSync(answered)).toBe(true);
       expect(stayed).toBeGreaterThan(900);
       expect(stayed).toBeLessThan(5_000);
