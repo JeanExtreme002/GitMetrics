@@ -41,6 +41,15 @@
   color: var(--mantine-color-text);
 }
 
+/* Your accounts, blurred from the eye beside their label: names, faces and counts alike. */
+.nav-accounts > * {
+  transition: filter 150ms ease;
+}
+
+.nav-accounts.hidden > * {
+  filter: blur(5px);
+}
+
 .repo-identity {
   border-radius: var(--mantine-radius-md);
   background: var(--mantine-color-default-hover);

@@ -28,6 +28,8 @@ import {
   IconArrowLeft,
   IconBook2,
   IconCode,
+  IconEye,
+  IconEyeOff,
   IconChartArea,
   IconGitCommit,
   IconGitPullRequest,
@@ -341,6 +343,13 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
   const { recent, clear } = useRecentRepos();
   const recentShown = recent.slice(0, 4);
 
+  // Your accounts, blurred: for showing GitMetrics to others without showing who you work for.
+  const [accountsHidden, setAccountsHidden] = useLocalStorage({
+    key: 'gitmetrics:accounts-hidden',
+    defaultValue: false,
+    getInitialValueInEffect: false,
+  });
+
   return (
     <>
       <NavItemLink to="/" label="Home" icon={icon(IconHome)} end onClick={onNavigate} />
@@ -378,22 +387,44 @@ function MainNavigation({ onNavigate }: { onNavigate: () => void }) {
       )}
       {owners.length > 1 && (
         <>
-          <GroupLabel>Accounts</GroupLabel>
-          {owners.map((o) => (
-            <NavItemLink
-              key={o.login}
-              to={`/a/${o.login}`}
-              label={o.login}
-              icon={<Avatar src={o.avatarUrl} size={18} radius="sm" />}
-              // The account's page, and its repositories opened from there.
-              active={
-                location.pathname.toLowerCase() === `/a/${o.login.toLowerCase()}` ||
-                (onRepositories && params.get('owner') === o.login)
-              }
-              right={<Count>{o.count}</Count>}
-              onClick={onNavigate}
-            />
-          ))}
+          <GroupLabel
+            right={
+              <Tooltip label={accountsHidden ? 'Show accounts' : 'Hide accounts'} openDelay={400}>
+                <UnstyledButton
+                  onClick={() => setAccountsHidden(!accountsHidden)}
+                  className="group-action"
+                  aria-label={accountsHidden ? 'Show accounts' : 'Hide accounts'}
+                  aria-pressed={accountsHidden}
+                  style={{ display: 'flex' }}
+                >
+                  {accountsHidden ? (
+                    <IconEyeOff size={14} stroke={1.8} />
+                  ) : (
+                    <IconEye size={14} stroke={1.8} />
+                  )}
+                </UnstyledButton>
+              </Tooltip>
+            }
+          >
+            Accounts
+          </GroupLabel>
+          <div className={accountsHidden ? 'nav-accounts hidden' : 'nav-accounts'}>
+            {owners.map((o) => (
+              <NavItemLink
+                key={o.login}
+                to={`/a/${o.login}`}
+                label={o.login}
+                icon={<Avatar src={o.avatarUrl} size={18} radius="sm" />}
+                // The account's page, and its repositories opened from there.
+                active={
+                  location.pathname.toLowerCase() === `/a/${o.login.toLowerCase()}` ||
+                  (onRepositories && params.get('owner') === o.login)
+                }
+                right={<Count>{o.count}</Count>}
+                onClick={onNavigate}
+              />
+            ))}
+          </div>
         </>
       )}
 
