@@ -57,7 +57,7 @@ import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
-import { launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
+import { launchPaths, launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
 import { mapLimit } from './util.js';
 
 const MINUTE = 60_000;
@@ -737,12 +737,19 @@ export function createApp(options: AppOptions = {}) {
   // Opening it like an app -------------------------------------------------
 
   const launchEnv = options.launch ? { ...options.launch, dataDir: config.dir } : null;
-  const launchState = (): LaunchStatus => ({
-    ...(launchEnv
+  const launchState = (): LaunchStatus => {
+    const status = launchEnv
       ? launchStatus(launchEnv)
-      : { supported: false, platform: null, shortcut: false, autostart: false }),
-    offered: config.launchOffered,
-  });
+      : { supported: false, platform: null, shortcut: false, autostart: false };
+    // Set up already, or once and undone since: its launcher, written only then, stays. That tells
+    // a choice made with an older version, which didn't keep it, from a Not now.
+    const chosen =
+      status.shortcut ||
+      status.autostart ||
+      Boolean(launchEnv && existsSync(launchPaths(launchEnv).launcher));
+    const due = config.launchOfferDue() && !chosen;
+    return { ...status, offered: !due };
+  };
   app.get('/api/launch', (c) => c.json(launchState()));
   app.put('/api/launch', async (c) => {
     if (!launchEnv || !launchState().supported) {
@@ -763,11 +770,12 @@ export function createApp(options: AppOptions = {}) {
       console.error(error);
       return c.json({ error: "Couldn't change it on this computer.", status: 500 }, 500);
     }
-    config.setLaunchOffered();
+    config.settleLaunchOffer();
     return c.json(launchState());
   });
+  // Not now: offered once more, some weeks on, unless something is chosen in Settings meanwhile.
   app.post('/api/launch/offered', (c) => {
-    config.setLaunchOffered();
+    config.declineLaunchOffer();
     return c.json(launchState());
   });
   // Ends GitMetrics, once its answer is on its way: running in the background, it has no Ctrl+C.
