@@ -474,7 +474,7 @@ function UpdatePopup() {
             <Group justify="space-between" wrap="nowrap" align="center" gap="sm">
               <Group gap={12} wrap="nowrap" align="center">
                 <Logo size={36} />
-                <Text fw={700}>Your GitMetrics is out of date!</Text>
+                <Text fw={700}>GitMetrics has a new version</Text>
               </Group>
               <CloseButton
                 size="sm"
