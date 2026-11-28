@@ -1556,10 +1556,28 @@ code {
 
 /* Get started page */
 .doc {
+  position: relative;
+  isolation: isolate;
   padding: 72px 0 56px;
   /* The sign-in picture reaches past the column with its shadow's transparent room; on medium
      screens that room would scroll the page sideways. */
   overflow-x: clip;
+}
+
+/* Behind the guide's top: the stars and the red warmth of the landing page, fainter, gone before
+   the steps begin, so nothing sits behind what is read. */
+.doc .glow,
+.doc .dots {
+  z-index: -1;
+}
+
+.doc .glow {
+  opacity: 0.6;
+}
+
+.doc .dots {
+  height: 560px;
+  opacity: 0.6;
 }
 
 .doc-inner {
