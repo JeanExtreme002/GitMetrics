@@ -112,8 +112,11 @@
  */
 .login-page {
   --star-near: rgba(0, 0, 0, 0.26);
+  --star-near-halo: rgba(0, 0, 0, 0.09);
   --star-mid: rgba(0, 0, 0, 0.16);
-  --star-far: rgba(0, 0, 0, 0.1);
+  --star-far: rgba(0, 0, 0, 0.05);
+  --star-bright: rgba(0, 0, 0, 0.4);
+  --star-bright-halo: rgba(0, 0, 0, 0.1);
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -122,8 +125,11 @@
 
 [data-mantine-color-scheme='dark'] .login-page {
   --star-near: rgba(255, 255, 255, 0.5);
+  --star-near-halo: rgba(255, 255, 255, 0.18);
   --star-mid: rgba(255, 255, 255, 0.26);
-  --star-far: rgba(255, 255, 255, 0.13);
+  --star-far: rgba(255, 255, 255, 0.055);
+  --star-bright: rgba(240, 246, 252, 0.85);
+  --star-bright-halo: rgba(240, 246, 252, 0.21);
 }
 
 .login-page::before {
@@ -132,21 +138,70 @@
   inset: 0;
   z-index: -1;
   background-image:
-    radial-gradient(circle at 37px 81px, var(--star-near) 1.3px, transparent 1.9px),
-    radial-gradient(circle at 181px 29px, var(--star-near) 1.1px, transparent 1.7px),
-    radial-gradient(circle at 113px 203px, var(--star-near) 1.4px, transparent 2px),
-    radial-gradient(circle at 229px 147px, var(--star-near) 1px, transparent 1.6px),
-    radial-gradient(circle at 19px 41px, var(--star-mid) 0.9px, transparent 1.4px),
-    radial-gradient(circle at 97px 13px, var(--star-mid) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 143px 97px, var(--star-mid) 1px, transparent 1.5px),
-    radial-gradient(circle at 61px 131px, var(--star-mid) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 167px 163px, var(--star-mid) 0.9px, transparent 1.4px),
-    radial-gradient(circle, var(--star-far) 0.8px, transparent 1.1px);
+    radial-gradient(
+      circle at 37px 81px,
+      var(--star-near) 0.66px,
+      var(--star-near-halo) 1.6px,
+      transparent 2.71px
+    ),
+    radial-gradient(
+      circle at 181px 29px,
+      var(--star-near) 0.56px,
+      var(--star-near-halo) 1.44px,
+      transparent 2.54px
+    ),
+    radial-gradient(
+      circle at 113px 203px,
+      var(--star-near) 0.71px,
+      var(--star-near-halo) 1.69px,
+      transparent 2.79px
+    ),
+    radial-gradient(
+      circle at 229px 147px,
+      var(--star-near) 0.51px,
+      var(--star-near-halo) 1.35px,
+      transparent 2.45px
+    ),
+    radial-gradient(
+      circle at 71px 173px,
+      var(--star-near) 0.61px,
+      var(--star-near-halo) 1.52px,
+      transparent 2.62px
+    ),
+    radial-gradient(
+      circle at 199px 227px,
+      var(--star-near) 0.56px,
+      var(--star-near-halo) 1.44px,
+      transparent 2.54px
+    ),
+    radial-gradient(
+      circle at 149px 11px,
+      var(--star-near) 0.66px,
+      var(--star-near-halo) 1.6px,
+      transparent 2.71px
+    ),
+    radial-gradient(circle at 19px 41px, var(--star-mid) 0.77px, transparent 1.19px),
+    radial-gradient(circle at 97px 13px, var(--star-mid) 0.68px, transparent 1.1px),
+    radial-gradient(circle at 143px 97px, var(--star-mid) 0.85px, transparent 1.27px),
+    radial-gradient(circle at 61px 131px, var(--star-mid) 0.68px, transparent 1.1px),
+    radial-gradient(circle at 167px 163px, var(--star-mid) 0.77px, transparent 1.19px),
+    radial-gradient(circle at 41px 89px, var(--star-mid) 0.77px, transparent 1.19px),
+    radial-gradient(circle at 127px 151px, var(--star-mid) 0.68px, transparent 1.1px),
+    radial-gradient(circle at 7px 113px, var(--star-mid) 0.72px, transparent 1.14px),
+    radial-gradient(circle at 113px 61px, var(--star-mid) 0.68px, transparent 1.1px),
+    radial-gradient(circle, var(--star-far) 0.68px, transparent 0.94px);
   background-size:
     251px 251px,
     251px 251px,
     251px 251px,
     251px 251px,
+    251px 251px,
+    251px 251px,
+    251px 251px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
     173px 173px,
     173px 173px,
     173px 173px,
@@ -155,6 +210,8 @@
     22px 22px;
   /* Fading toward the edges, as if into the distance. */
   mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%);
+  /* Softened, so they read as distant light rather than dots on a screen. */
+  filter: blur(0.7px);
   animation: login-drift 240s linear infinite;
   pointer-events: none;
 }
@@ -179,6 +236,13 @@
       251px 251px,
       251px 251px,
       251px 251px,
+      251px 251px,
+      251px 251px,
+      251px 251px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
       173px 173px,
       173px 173px,
       173px 173px,
@@ -188,8 +252,95 @@
   }
 }
 
+/*
+ * A few brighter stars over the field, each with a soft halo, twinkling: two sets apart, slowly
+ * and out of step, as on the landing page.
+ */
+.login-twinkle {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%);
+  filter: blur(0.7px);
+  pointer-events: none;
+}
+
+.login-twinkle::before,
+.login-twinkle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  animation: login-twinkle 5s ease-in-out infinite alternate;
+}
+
+.login-twinkle::before {
+  background-image:
+    radial-gradient(
+      circle at 61px 47px,
+      var(--star-bright) 1.02px,
+      var(--star-bright-halo) 2.04px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 271px 193px,
+      var(--star-bright) 0.85px,
+      var(--star-bright-halo) 1.87px,
+      transparent 3.83px
+    ),
+    radial-gradient(
+      circle at 167px 281px,
+      var(--star-bright) 1.1px,
+      var(--star-bright-halo) 2.12px,
+      transparent 4.08px
+    );
+  background-size:
+    337px 337px,
+    337px 337px,
+    337px 337px;
+}
+
+.login-twinkle::after {
+  background-image:
+    radial-gradient(
+      circle at 211px 59px,
+      var(--star-bright) 0.94px,
+      var(--star-bright-halo) 1.96px,
+      transparent 3.92px
+    ),
+    radial-gradient(
+      circle at 89px 229px,
+      var(--star-bright) 1.02px,
+      var(--star-bright-halo) 2.04px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 307px 331px,
+      var(--star-bright) 0.85px,
+      var(--star-bright-halo) 1.87px,
+      transparent 3.83px
+    );
+  background-size:
+    383px 383px,
+    383px 383px,
+    383px 383px;
+  animation-duration: 7s;
+  animation-delay: -3s;
+}
+
+@keyframes login-twinkle {
+  from {
+    opacity: 0.15;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .login-page::before {
+  .login-page::before,
+  .login-twinkle::before,
+  .login-twinkle::after {
     animation: none;
   }
 }
