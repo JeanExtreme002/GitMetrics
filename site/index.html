@@ -246,25 +246,99 @@
           <p class="section-lead">
             How fast is it growing? Who is building it? Is the CI healthy? Each answer is one click away.
           </p>
-          <picture>
-            <source
-              type="image/webp"
-              srcset="
-                /img/pages-grid-640.webp   640w,
-                /img/pages-grid-1040.webp 1040w,
-                /img/pages-grid-1600.webp 1600w,
-                /img/pages-grid-2080.webp 2080w
-              "
-              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
-            />
-            <img
-              src="/pages-grid.png"
-              alt="The Stars, Commits, Pull requests and Actions pages of GitMetrics"
-              width="1600"
-              height="1297"
-              loading="lazy"
-            />
-          </picture>
+          <!-- The four pages, each with its caption as text beside it, rather than in the picture. -->
+          <div class="pages-grid">
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-stars-640.webp   640w,
+                    /img/page-stars-1040.webp 1040w,
+                    /img/page-stars-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-stars-1040.webp"
+                  alt="The Stars page: star history, new stars per month and milestones"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption><strong>Stars.</strong> Full history, monthly growth and milestones.</figcaption>
+            </figure>
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-commits-640.webp   640w,
+                    /img/page-commits-1040.webp 1040w,
+                    /img/page-commits-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-commits-1040.webp"
+                  alt="The Commits page: contribution calendar, code frequency and when commits happen"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption>
+                <strong>Commits.</strong> Contribution calendar, code frequency and work hours.
+              </figcaption>
+            </figure>
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-pulls-640.webp   640w,
+                    /img/page-pulls-1040.webp 1040w,
+                    /img/page-pulls-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-pulls-1040.webp"
+                  alt="The Pull requests page: pull requests per month, their sizes and the ones open longest"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption>
+                <strong>Pull requests.</strong> Merge rate, sizes, authors and what is waiting.
+              </figcaption>
+            </figure>
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-actions-640.webp   640w,
+                    /img/page-actions-1040.webp 1040w,
+                    /img/page-actions-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-actions-1040.webp"
+                  alt="The Actions page: runs per day, what triggers them and recent failures"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption>
+                <strong>Actions.</strong> Success rate, failures and run time of every workflow.
+              </figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
