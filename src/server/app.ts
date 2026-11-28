@@ -57,7 +57,7 @@ import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
-import { launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
+import { launchPaths, launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
 import { mapLimit } from './util.js';
 
 const MINUTE = 60_000;
@@ -741,8 +741,13 @@ export function createApp(options: AppOptions = {}) {
     const status = launchEnv
       ? launchStatus(launchEnv)
       : { supported: false, platform: null, shortcut: false, autostart: false };
-    // Already opened like an app, however that came about: nothing to offer.
-    const due = config.launchOfferDue() && !status.shortcut && !status.autostart;
+    // Set up already, or once and undone since: its launcher, written only then, stays. That tells
+    // a choice made with an older version, which didn't keep it, from a Not now.
+    const chosen =
+      status.shortcut ||
+      status.autostart ||
+      Boolean(launchEnv && existsSync(launchPaths(launchEnv).launcher));
+    const due = config.launchOfferDue() && !chosen;
     return { ...status, offered: !due };
   };
   app.get('/api/launch', (c) => c.json(launchState()));

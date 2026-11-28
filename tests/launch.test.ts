@@ -284,10 +284,15 @@ describe('the launch routes', () => {
     expect(await offered()).toBe(false);
     await send('/api/launch/offered', 'POST');
     expect(await offered()).toBe(true);
-    // Switched on and back off in Settings, after a first Not now: not offered again.
+    // Switched on and back off in Settings, after a first Not now: not offered again; nor when an
+    // older version, which kept no answer, had it set up and later undone.
     putOff(LAUNCH_OFFER_AGAIN);
     await send('/api/launch', 'PUT', { autostart: true });
     await send('/api/launch', 'PUT', { autostart: false });
+    expect(await offered()).toBe(true);
+    const config = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+    writeFileSync(file, JSON.stringify({ ...config, launchOffer: undefined, launchOffered: true }));
+    expect(existsSync(launchPaths({ ...e, dataDir: path.join(home, 'data') }).launcher)).toBe(true);
     expect(await offered()).toBe(true);
   });
 
