@@ -63,6 +63,8 @@ import {
   useActivity,
   useActivityCommented,
   useAuth,
+  useKnownPeople,
+  useOrgMembers,
   useOwners,
   useRepos,
 } from '../lib/queries';
@@ -122,17 +124,85 @@ const radarPath = (login: string, where: string, range: string) =>
 // Choosing who, where and when ------------------------------------------------------------------
 
 /** Who to look into: a login typed, pasted (a GitHub link, @login) or picked from GitHub's users. */
-function PersonPicker({ value, onPick }: { value: string; onPick: (login: string) => void }) {
+function PersonPicker({
+  value,
+  where,
+  onPick,
+}: {
+  value: string;
+  /** Where Radar looks: its owner, when it's an organization, narrows the people offered first. */
+  where: string;
+  onPick: (login: string) => void;
+}) {
   const [text, setText] = useState(value);
   useEffect(() => setText(value), [value]);
+  // Read once the field is first used: not a cost for those who never pick anyone.
+  const [used, setUsed] = useState(false);
+  const known = useKnownPeople(used);
   const [debounced] = useDebouncedValue(text.trim(), 250);
   const parsed = parseAccountQuery(debounced);
   const search = useAccountSearch(
     parsed?.login ?? '',
     Boolean(parsed && !parsed.exact && parsed.login.length > 1),
+    { users: true },
   );
-  const users = (search.data?.accounts ?? []).filter((a) => a.kind === 'user');
-  const avatars = new Map(users.map((u) => [u.login, u.avatarUrl]));
+
+  // Looking in an organization: its people first. Yours, from what's read already; another's, its
+  // public members. A user's account has none, and leaves all the people you know.
+  const owner = where.split('/')[0] ?? '';
+  const ownOrg = known.data?.organizations.find((o) => o.toLowerCase() === owner.toLowerCase());
+  const viewer = useAuth().data?.viewer?.login.toLowerCase();
+  // Your own account isn't an organization: not asked.
+  const members = useOrgMembers(
+    owner,
+    used && Boolean(owner && known.data && !ownOrg) && owner.toLowerCase() !== viewer,
+  );
+  const otherOrg = !ownOrg && members.data ? owner : null;
+  const scope = ownOrg ?? otherOrg;
+  const pool = ownOrg
+    ? (known.data?.people ?? []).filter((p) => p.organizations.includes(ownOrg))
+    : otherOrg
+      ? (members.data?.people ?? [])
+          .filter((p) => p.login.toLowerCase() !== viewer)
+          .map((p) => ({ ...p, organizations: [otherOrg] }))
+      : owner && members.isLoading
+        ? []
+        : (known.data?.people ?? []);
+
+  // The people offered first, by login or name, those it starts with first.
+  const term = text.trim().replace(/^@/, '').toLowerCase();
+  const nearby = pool
+    .map((p) => {
+      const login = p.login.toLowerCase();
+      const name = p.name?.toLowerCase() ?? '';
+      const rank = !term
+        ? 0
+        : login.startsWith(term)
+          ? 0
+          : name.split(/\s+/).some((word) => word.startsWith(term))
+            ? 1
+            : login.includes(term) || name.includes(term)
+              ? 2
+              : -1;
+      return { person: p, rank };
+    })
+    .filter((m) => m.rank >= 0)
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, KNOWN_SUGGESTIONS)
+    .map((m) => m.person);
+  const shown = new Set(nearby.map((p) => p.login.toLowerCase()));
+  const others = (search.data?.accounts ?? []).filter(
+    (a) => a.kind === 'user' && !shown.has(a.login.toLowerCase()),
+  );
+  const people = new Map<string, { avatarUrl: string; name?: string | null; organizations?: string[] }>([
+    ...others.map((a) => [a.login, { avatarUrl: a.avatarUrl }] as const),
+    ...nearby.map((p) => [p.login, p] as const),
+  ]);
+  const data = [
+    ...(nearby.length ? [{ group: scope ?? 'Your organizations', items: nearby.map((p) => p.login) }] : []),
+    ...(others.length ? [{ group: 'GitHub', items: others.map((a) => a.login) }] : []),
+  ];
+
   const submit = (raw: string) => {
     const login = parseAccountQuery(raw.trim())?.login;
     if (login) onPick(login);
@@ -141,25 +211,62 @@ function PersonPicker({ value, onPick }: { value: string; onPick: (login: string
     <Autocomplete
       label="Who"
       placeholder="GitHub username"
+      // A person to look at, not a sign-in: "username" brings password managers' icons and offers.
+      autoComplete="off"
+      data-bwignore
+      data-lpignore="true"
+      data-1p-ignore
+      data-form-type="other"
       value={text}
       onChange={setText}
-      data={users.map((u) => u.login)}
+      onFocus={() => setUsed(true)}
+      data={data}
+      // Already matched above, by name as well as login.
+      filter={({ options }) => options}
+      limit={KNOWN_SUGGESTIONS + 4}
+      // Room for both groups, with no row cut halfway.
+      maxDropdownHeight={420}
+      // As wide as the field: a long name is cut short, rather than widening every row past it.
+      scrollAreaProps={{ scrollbars: 'y', styles: { content: { minWidth: 0, width: '100%' } } }}
       onOptionSubmit={submit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') submit(e.currentTarget.value);
       }}
       leftSection={<IconAt size={15} stroke={1.7} />}
-      renderOption={({ option }) => (
-        <Group gap={10} wrap="nowrap">
-          <Avatar src={avatars.get(option.value)} size={22} radius="xl" />
-          <Text size="sm">{option.value}</Text>
-        </Group>
-      )}
+      renderOption={({ option }) => {
+        const person = people.get(option.value);
+        // Within one organization, its name is the group's: not said again on each person.
+        const organizations = scope ? [] : (person?.organizations ?? []);
+        return (
+          <Group gap={10} wrap="nowrap" justify="space-between" w="100%" miw={0}>
+            <Group gap={10} wrap="nowrap" miw={0} style={{ flex: 1 }}>
+              <Avatar src={person?.avatarUrl} size={22} radius="xl" style={{ flex: 'none' }} />
+              <Text size="sm" truncate miw={0}>
+                {option.value}
+                {person?.name && (
+                  <Text span size="xs" c="dimmed" ml={6}>
+                    {person.name}
+                  </Text>
+                )}
+              </Text>
+            </Group>
+            {organizations.length > 0 && (
+              <Text size="xs" c="dimmed" style={{ flex: 'none' }}>
+                {organizations[0]}
+                {organizations.length > 1 && ` +${organizations.length - 1}`}
+              </Text>
+            )}
+          </Group>
+        );
+      }}
       style={{ flex: '1 1 260px' }}
       maw={360}
     />
   );
 }
+
+/** People you share an organization with, offered at most. */
+const KNOWN_SUGGESTIONS = 6;
 
 /** Repositories offered once something is typed, at most. */
 const REPO_SUGGESTIONS = 8;
@@ -1400,7 +1507,7 @@ export function Radar() {
         />
       )}
       <Group gap="md" align="flex-start" wrap="wrap" mb={36}>
-        <PersonPicker value={user} onPick={(login) => set({ user: login })} />
+        <PersonPicker value={user} where={where} onPick={(login) => set({ user: login })} />
         <ScopePicker value={where} onPick={(scope) => set({ in: scope })} />
         <PeriodPicker
           days={days}

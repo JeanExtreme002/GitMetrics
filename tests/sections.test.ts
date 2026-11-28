@@ -251,6 +251,22 @@ function fakeGitHub(overrides: Record<string, () => Response> = {}) {
           },
         });
       }
+      // The organizations you belong to, and their people: acme reads, broken doesn't.
+      if (query.includes('viewer { organizations')) {
+        const nodes = [{ login: 'acme' }, { login: 'beta' }, { login: 'broken' }];
+        return json({ data: { viewer: { organizations: { nodes } } } });
+      }
+      if (query.includes('viewerIsAMember')) {
+        const login = String(body.variables?.login);
+        if (login === 'broken') return new Response('{}', { status: 500 });
+        return json({
+          data: { organization: { viewerIsAMember: true, membersWithRole: { totalCount: 2 } } },
+        });
+      }
+      if (query.includes('enterpriseOwners')) return json({ data: { organization: null } });
+      if (query.includes(': user(login:')) {
+        return json({ data: { u0: { name: 'Ana Lima' }, u1: null } });
+      }
       // Your pull requests: one search per filter, a repository's baseline, one pull request.
       if (query.includes('search(query: $q')) {
         const q = String(body.variables?.q);
@@ -490,8 +506,32 @@ describe('repository pages, end to end', () => {
     return { ...github, send, page };
   }
 
+  it('the people in your organizations, each once, with where you know them from, and not you', async () => {
+    const member = (login: string) => ({ login, avatar_url: `https://avatars/${login}` });
+    const { send, calls } = await signedIn({
+      '/orgs/acme/members': () => json([member('ana'), member('octo')]),
+      '/orgs/beta/members': () => json([member('ana'), member('bo')]),
+    });
+    const res = await send('/api/people/known');
+    expect(res.status).toBe(200);
+    const { organizations, people } = (await res.json()) as {
+      organizations: string[];
+      people: { login: string; organizations: string[] }[];
+    };
+    expect(organizations).toEqual(['acme', 'beta', 'broken']);
+    expect(people.map((p) => [p.login, p.organizations.sort()])).toEqual([
+      ['ana', ['acme', 'beta']],
+      ['bo', ['beta']],
+    ]);
+    // Read through each organization's People page: the same reading, kept for it too.
+    const reads = () => calls.filter((p) => p === '/orgs/acme/members').length;
+    const before = reads();
+    expect(await (await send('/api/accounts/acme/people')).json()).toMatchObject({ total: 2 });
+    expect(reads()).toBe(before);
+  });
+
   it("an account's page, its totals and repositories, and the accounts search", async () => {
-    const { send } = await signedIn({
+    const { send, urls } = await signedIn({
       '/users/octo/repos': () => json([REPO]),
       '/search/users': () => json({ items: [{ login: 'octo', avatar_url: '', type: 'User' }] }),
       '/users/Copilot[bot]': () =>
@@ -512,6 +552,12 @@ describe('repository pages, end to end', () => {
     expect(repos.repos.map((r) => r.fullName)).toEqual(['octo/app']);
     const search = (await (await send('/api/search/accounts?q=octo')).json()) as { accounts: unknown[] };
     expect(search.accounts).toEqual([{ login: 'octo', avatarUrl: '', kind: 'user' }]);
+    // People alone, for Radar: asked of GitHub as such, and kept apart from the quick search.
+    await send('/api/search/accounts?q=octo&type=user');
+    expect(urls.filter((u) => u.pathname === '/search/users').map((u) => u.searchParams.get('q'))).toEqual([
+      'octo in:login',
+      'octo in:login type:user',
+    ]);
 
     expect((await send('/api/accounts/nobody')).status).toBe(404);
     // An app's name, as GitHub writes it on pull requests: told apart, with its page on GitHub.

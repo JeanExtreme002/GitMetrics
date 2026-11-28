@@ -6,6 +6,7 @@ import type {
   ActivityResponse,
   AlertDetailsResponse,
   AccountHit,
+  KnownPerson,
   AccountReposResponse,
   AccountResponse,
   AccountTotals,
@@ -232,14 +233,28 @@ export const useAccountRepos = (login: string, enabled: boolean, organization = 
     staleTime: 10 * 60_000,
   });
 
-/** Accounts whose login matches, for the quick search. */
-export const useAccountSearch = (text: string, enabled: boolean) =>
+/** Accounts whose login matches, for the quick search; people alone, with `users`. */
+export const useAccountSearch = (text: string, enabled: boolean, { users = false } = {}) =>
   useQuery({
-    queryKey: ['search-accounts', text.toLowerCase()],
-    queryFn: () => api<{ accounts: AccountHit[] }>(`/search/accounts?q=${encodeURIComponent(text)}`),
+    queryKey: ['search-accounts', text.toLowerCase(), users],
+    queryFn: () =>
+      api<{ accounts: AccountHit[] }>(
+        `/search/accounts?q=${encodeURIComponent(text)}${users ? '&type=user' : ''}`,
+      ),
     enabled,
     staleTime: 10 * 60_000,
     // A failed account search never gets in the way of the repository search beside it.
+    retry: false,
+  });
+
+/** The people in the organizations you belong to: asked once there's somewhere to offer them. */
+export const useKnownPeople = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['known-people'],
+    queryFn: () => api<{ organizations: string[]; people: KnownPerson[] }>('/people/known'),
+    enabled,
+    staleTime: 10 * 60_000,
+    // Only suggestions: without them, GitHub's search still offers people.
     retry: false,
   });
 
@@ -258,6 +273,19 @@ export const useTeams = accountPage<TeamsResponse>('teams');
 export const useQuality = accountPage<{ quality: QualityResponse | null }>('quality');
 export const useSecurity = accountPage<{ security: SecurityResponse | null }>('security');
 export const useSponsors = accountPage<SponsorsResponse>('sponsors');
+
+/**
+ * The public members of an organization you don't belong to, for Radar's Who: an account that
+ * isn't an organization just has none.
+ */
+export const useOrgMembers = (login: string, enabled: boolean) =>
+  useQuery({
+    queryKey: accountPageKey(login, 'people'),
+    queryFn: () => api<PeopleResponse>(`/accounts/${login}/people`),
+    enabled,
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
 
 /** Open Dependabot alerts by severity, asked once the page has found some. */
 export const useAlertDetails = (login: string, enabled: boolean) =>
