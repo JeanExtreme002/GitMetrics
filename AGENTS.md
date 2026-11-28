@@ -69,7 +69,7 @@ GitMetrics has a settled look. A new page should look like it was always there: 
 
 Everything a user reads (UI, README, landing page, release notes) is in English and written for a global audience.
 
-- Plain and short. Sentence case for titles, no period at the end of headings.
+- Plain and short. Sentence case for titles, and no period at the end of the app's headings. The landing page's headlines are full sentences, with their period.
 - Say what something does for the user, concretely. No hype ("powerful", "seamless", "blazing fast"), no exclamation marks.
 - Examples use neutral placeholders: `octo/app`, Jane Doe, `$`.
 - Numbers and durations go through the formatters, so they read the same everywhere.
