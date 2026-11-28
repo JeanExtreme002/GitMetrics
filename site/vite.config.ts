@@ -87,14 +87,26 @@ const PAGES = [
 ];
 
 /** Plain text of a bit of HTML: tags gone, entities and spaces tidied. */
-const text = (html: string) =>
-  html
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
+function text(html: string) {
+  // Tags out until none is left, so one hidden inside another can't come back together.
+  let plain = html;
+  for (let previous = ''; previous !== plain;) {
+    previous = plain;
+    plain = plain.replace(/<[^<>]*>/g, '');
+  }
+  return (
+    plain
+      .replace(/&#39;|&apos;/g, "'")
+      .replace(/&quot;/g, '"')
+      // Last, so an escaped entity, like &amp;quot;, stays as written: &quot;.
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+}
+
+/** JSON to put inside a <script>: a < in it can't close the script, whatever the text holds. */
+const scriptJson = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u003c');
 
 /** The questions of the landing page's FAQ, read from the page itself, so both never disagree. */
 const faq = () =>
@@ -223,7 +235,7 @@ function discoverable(): Plugin {
     transformIndexHtml(html, context) {
       if (!/(^|\/)index\.html$/.test(context.path) || context.path.includes('get-started')) return html;
       const scripts = structuredData()
-        .map((data) => `<script type="application/ld+json">${JSON.stringify(data)}</script>`)
+        .map((data) => `<script type="application/ld+json">${scriptJson(data)}</script>`)
         .join('\n    ');
       return html.replace('</head>', `    ${scripts}\n  </head>`);
     },
