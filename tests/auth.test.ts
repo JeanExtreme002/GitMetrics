@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DeviceFlow, validateToken } from '../src/server/auth';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { DeviceFlow, ghLocations, readGhToken, validateToken } from '../src/server/auth';
 import { GitHubError } from '../src/server/github';
 
 const json = (body: unknown, init: ResponseInit = {}) =>
@@ -113,5 +116,33 @@ describe('DeviceFlow', () => {
     vi.advanceTimersByTime(901_000);
     expect(await flow.poll()).toEqual({ status: 'expired' });
     expect(requests).toHaveLength(1);
+  });
+});
+
+describe('the GitHub CLI session', () => {
+  // A shell script standing in for the CLI: Windows, running these tests, can't run one.
+  it.skipIf(process.platform === 'win32')(
+    "is found where it's usually installed, when the PATH doesn't have it, as from a shortcut",
+    async () => {
+      const dir = mkdtempSync(path.join(tmpdir(), 'gitmetrics-gh-'));
+      try {
+        const gh = path.join(dir, 'gh');
+        writeFileSync(gh, '#!/bin/sh\necho gho_found\n');
+        chmodSync(gh, 0o755);
+        // A PATH with no CLI on it.
+        vi.stubEnv('PATH', path.join(dir, 'empty'));
+        expect(await readGhToken([path.join(dir, 'missing', 'gh'), gh])).toBe('gho_found');
+        expect(await readGhToken([path.join(dir, 'missing', 'gh')])).toBeNull();
+      } finally {
+        vi.unstubAllEnvs();
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('looks in the usual folders on macOS and Linux, and leaves Windows to its PATH', () => {
+    expect(ghLocations('darwin', '/Users/a')).toContain('/opt/homebrew/bin/gh');
+    expect(ghLocations('linux', '/home/a')).toContain('/home/linuxbrew/.linuxbrew/bin/gh');
+    expect(ghLocations('win32', 'C:\\Users\\a')).toEqual([]);
   });
 });

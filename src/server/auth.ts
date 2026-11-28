@@ -1,4 +1,7 @@
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import path from 'node:path';
 import type { DevicePoll, DeviceStart, Viewer } from '../shared/types.js';
 import { GITHUB_API, GitHubError, USER_AGENT } from './github.js';
 
@@ -60,14 +63,43 @@ export async function validateToken(
   return { viewer: toViewer((await response.json()) as GitHubUser), scopes };
 }
 
-/** Reads the token of an existing GitHub CLI session, if there is one. */
-export function readGhToken(): Promise<string | null> {
+/**
+ * Where the GitHub CLI is installed when it isn't on the PATH: opened from its shortcut, or started
+ * with the computer, GitMetrics has the system's short PATH, without Homebrew's folders and the like.
+ */
+export function ghLocations(platform: NodeJS.Platform = process.platform, home = homedir()): string[] {
+  if (platform === 'win32') return [];
+  return [
+    '/opt/homebrew/bin/gh',
+    '/usr/local/bin/gh',
+    '/home/linuxbrew/.linuxbrew/bin/gh',
+    path.join(home, '.linuxbrew', 'bin', 'gh'),
+    '/snap/bin/gh',
+    path.join(home, '.local', 'bin', 'gh'),
+  ];
+}
+
+/** Runs `gh auth token` with one GitHub CLI: its token, or null. */
+function ghAuthToken(gh: string): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile('gh', ['auth', 'token'], { timeout: 5000 }, (error, stdout) => {
+    execFile(gh, ['auth', 'token'], { timeout: 5000 }, (error, stdout) => {
       const token = stdout?.trim();
       resolve(error || !token ? null : token);
     });
   });
+}
+
+/**
+ * Reads the token of an existing GitHub CLI session, if there is one: the CLI on the PATH, else the
+ * first one found where it's usually installed.
+ */
+export async function readGhToken(locations = ghLocations()): Promise<string | null> {
+  const token = await ghAuthToken('gh');
+  if (token) return token;
+  for (const gh of locations) {
+    if (existsSync(gh)) return ghAuthToken(gh);
+  }
+  return null;
 }
 
 interface DeviceSession {
