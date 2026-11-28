@@ -583,15 +583,24 @@ h1 {
   height: 15px;
 }
 
-/* The logo's red, a shade deeper and with a softer glow: inviting, not alarming. */
+/*
+ * The main way in, made as GitHub makes its own: one flat colour, the logo's red a shade deeper, a
+ * hairline border and no glow, an icon beside the label. Crisp, rather than lit.
+ */
 .button.primary {
-  background: #c8434a;
-  box-shadow: 0 8px 22px -14px rgba(200, 67, 74, 0.6);
+  border-color: rgba(240, 246, 252, 0.1);
+  background: #c13d45;
   color: #fff;
+  font-weight: 600;
 }
 
 .button.primary:hover {
-  background: #d24c52;
+  border-color: rgba(240, 246, 252, 0.16);
+  background: #cc464e;
+}
+
+.button.primary:active {
+  background: #b5363e;
 }
 
 .button.dark {
