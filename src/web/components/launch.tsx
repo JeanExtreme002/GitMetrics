@@ -74,7 +74,14 @@ export function LaunchSetting() {
                     size="xs"
                     c="inherit"
                     underline="always"
-                    onClick={() => reveal.mutate()}
+                    // Above the switch's own input, which covers its whole label: a click here shows the
+                    // app, and leaves the switch alone.
+                    style={{ position: 'relative', zIndex: 1, cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      reveal.mutate();
+                    }}
                   >
                     Show in Finder
                   </Anchor>
@@ -229,11 +236,11 @@ const KEEP_IT: Record<NonNullable<LaunchStatus['platform']>, { title: string; te
   },
   win32: {
     title: 'Keep it in your taskbar',
-    text: "It's in the Start menu now. Right-click it there, then Pin to taskbar, to keep it a click away.",
+    text: "It's in the Start menu now, in All apps. Right‑click it there, then More and Pin to taskbar.",
   },
   linux: {
     title: 'Keep it at hand',
-    text: "It's in your apps menu now. Right-click it there, then Add to favorites, to keep it a click away.",
+    text: "It's in your apps menu now. Right‑click it there to pin it to your dock or panel, a click away.",
   },
 };
 

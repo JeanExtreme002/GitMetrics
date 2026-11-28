@@ -33,8 +33,9 @@ export const SHORTCUT_PLACE: Record<NonNullable<LaunchStatus['platform']>, strin
 /** How to keep it at hand once it's among the apps: the Dock or a taskbar is the person's own. */
 export const KEEP_IT_HINT: Record<NonNullable<LaunchStatus['platform']>, string> = {
   darwin: "It's in Applications, in your home folder: drag it to the Dock to keep it there.",
-  win32: 'To keep it in the taskbar, right-click it in the Start menu, then Pin to taskbar.',
-  linux: 'To keep it at hand, right-click it in the apps menu, then Add to favorites.',
+  win32:
+    'To keep it in the taskbar, right-click it in All apps, in the Start menu, then More and Pin to taskbar.',
+  linux: 'To keep it at hand, right-click it in the apps menu to pin it to your dock or panel.',
 };
 
 // Installing from the browser ----------------------------------------------------------------------
