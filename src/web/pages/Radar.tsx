@@ -211,6 +211,12 @@ function PersonPicker({
     <Autocomplete
       label="Who"
       placeholder="GitHub username"
+      // A person to look at, not a sign-in: "username" brings password managers' icons and offers.
+      autoComplete="off"
+      data-bwignore
+      data-lpignore="true"
+      data-1p-ignore
+      data-form-type="other"
       value={text}
       onChange={setText}
       onFocus={() => setUsed(true)}
