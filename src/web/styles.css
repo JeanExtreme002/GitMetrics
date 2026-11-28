@@ -1641,8 +1641,9 @@ a.pull-row {
 }
 
 /*
- * A soft call to look: a faint glow in the logo's red, edges melting away. It breathes in and out
- * of sight, gone a moment between breaths; still, and lit, for those who prefer less motion.
+ * A soft call to look: a faint glow in the logo's red, edges melting away. It breathes slowly,
+ * down to a fifth of its size and resting there a moment; still, and lit, for those who prefer less
+ * motion.
  */
 .nav-dot {
   display: block;
@@ -1665,8 +1666,8 @@ a.pull-row {
   12%,
   88%,
   100% {
-    opacity: 0;
-    transform: scale(0.5);
+    opacity: 0.5;
+    transform: scale(0.2);
   }
   50% {
     opacity: 0.85;
