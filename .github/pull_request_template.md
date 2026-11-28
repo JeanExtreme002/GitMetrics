@@ -11,6 +11,7 @@
 - [ ] `make check` passes locally (lint, format, types and tests).
 - [ ] I added or updated tests where it made sense.
 - [ ] There is no breaking change for existing users.
+- [ ] If an AI assistant helped, I say which one here.
 
 ## References
 
