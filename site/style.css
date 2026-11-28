@@ -188,16 +188,57 @@ img {
   text-align: center;
 }
 
-/* A grid of dots behind the top, as on the app's sign-in screen, fading out at its edges. */
+/*
+ * Behind the top, as on the app's sign-in screen: the dot grid as a field of stars at three depths.
+ * The nearest are scattered, larger and brighter; the farthest are the grid, fainter. Each layer
+ * drifts at its own pace, slowly, and it all fades out at its edges.
+ */
 .dots {
   position: absolute;
   inset: 0 0 auto;
   height: 760px;
-  background-image: radial-gradient(rgba(240, 246, 252, 0.13) 1px, transparent 1px);
-  background-position: center top;
-  background-size: 22px 22px;
+  background-image:
+    radial-gradient(circle at 37px 81px, rgba(240, 246, 252, 0.5) 1.3px, transparent 1.9px),
+    radial-gradient(circle at 181px 29px, rgba(240, 246, 252, 0.5) 1.1px, transparent 1.7px),
+    radial-gradient(circle at 113px 203px, rgba(240, 246, 252, 0.5) 1.4px, transparent 2px),
+    radial-gradient(circle at 229px 147px, rgba(240, 246, 252, 0.5) 1px, transparent 1.6px),
+    radial-gradient(circle at 19px 41px, rgba(240, 246, 252, 0.26) 0.9px, transparent 1.4px),
+    radial-gradient(circle at 97px 13px, rgba(240, 246, 252, 0.26) 0.8px, transparent 1.3px),
+    radial-gradient(circle at 143px 97px, rgba(240, 246, 252, 0.26) 1px, transparent 1.5px),
+    radial-gradient(circle at 61px 131px, rgba(240, 246, 252, 0.26) 0.8px, transparent 1.3px),
+    radial-gradient(circle at 167px 163px, rgba(240, 246, 252, 0.26) 0.9px, transparent 1.4px),
+    radial-gradient(circle, rgba(240, 246, 252, 0.07) 0.8px, transparent 1.1px);
+  background-size:
+    251px 251px,
+    251px 251px,
+    251px 251px,
+    251px 251px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    22px 22px;
   mask-image: radial-gradient(ellipse 70% 85% at 50% 30%, #000 30%, transparent 75%);
+  animation: stars-drift 240s linear infinite;
   pointer-events: none;
+}
+
+/* Each layer moves by one of its own tiles, the nearest the farthest: they drift at different paces. */
+@keyframes stars-drift {
+  to {
+    background-position:
+      251px 251px,
+      251px 251px,
+      251px 251px,
+      251px 251px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      22px 22px;
+  }
 }
 
 /* When the page opens, the headline jumps toward you: it starts smaller and further back, grows a
@@ -1058,6 +1099,7 @@ code {
     scroll-behavior: auto;
   }
 
+  .dots,
   .hero h1,
   .h1-line {
     animation: none;
