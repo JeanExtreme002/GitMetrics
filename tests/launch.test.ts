@@ -1,10 +1,22 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/server/app';
 import { ConfigStore, LAUNCH_OFFER_AGAIN } from '../src/server/store';
 import {
+  appScript,
   desktopEntry,
   launchAgent,
   launchCommand,
@@ -95,6 +107,94 @@ describe('the launcher', () => {
   });
 });
 
+describe('the macOS app', () => {
+  it('starts GitMetrics in the background, then waits for it to answer, a while at most', () => {
+    const script = appScript("/a b/git's/launch.sh");
+    expect(script).toContain(`nohup '/a b/git'\\''s/launch.sh' >/dev/null 2>&1 &`);
+    expect(script).toContain('curl -s -o /dev/null --max-time 1 http://127.0.0.1:4280/api/update && opened');
+    expect(script).toContain('kill -0 "$started" 2>/dev/null || opened');
+    expect(script).toContain('while [ "$tries" -lt 3 ]; do sleep 0.5;');
+    expect(script).toContain('while [ "$tries" -lt 60 ]; do');
+  });
+
+  /** Runs the app's script with a launcher that runs `body`, and says how long the app stayed. */
+  async function opening(body: string, options: { port?: number; seconds?: number; shown?: number }) {
+    const launcher = path.join(home, 'launch.sh');
+    writeFileSync(launcher, `#!/bin/sh\n${body}\n`);
+    chmodSync(launcher, 0o755);
+    const app = path.join(home, 'GitMetrics');
+    writeFileSync(app, appScript(launcher, options));
+    chmodSync(app, 0o755);
+    const started = Date.now();
+    await new Promise<void>((resolve, reject) =>
+      execFile(app, { timeout: 20_000 }, (error) => (error ? reject(error) : resolve())),
+    );
+    return Date.now() - started;
+  }
+
+  /** A word as a POSIX shell reads it, whatever it holds. */
+  const sh = (word: string) => `'${word.replace(/'/g, `'\\''`)}'`;
+
+  /** A port nothing listens on. */
+  const freePort = () =>
+    new Promise<number>((resolve) => {
+      const server = createServer().listen(0, '127.0.0.1', () => {
+        const { port } = server.address() as AddressInfo;
+        server.close(() => resolve(port));
+      });
+    });
+
+  // Shell scripts: Windows, running these tests, can't run them.
+  describe.skipIf(process.platform === 'win32')('when opened', () => {
+    it('stays until GitMetrics answers, then goes', async () => {
+      const port = await freePort();
+      const answered = path.join(home, 'answered');
+      // GitMetrics, played by a server that answers after a second: a file of its own, and what it
+      // needs passed as arguments, so no code or shell line is built from them.
+      const server = path.join(home, 'server.cjs');
+      writeFileSync(
+        server,
+        [
+          'const [answered, port] = process.argv.slice(2);',
+          "setTimeout(() => require('http').createServer((q, r) => {",
+          "  require('fs').writeFileSync(answered, '');",
+          '  r.end();',
+          '  setTimeout(() => process.exit(0), 50);',
+          "}).listen(Number(port), '127.0.0.1'), 1000);",
+        ].join('\n'),
+      );
+      const stayed = await opening(
+        `exec ${[process.execPath, server, answered, String(port)].map(sh).join(' ')}`,
+        {
+          port,
+          seconds: 10,
+          shown: 0,
+        },
+      );
+      expect(existsSync(answered)).toBe(true);
+      expect(stayed).toBeGreaterThan(900);
+      expect(stayed).toBeLessThan(5_000);
+    });
+
+    it("doesn't wait once what it started has ended, as when GitMetrics was already open", async () => {
+      const stayed = await opening('exit 0', { port: await freePort(), seconds: 10, shown: 0 });
+      expect(stayed).toBeLessThan(3_000);
+    });
+
+    it('stays a moment at least, so the bounce is seen', async () => {
+      const stayed = await opening('exit 0', { port: await freePort(), seconds: 10, shown: 2 });
+      expect(stayed).toBeGreaterThan(1_800);
+      expect(stayed).toBeLessThan(5_000);
+    });
+
+    it('gives up after a while when nothing answers', async () => {
+      const stayed = await opening('sleep 3', { port: await freePort(), seconds: 1 });
+      expect(stayed).toBeGreaterThan(900);
+      expect(stayed).toBeLessThan(5_000);
+    });
+  });
+});
+
 describe('a shortcut and the start with the computer', () => {
   it('on Linux: entries in the apps menu and the autostart folder, and gone again', async () => {
     const e = environment('linux');
@@ -129,9 +229,10 @@ describe('a shortcut and the start with the computer', () => {
     await setAutostart(e, true);
     expect(paths.shortcut).toBe(path.join(home, 'Applications', 'GitMetrics.app'));
     const executable = path.join(paths.shortcut, 'Contents', 'MacOS', 'GitMetrics');
-    expect(readFileSync(executable, 'utf8')).toContain(`nohup '${paths.launcher}' >/dev/null 2>&1 &`);
-    expect(readFileSync(path.join(paths.shortcut, 'Contents', 'Info.plist'), 'utf8')).toContain(
-      '<key>LSUIElement</key>',
+    expect(readFileSync(executable, 'utf8')).toBe(appScript(paths.launcher));
+    // A regular app, so the Dock shows it opening.
+    expect(readFileSync(path.join(paths.shortcut, 'Contents', 'Info.plist'), 'utf8')).not.toContain(
+      'LSUIElement',
     );
     expect(e.calls.at(-1)?.slice(0, 2)).toEqual(['iconutil', '-c']);
     expect(readFileSync(paths.autostart, 'utf8')).toContain('<string>app.gitmetrics</string>');

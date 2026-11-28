@@ -1,9 +1,22 @@
-import { Anchor, Box, Button, Checkbox, Group, Modal, Skeleton, Stack, Switch, Text } from '@mantine/core';
+import {
+  Anchor,
+  Box,
+  Button,
+  Center,
+  Checkbox,
+  Group,
+  Modal,
+  Skeleton,
+  Stack,
+  Switch,
+  Text,
+} from '@mantine/core';
 import { IconAppWindow, IconLayoutGrid, IconPower } from '@tabler/icons-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { KEEP_IT_HINT, SHORTCUT_PLACE, useInstall, useLaunch, useLaunchActions } from '../lib/launch';
 import type { LaunchStatus } from '../../shared/types';
-import { LOGO_RED } from './ui';
+import { markStopped } from '../lib/stopped';
+import { LOGO_RED, Logo } from './ui';
 
 /*
  * Opening GitMetrics without a terminal: a shortcut among the computer's apps, starting with the
@@ -117,14 +130,6 @@ export function LaunchSetting() {
 /** Quitting GitMetrics, which runs in the background without a terminal to stop it from. */
 export function QuitSetting() {
   const { quit } = useLaunchActions();
-  const [done, setDone] = useState(false);
-  if (done) {
-    return (
-      <Text size="sm" c="dimmed">
-        GitMetrics has stopped. You can close this tab, and open it again from its shortcut.
-      </Text>
-    );
-  }
   return (
     // On the right, as the other rows' buttons are.
     <Group justify="flex-end">
@@ -132,11 +137,35 @@ export function QuitSetting() {
         variant="default"
         w="fit-content"
         loading={quit.isPending}
-        onClick={() => quit.mutate(undefined, { onSuccess: () => setDone(true) })}
+        // Stopped, nothing in the app works any more: it gives way to a page that says so.
+        onClick={() => quit.mutate(undefined, { onSuccess: markStopped })}
       >
         Quit GitMetrics
       </Button>
     </Group>
+  );
+}
+
+/** What's left once GitMetrics has stopped: one plain page, saying so. */
+export function StoppedPage() {
+  useEffect(() => {
+    document.title = 'GitMetrics has stopped';
+  }, []);
+  return (
+    <Center mih="100dvh" p="lg">
+      <Stack align="center" gap={0} maw={420} ta="center">
+        <Logo size={44} />
+        <Text fw={700} fz={22} mt="lg">
+          GitMetrics has stopped
+        </Text>
+        <Text c="dimmed" mt={8}>
+          You can close this page.
+        </Text>
+        <Text size="sm" c="dimmed" mt="xl">
+          Open it again whenever you like.
+        </Text>
+      </Stack>
+    </Center>
   );
 }
 

@@ -36,6 +36,15 @@ export interface LaunchEnvironment {
   run?: (file: string, args: string[]) => Promise<void>;
 }
 
+/** Where GitMetrics answers when nothing else asks for a port: where a shortcut finds it. */
+export const DEFAULT_PORT = 4280;
+
+/** How long the macOS app waits for GitMetrics to answer, its icon bouncing meanwhile. */
+const OPENING_SECONDS = 30;
+
+/** How long it stays at least, so the bounce is seen even when GitMetrics answers at once. */
+const SHOWN_SECONDS = 1.5;
+
 const NAME = 'GitMetrics';
 const LABEL = 'app.gitmetrics';
 const COMMENT = 'Every number behind your GitHub repositories';
@@ -197,11 +206,40 @@ function appInfo(): string {
   <string>${NAME}</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
-  <key>LSUIElement</key>
-  <true/>
 </dict>
 </plist>
 `;
+}
+
+/**
+ * What the macOS app runs: GitMetrics, started in the background, and the app itself staying until
+ * it answers, so the Dock shows it opening with a bounce, as any app. It goes once GitMetrics
+ * answers, or ends (one was already running, and it only opened the browser), but not before a
+ * moment, so the bounce is seen; and it gives up after a while.
+ */
+export function appScript(
+  launcher: string,
+  { port = DEFAULT_PORT, seconds = OPENING_SECONDS, shown = SHOWN_SECONDS } = {},
+): string {
+  // Counted in half seconds, the step it checks at.
+  const steps = (time: number) => Math.round(time * 2);
+  return [
+    '#!/bin/sh',
+    `nohup ${sh(launcher)} >/dev/null 2>&1 &`,
+    'started=$!',
+    'tries=0',
+    'opened() {',
+    `  while [ "$tries" -lt ${steps(shown)} ]; do sleep 0.5; tries=$((tries + 1)); done`,
+    '  exit 0',
+    '}',
+    `while [ "$tries" -lt ${steps(seconds)} ]; do`,
+    `  curl -s -o /dev/null --max-time 1 http://127.0.0.1:${port}/api/update && opened`,
+    '  kill -0 "$started" 2>/dev/null || opened',
+    '  sleep 0.5',
+    '  tries=$((tries + 1))',
+    'done',
+    '',
+  ].join('\n');
 }
 
 /** The PNG icon as a Windows .ico, which holds a PNG as it is. */
@@ -257,9 +295,8 @@ async function macApp(e: LaunchEnvironment, app: string, launcher: string) {
   mkdirSync(path.join(contents, 'MacOS'), { recursive: true });
   mkdirSync(path.join(contents, 'Resources'), { recursive: true });
   writeFileSync(path.join(contents, 'Info.plist'), appInfo());
-  // Started in the background, so the app's own process ends at once: no icon left bouncing.
   const executable = path.join(contents, 'MacOS', NAME);
-  writeFileSync(executable, `#!/bin/sh\nnohup ${sh(launcher)} >/dev/null 2>&1 &\n`);
+  writeFileSync(executable, appScript(launcher));
   chmodSync(executable, 0o755);
   if (!e.icon) return;
   // Its icon, made the way macOS wants it; without one, it still opens.

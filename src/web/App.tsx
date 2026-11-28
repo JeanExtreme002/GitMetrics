@@ -1,7 +1,9 @@
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router';
 import { Layout } from './components/Layout';
+import { StoppedPage } from './components/launch';
 import { FullPageLoader } from './components/ui';
 import { useAuth } from './lib/queries';
+import { useStopped } from './lib/stopped';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { MyPulls } from './pages/MyPulls';
@@ -75,4 +77,8 @@ const router = createBrowserRouter([
   },
 ]);
 
-export const App = () => <RouterProvider router={router} />;
+export function App() {
+  // Once GitMetrics has stopped, nothing else can work: one plain page says so, wherever this was.
+  const stopped = useStopped();
+  return stopped ? <StoppedPage /> : <RouterProvider router={router} />;
+}

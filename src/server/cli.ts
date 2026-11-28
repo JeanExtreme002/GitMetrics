@@ -8,12 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import type { UpdateInfo } from '../shared/types.js';
 import { createApp } from './app.js';
-import { launchCommand } from './launch.js';
+import { DEFAULT_PORT, launchCommand } from './launch.js';
 import { defaultDataDir } from './store.js';
 import { NO_UPDATE_CHECK, PACKAGE, RELAUNCHED, installKind, latestVersion, updateInfo } from './update.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_PORT = 4280;
 const DEV_API_PORT = 4281;
 
 function version(): string {
