@@ -276,15 +276,36 @@ export async function getAccountRepos(
   return { repos: repos.map(toSummary), complete: repos.length < MAX_SOURCES };
 }
 
-/** Accounts whose login matches, for the quick search. */
-export async function searchAccounts(gh: GitHubClient, text: string): Promise<AccountHit[]> {
+/** Accounts whose login matches, for the quick search; people alone when `users` is set. */
+export async function searchAccounts(
+  gh: GitHubClient,
+  text: string,
+  { users = false }: { users?: boolean } = {},
+): Promise<AccountHit[]> {
   const { items } = await gh.get<{ items: { login: string; avatar_url: string; type: string }[] }>(
     '/search/users',
-    { q: `${text} in:login`, per_page: 4 },
+    { q: `${text} in:login${users ? ' type:user' : ''}`, per_page: 4 },
   );
   return items.map((i) => ({
     login: i.login,
     avatarUrl: i.avatar_url,
     kind: i.type === 'Organization' ? 'organization' : 'user',
   }));
+}
+
+/** Organizations read for the people you know: plenty for anyone, and few enough to read fast. */
+export const MAX_OWN_ORGANIZATIONS = 30;
+
+const OWN_ORGANIZATIONS = `
+query ($first: Int!) {
+  viewer { organizations(first: $first) { nodes { login } } }
+}`;
+
+/** The organizations you belong to, private memberships too, by login. */
+export async function ownOrganizations(gh: GitHubClient): Promise<string[]> {
+  const data = await gh.graphql<{ viewer: { organizations: { nodes: { login: string }[] } } }>(
+    OWN_ORGANIZATIONS,
+    { first: MAX_OWN_ORGANIZATIONS },
+  );
+  return data.viewer.organizations.nodes.map((o) => o.login);
 }

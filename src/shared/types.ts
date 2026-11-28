@@ -253,6 +253,11 @@ export interface SponsorsResponse {
   complete: boolean;
 }
 
+/** Someone in the organizations you belong to, with which of them, by login. */
+export interface KnownPerson extends AccountPerson {
+  organizations: string[];
+}
+
 /** An account found by the quick search. */
 export interface AccountHit {
   login: string;

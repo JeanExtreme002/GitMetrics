@@ -6,6 +6,7 @@ import type {
   ActivityResponse,
   AlertDetailsResponse,
   AccountHit,
+  KnownPerson,
   AccountReposResponse,
   AccountResponse,
   AccountTotals,
@@ -232,14 +233,28 @@ export const useAccountRepos = (login: string, enabled: boolean, organization = 
     staleTime: 10 * 60_000,
   });
 
-/** Accounts whose login matches, for the quick search. */
-export const useAccountSearch = (text: string, enabled: boolean) =>
+/** Accounts whose login matches, for the quick search; people alone, with `users`. */
+export const useAccountSearch = (text: string, enabled: boolean, { users = false } = {}) =>
   useQuery({
-    queryKey: ['search-accounts', text.toLowerCase()],
-    queryFn: () => api<{ accounts: AccountHit[] }>(`/search/accounts?q=${encodeURIComponent(text)}`),
+    queryKey: ['search-accounts', text.toLowerCase(), users],
+    queryFn: () =>
+      api<{ accounts: AccountHit[] }>(
+        `/search/accounts?q=${encodeURIComponent(text)}${users ? '&type=user' : ''}`,
+      ),
     enabled,
     staleTime: 10 * 60_000,
     // A failed account search never gets in the way of the repository search beside it.
+    retry: false,
+  });
+
+/** The people in the organizations you belong to: asked once there's somewhere to offer them. */
+export const useKnownPeople = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['known-people'],
+    queryFn: () => api<{ people: KnownPerson[] }>('/people/known'),
+    enabled,
+    staleTime: 10 * 60_000,
+    // Only suggestions: without them, GitHub's search still offers people.
     retry: false,
   });
 

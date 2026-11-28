@@ -5,6 +5,8 @@ import type {
   LaunchStatus,
   ActivityScope,
   AuthStatus,
+  KnownPerson,
+  PeopleResponse,
   PullFilter,
   RepoBaseline,
   ReposResponse,
@@ -14,7 +16,14 @@ import type {
 import { DeviceFlow, clientId, readGhToken, validateToken } from './auth.js';
 import { CollectionStore, TrafficCollector } from './collect.js';
 import { GitHubClient, GitHubError } from './github.js';
-import { getAccount, getAccountRepos, getAccountTotals, getApp, searchAccounts } from './metrics/accounts.js';
+import {
+  getAccount,
+  getAccountRepos,
+  getAccountTotals,
+  getApp,
+  ownOrganizations,
+  searchAccounts,
+} from './metrics/accounts.js';
 import { getActions } from './metrics/actions.js';
 import {
   UnknownScope,
@@ -49,6 +58,7 @@ import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
 import { launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
+import { mapLimit } from './util.js';
 
 const MINUTE = 60_000;
 const TABS = new Set<string>(['all', 'authored', 'assigned', 'involved', 'review', 'owned']);
@@ -411,20 +421,51 @@ export function createApp(options: AppOptions = {}) {
   };
   // One exact route each: a pattern like {people|teams|sponsors} isn't anchored, and would answer
   // for any page with one of those words in it.
-  for (const [page, load] of Object.entries(ORG_PAGES)) {
+  const orgPage = (page: string, login: string, refresh = false) =>
+    memory.wrap(
+      `${config.auth!.login}:account-${page}:${login.toLowerCase()}`,
+      10 * MINUTE,
+      () => ORG_PAGES[page]!(github()!, login),
+      refresh,
+    );
+  for (const page of Object.keys(ORG_PAGES)) {
     app.get(`/api/accounts/:login/${page}`, async (c) => {
       const login = c.req.param('login');
       if (!ACCOUNT.test(login)) return c.json({ error: 'Invalid account.', status: 400 }, 400);
-      const result = await memory.wrap(
-        `${config.auth!.login}:account-${page}:${login.toLowerCase()}`,
-        10 * MINUTE,
-        () => load(github()!, login),
-        c.req.query('refresh') === '1',
-      );
+      const result = await orgPage(page, login, c.req.query('refresh') === '1');
       if (result === null) return c.json({ error: 'No organization has this name.', status: 404 }, 404);
       return c.json(result);
     });
   }
+
+  // The people in the organizations you belong to, for Radar's Who: read through each one's People
+  // page, so what one has read the other doesn't read again.
+  app.get('/api/people/known', async (c) => {
+    const viewer = config.auth!.login;
+    const people = await memory.wrap(`${viewer}:known-people`, 10 * MINUTE, async () => {
+      const organizations = await ownOrganizations(github()!);
+      const known = new Map<string, KnownPerson>();
+      await mapLimit(organizations, 4, async (org) => {
+        // One organization that can't be read leaves the others' people.
+        const page = (await orgPage('people', org).catch(() => null)) as PeopleResponse | null;
+        for (const person of page?.people ?? []) {
+          if (person.login.toLowerCase() === viewer.toLowerCase()) continue;
+          const seen = known.get(person.login);
+          if (seen) seen.organizations.push(org);
+          else {
+            known.set(person.login, {
+              login: person.login,
+              name: person.name,
+              avatarUrl: person.avatarUrl,
+              organizations: [org],
+            });
+          }
+        }
+      });
+      return [...known.values()].sort((a, b) => a.login.localeCompare(b.login));
+    });
+    return c.json({ people });
+  });
 
   // An organization's quality and security pages measure the same repositories: read once for both.
   const orgRepos = (login: string, refresh: boolean) =>
@@ -566,10 +607,12 @@ export function createApp(options: AppOptions = {}) {
   app.get('/api/search/accounts', async (c) => {
     const text = (c.req.query('q') ?? '').trim();
     if (!ACCOUNT.test(text)) return c.json({ error: 'Invalid search.', status: 400 }, 400);
+    // People alone, for Radar; people and organizations, for the quick search.
+    const users = c.req.query('type') === 'user';
     const accounts = await memory.wrap(
-      `${config.auth!.login}:search-accounts:${text.toLowerCase()}`,
+      `${config.auth!.login}:search-${users ? 'users' : 'accounts'}:${text.toLowerCase()}`,
       10 * MINUTE,
-      () => searchAccounts(github()!, text),
+      () => searchAccounts(github()!, text, { users }),
     );
     return c.json({ accounts });
   });
