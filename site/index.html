@@ -70,7 +70,15 @@
                 <code>npx @gitmetrics/app</code>
                 <button type="button" class="copy" data-copy aria-label="Copy the command">Copy</button>
               </div>
-              <a class="button primary" href="/get-started/">Let's go</a>
+              <a class="button primary" href="/get-started/">
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M14.064 0h.186C15.216 0 16 .784 16 1.75v.186a8.752 8.752 0 0 1-2.564 6.186l-.458.459c-.314.314-.641.616-.979.904v3.207c0 .608-.315 1.172-.833 1.49l-2.774 1.707a.749.749 0 0 1-1.11-.418l-.954-3.102a1.214 1.214 0 0 1-.145-.125L3.754 9.816a1.218 1.218 0 0 1-.124-.145L.528 8.717a.75.75 0 0 1-.418-1.11l1.71-2.774A1.748 1.748 0 0 1 3.31 4h3.204c.288-.338.59-.665.904-.979l.459-.458A8.749 8.749 0 0 1 14.064 0ZM8.938 3.623h-.002l-.458.458c-.76.76-1.437 1.598-2.02 2.5l-1.5 2.317 2.143 2.143 2.317-1.5c.902-.583 1.74-1.26 2.499-2.02l.459-.458a7.25 7.25 0 0 0 2.123-5.127V1.75a.25.25 0 0 0-.25-.25h-.186a7.249 7.249 0 0 0-5.125 2.123ZM3.56 14.56c-.732.732-2.334 1.045-3.005 1.148a.234.234 0 0 1-.201-.064.234.234 0 0 1-.064-.201c.103-.671.416-2.273 1.15-3.003a1.502 1.502 0 1 1 2.12 2.12Zm6.94-3.935c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 0 0 .119-.213ZM3.678 8.116 5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 0 0-.213.119l-1.2 1.95ZM12 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"
+                  />
+                </svg>
+                Let's go
+              </a>
             </div>
 
             <p class="hint">Node.js 20.19+ · Windows, macOS and Linux</p>
@@ -238,25 +246,99 @@
           <p class="section-lead">
             How fast is it growing? Who is building it? Is the CI healthy? Each answer is one click away.
           </p>
-          <picture>
-            <source
-              type="image/webp"
-              srcset="
-                /img/pages-grid-640.webp   640w,
-                /img/pages-grid-1040.webp 1040w,
-                /img/pages-grid-1600.webp 1600w,
-                /img/pages-grid-2080.webp 2080w
-              "
-              sizes="(max-width: 1080px) calc(100vw - 40px), 1040px"
-            />
-            <img
-              src="/pages-grid.png"
-              alt="The Stars, Commits, Pull requests and Actions pages of GitMetrics"
-              width="1600"
-              height="1297"
-              loading="lazy"
-            />
-          </picture>
+          <!-- The four pages, each with its caption as text beside it, rather than in the picture. -->
+          <div class="pages-grid">
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-stars-640.webp   640w,
+                    /img/page-stars-1040.webp 1040w,
+                    /img/page-stars-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-stars-1040.webp"
+                  alt="The Stars page: star history, new stars per month and milestones"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption><strong>Stars.</strong> Full history, monthly growth and milestones.</figcaption>
+            </figure>
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-commits-640.webp   640w,
+                    /img/page-commits-1040.webp 1040w,
+                    /img/page-commits-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-commits-1040.webp"
+                  alt="The Commits page: contribution calendar, code frequency and when commits happen"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption>
+                <strong>Commits.</strong> Contribution calendar, code frequency and work hours.
+              </figcaption>
+            </figure>
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-pulls-640.webp   640w,
+                    /img/page-pulls-1040.webp 1040w,
+                    /img/page-pulls-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-pulls-1040.webp"
+                  alt="The Pull requests page: pull requests per month, their sizes and the ones open longest"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption>
+                <strong>Pull requests.</strong> Merge rate, sizes, authors and what is waiting.
+              </figcaption>
+            </figure>
+            <figure>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="
+                    /img/page-actions-640.webp   640w,
+                    /img/page-actions-1040.webp 1040w,
+                    /img/page-actions-1600.webp 1600w
+                  "
+                  sizes="(max-width: 640px) calc(100vw - 40px), 510px"
+                />
+                <img
+                  src="/img/page-actions-1040.webp"
+                  alt="The Actions page: runs per day, what triggers them and recent failures"
+                  width="1564"
+                  height="1088"
+                  loading="lazy"
+                />
+              </picture>
+              <figcaption>
+                <strong>Actions.</strong> Success rate, failures and run time of every workflow.
+              </figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
@@ -366,6 +448,8 @@
       </section>
 
       <section class="cta">
+        <!-- The same sky as at the top, so the page begins and ends under it. -->
+        <div class="dots" aria-hidden="true"></div>
         <div class="planet" aria-hidden="true"></div>
         <div class="container cta-inner">
           <h2>Install once, <span class="accent">run it anytime.</span></h2>

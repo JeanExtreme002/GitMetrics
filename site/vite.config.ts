@@ -35,11 +35,38 @@ const SCREENSHOTS: Record<string, string> = {
 };
 export const SCREENSHOT_WIDTHS = [640, 1040, 1600, 2080];
 
-const webp = (name: string, width: number) =>
-  sharp(here(SCREENSHOTS[name]!))
-    .resize({ width, withoutEnlargement: true })
-    .webp({ quality: 82 })
-    .toBuffer();
+/**
+ * The four pages of the grid, each cut from pages-grid.png without its caption, so the landing page
+ * can set its own beside them. Where each sits, in the grid's own pixels, as scripts/screenshots.mjs
+ * lays it out: tiles of 784 by 632 with a 1px border, a 4px margin, gaps of 24 and 25, the capture
+ * 544 high on top.
+ */
+const PAGE_TILES: Record<string, { column: number; row: number }> = {
+  'page-stars': { column: 0, row: 0 },
+  'page-commits': { column: 1, row: 0 },
+  'page-pulls': { column: 0, row: 1 },
+  'page-actions': { column: 1, row: 1 },
+};
+
+async function source(name: string) {
+  const tile = PAGE_TILES[name];
+  if (!tile) return sharp(here(SCREENSHOTS[name]!));
+  const grid = sharp(here(SCREENSHOTS['pages-grid']!));
+  // The PNG is drawn at twice the grid's size, or whatever it is now: measured, not assumed.
+  const scale = ((await grid.metadata()).width ?? 1600) / 1600;
+  const at = (value: number) => Math.round(value * scale);
+  return grid.extract({
+    left: at(4 + tile.column * (784 + 24) + 1),
+    top: at(4 + tile.row * (632 + 25) + 1),
+    width: at(782),
+    height: at(544),
+  });
+}
+
+const known = (name: string) => Boolean(SCREENSHOTS[name] || PAGE_TILES[name]);
+
+const webp = async (name: string, width: number) =>
+  (await source(name)).resize({ width, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
 
 /**
  * Builds /img/<name>-<width>.webp from the PNG screenshots in assets/: emitted into the build, and
@@ -51,7 +78,7 @@ function responsiveScreenshots(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const match = /^\/img\/([\w-]+)-(\d+)\.webp$/.exec(req.url ?? '');
-        if (!match || !SCREENSHOTS[match[1]!]) return next();
+        if (!match || !known(match[1]!)) return next();
         webp(match[1]!, Number(match[2]))
           .then((image) => {
             res.setHeader('Content-Type', 'image/webp');
@@ -61,7 +88,7 @@ function responsiveScreenshots(): Plugin {
       });
     },
     async generateBundle() {
-      for (const name of Object.keys(SCREENSHOTS)) {
+      for (const name of [...Object.keys(SCREENSHOTS), ...Object.keys(PAGE_TILES)]) {
         for (const width of SCREENSHOT_WIDTHS) {
           this.emitFile({
             type: 'asset',

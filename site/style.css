@@ -198,21 +198,70 @@ img {
   inset: 0 0 auto;
   height: 760px;
   background-image:
-    radial-gradient(circle at 37px 81px, rgba(240, 246, 252, 0.5) 1.3px, transparent 1.9px),
-    radial-gradient(circle at 181px 29px, rgba(240, 246, 252, 0.5) 1.1px, transparent 1.7px),
-    radial-gradient(circle at 113px 203px, rgba(240, 246, 252, 0.5) 1.4px, transparent 2px),
-    radial-gradient(circle at 229px 147px, rgba(240, 246, 252, 0.5) 1px, transparent 1.6px),
-    radial-gradient(circle at 19px 41px, rgba(240, 246, 252, 0.26) 0.9px, transparent 1.4px),
-    radial-gradient(circle at 97px 13px, rgba(240, 246, 252, 0.26) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 143px 97px, rgba(240, 246, 252, 0.26) 1px, transparent 1.5px),
-    radial-gradient(circle at 61px 131px, rgba(240, 246, 252, 0.26) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 167px 163px, rgba(240, 246, 252, 0.26) 0.9px, transparent 1.4px),
-    radial-gradient(circle, rgba(240, 246, 252, 0.055) 0.8px, transparent 1.1px);
+    radial-gradient(
+      circle at 37px 81px,
+      rgba(240, 246, 252, 0.5) 0.66px,
+      rgba(240, 246, 252, 0.18) 1.6px,
+      transparent 2.7px
+    ),
+    radial-gradient(
+      circle at 181px 29px,
+      rgba(240, 246, 252, 0.5) 0.56px,
+      rgba(240, 246, 252, 0.18) 1.44px,
+      transparent 2.54px
+    ),
+    radial-gradient(
+      circle at 113px 203px,
+      rgba(240, 246, 252, 0.5) 0.71px,
+      rgba(240, 246, 252, 0.18) 1.69px,
+      transparent 2.79px
+    ),
+    radial-gradient(
+      circle at 229px 147px,
+      rgba(240, 246, 252, 0.5) 0.51px,
+      rgba(240, 246, 252, 0.18) 1.35px,
+      transparent 2.45px
+    ),
+    radial-gradient(
+      circle at 71px 173px,
+      rgba(240, 246, 252, 0.5) 0.61px,
+      rgba(240, 246, 252, 0.18) 1.52px,
+      transparent 2.62px
+    ),
+    radial-gradient(
+      circle at 199px 227px,
+      rgba(240, 246, 252, 0.5) 0.56px,
+      rgba(240, 246, 252, 0.18) 1.44px,
+      transparent 2.54px
+    ),
+    radial-gradient(
+      circle at 149px 11px,
+      rgba(240, 246, 252, 0.5) 0.66px,
+      rgba(240, 246, 252, 0.18) 1.6px,
+      transparent 2.7px
+    ),
+    radial-gradient(circle at 19px 41px, rgba(240, 246, 252, 0.26) 0.77px, transparent 1.19px),
+    radial-gradient(circle at 97px 13px, rgba(240, 246, 252, 0.26) 0.68px, transparent 1.1px),
+    radial-gradient(circle at 143px 97px, rgba(240, 246, 252, 0.26) 0.85px, transparent 1.27px),
+    radial-gradient(circle at 61px 131px, rgba(240, 246, 252, 0.26) 0.68px, transparent 1.1px),
+    radial-gradient(circle at 167px 163px, rgba(240, 246, 252, 0.26) 0.77px, transparent 1.19px),
+    radial-gradient(circle at 41px 89px, rgba(240, 246, 252, 0.26) 0.77px, transparent 1.19px),
+    radial-gradient(circle at 127px 151px, rgba(240, 246, 252, 0.26) 0.68px, transparent 1.1px),
+    radial-gradient(circle at 7px 113px, rgba(240, 246, 252, 0.26) 0.72px, transparent 1.14px),
+    radial-gradient(circle at 113px 61px, rgba(240, 246, 252, 0.26) 0.68px, transparent 1.1px),
+    radial-gradient(circle, rgba(240, 246, 252, 0.055) 0.68px, transparent 0.94px);
   background-size:
     251px 251px,
     251px 251px,
     251px 251px,
     251px 251px,
+    251px 251px,
+    251px 251px,
+    251px 251px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
     173px 173px,
     173px 173px,
     173px 173px,
@@ -221,6 +270,8 @@ img {
     22px 22px;
   mask-image: radial-gradient(ellipse 70% 85% at 50% 30%, #000 30%, transparent 75%);
   animation: stars-drift 240s linear infinite;
+  /* Softened, so they read as distant light rather than dots on a screen. */
+  filter: blur(0.7px);
   pointer-events: none;
 }
 
@@ -232,12 +283,95 @@ img {
       251px 251px,
       251px 251px,
       251px 251px,
+      251px 251px,
+      251px 251px,
+      251px 251px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
       173px 173px,
       173px 173px,
       173px 173px,
       173px 173px,
       173px 173px,
       22px 22px;
+  }
+}
+
+/*
+ * A few brighter stars over the field, each with a soft halo, twinkling: two sets apart, slowly
+ * and out of step, so the sky seems alive without anything drawing the eye.
+ */
+.dots::before,
+.dots::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  animation: twinkle 5s ease-in-out infinite alternate;
+}
+
+.dots::before {
+  background-image:
+    radial-gradient(
+      circle at 61px 47px,
+      rgba(240, 246, 252, 0.85) 1.02px,
+      rgba(240, 246, 252, 0.212) 2.04px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 271px 193px,
+      rgba(240, 246, 252, 0.75) 0.85px,
+      rgba(240, 246, 252, 0.188) 1.87px,
+      transparent 3.82px
+    ),
+    radial-gradient(
+      circle at 167px 281px,
+      rgba(240, 246, 252, 0.8) 1.1px,
+      rgba(240, 246, 252, 0.2) 2.12px,
+      transparent 4.08px
+    );
+  background-size:
+    337px 337px,
+    337px 337px,
+    337px 337px;
+}
+
+.dots::after {
+  background-image:
+    radial-gradient(
+      circle at 211px 59px,
+      rgba(240, 246, 252, 0.8) 0.94px,
+      rgba(240, 246, 252, 0.2) 1.95px,
+      transparent 3.91px
+    ),
+    radial-gradient(
+      circle at 89px 229px,
+      rgba(240, 246, 252, 0.85) 1.02px,
+      rgba(240, 246, 252, 0.212) 2.04px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 307px 331px,
+      rgba(240, 246, 252, 0.7) 0.85px,
+      rgba(240, 246, 252, 0.175) 1.87px,
+      transparent 3.82px
+    );
+  background-size:
+    383px 383px,
+    383px 383px,
+    383px 383px;
+  animation-duration: 7s;
+  animation-delay: -3s;
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 0.15;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 
@@ -449,15 +583,24 @@ h1 {
   height: 15px;
 }
 
-/* The logo's red, a shade deeper and with a softer glow: inviting, not alarming. */
+/*
+ * The main way in, made as GitHub makes its own: one flat colour, the logo's red a shade deeper, a
+ * hairline border and no glow, an icon beside the label. Crisp, rather than lit.
+ */
 .button.primary {
-  background: #c8434a;
-  box-shadow: 0 8px 22px -14px rgba(200, 67, 74, 0.6);
+  border-color: rgba(240, 246, 252, 0.1);
+  background: #c13d45;
   color: #fff;
+  font-weight: 600;
 }
 
 .button.primary:hover {
-  background: #d24c52;
+  border-color: rgba(240, 246, 252, 0.16);
+  background: #cc464e;
+}
+
+.button.primary:active {
+  background: #b5363e;
 }
 
 .button.dark {
@@ -606,9 +749,62 @@ section h2 {
   pointer-events: none;
 }
 
-.pages img {
+/*
+ * The four pages, two by two: each screen whole, as it is, with nothing around it but a soft shadow
+ * to lift it off the page; under it, in one sentence, the page's name and what it shows.
+ */
+.pages-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 44px 32px;
+  margin-top: 44px;
+}
+
+.pages-grid figure {
+  margin: 0;
+}
+
+.pages-grid img {
   width: 100%;
-  margin-top: 36px;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgba(240, 246, 252, 0.06),
+    0 24px 48px -28px rgba(0, 0, 0, 0.9);
+}
+
+.pages-grid figcaption {
+  margin-top: 16px;
+  color: var(--muted);
+  /* Centred under its screen, as a caption is, its lines balanced where it takes two. */
+  text-wrap: balance;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* The name first, in the same sentence: the page, then what it shows. */
+.pages-grid figcaption strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* On a tablet, the columns are narrower: the captions a size smaller too. */
+@media (max-width: 1024px) {
+  .pages-grid figcaption {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pages-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .pages-grid figcaption {
+    margin-top: 12px;
+    font-size: 13px;
+  }
 }
 
 .cta {
@@ -622,37 +818,17 @@ section h2 {
  * The end of the page as a horizon: faint stars above, as at the top, and below the curve of a
  * world with light rising behind it.
  */
-.cta::before {
-  content: '';
-  position: absolute;
+.cta .dots {
   inset: 0;
   z-index: -1;
-  background-image:
-    radial-gradient(circle at 37px 81px, rgba(240, 246, 252, 0.34) 1.3px, transparent 1.9px),
-    radial-gradient(circle at 181px 29px, rgba(240, 246, 252, 0.34) 1.1px, transparent 1.7px),
-    radial-gradient(circle at 113px 203px, rgba(240, 246, 252, 0.34) 1.4px, transparent 2px),
-    radial-gradient(circle at 229px 147px, rgba(240, 246, 252, 0.34) 1px, transparent 1.6px),
-    radial-gradient(circle at 19px 41px, rgba(240, 246, 252, 0.18) 0.9px, transparent 1.4px),
-    radial-gradient(circle at 97px 13px, rgba(240, 246, 252, 0.18) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 143px 97px, rgba(240, 246, 252, 0.18) 1px, transparent 1.5px),
-    radial-gradient(circle at 61px 131px, rgba(240, 246, 252, 0.18) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 167px 163px, rgba(240, 246, 252, 0.18) 0.9px, transparent 1.4px);
-  background-size:
-    251px 251px,
-    251px 251px,
-    251px 251px,
-    251px 251px,
-    173px 173px,
-    173px 173px,
-    173px 173px,
-    173px 173px,
-    173px 173px;
-  /* Appearing gradually from the top, with no line where the section begins, and fading out. */
+  height: auto;
+  /* A shade fainter than at the top; appearing gradually from the top, with no line where the
+     section begins, and fading out. */
+  opacity: 0.8;
   mask-image:
     radial-gradient(ellipse 65% 70% at 50% 30%, #000 25%, transparent 100%),
     linear-gradient(to bottom, transparent, #000 30%);
   mask-composite: intersect;
-  pointer-events: none;
 }
 
 .cta .planet {
@@ -1355,6 +1531,8 @@ code {
   }
 
   .dots,
+  .dots::before,
+  .dots::after,
   .cta .planet,
   .cta::after,
   .hero h1,
@@ -1378,10 +1556,28 @@ code {
 
 /* Get started page */
 .doc {
+  position: relative;
+  isolation: isolate;
   padding: 72px 0 56px;
   /* The sign-in picture reaches past the column with its shadow's transparent room; on medium
      screens that room would scroll the page sideways. */
   overflow-x: clip;
+}
+
+/* Behind the guide's top: the stars and the red warmth of the landing page, fainter, gone before
+   the steps begin, so nothing sits behind what is read. */
+.doc .glow,
+.doc .dots {
+  z-index: -1;
+}
+
+.doc .glow {
+  opacity: 0.6;
+}
+
+.doc .dots {
+  height: 560px;
+  opacity: 0.6;
 }
 
 .doc-inner {

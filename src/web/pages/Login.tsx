@@ -148,6 +148,8 @@ export function Login() {
 
   return (
     <Center className="login-page" p="md">
+      {/* A few brighter stars, twinkling over the field. */}
+      <div className="login-twinkle" aria-hidden />
       <Box w="100%" maw={420}>
         <Stack align="center" gap={6} mb="xl" ta="center">
           <Logo size={52} />
