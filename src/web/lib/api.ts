@@ -1,3 +1,5 @@
+import { noticeUnreachable } from './stopped';
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -17,6 +19,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       'X-GitMetrics': '1',
       ...init.headers,
     },
+  }).catch((error: unknown) => {
+    // No answer at all: GitMetrics may have stopped.
+    void noticeUnreachable();
+    throw error;
   });
   const body = (await response.json().catch(() => null)) as
     ({ error?: string } & Record<string, unknown>) | null;
