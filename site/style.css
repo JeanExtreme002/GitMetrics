@@ -765,37 +765,17 @@ section h2 {
  * The end of the page as a horizon: faint stars above, as at the top, and below the curve of a
  * world with light rising behind it.
  */
-.cta::before {
-  content: '';
-  position: absolute;
+.cta .dots {
   inset: 0;
   z-index: -1;
-  background-image:
-    radial-gradient(circle at 37px 81px, rgba(240, 246, 252, 0.34) 1.3px, transparent 1.9px),
-    radial-gradient(circle at 181px 29px, rgba(240, 246, 252, 0.34) 1.1px, transparent 1.7px),
-    radial-gradient(circle at 113px 203px, rgba(240, 246, 252, 0.34) 1.4px, transparent 2px),
-    radial-gradient(circle at 229px 147px, rgba(240, 246, 252, 0.34) 1px, transparent 1.6px),
-    radial-gradient(circle at 19px 41px, rgba(240, 246, 252, 0.18) 0.9px, transparent 1.4px),
-    radial-gradient(circle at 97px 13px, rgba(240, 246, 252, 0.18) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 143px 97px, rgba(240, 246, 252, 0.18) 1px, transparent 1.5px),
-    radial-gradient(circle at 61px 131px, rgba(240, 246, 252, 0.18) 0.8px, transparent 1.3px),
-    radial-gradient(circle at 167px 163px, rgba(240, 246, 252, 0.18) 0.9px, transparent 1.4px);
-  background-size:
-    251px 251px,
-    251px 251px,
-    251px 251px,
-    251px 251px,
-    173px 173px,
-    173px 173px,
-    173px 173px,
-    173px 173px,
-    173px 173px;
-  /* Appearing gradually from the top, with no line where the section begins, and fading out. */
+  height: auto;
+  /* A shade fainter than at the top; appearing gradually from the top, with no line where the
+     section begins, and fading out. */
+  opacity: 0.8;
   mask-image:
     radial-gradient(ellipse 65% 70% at 50% 30%, #000 25%, transparent 100%),
     linear-gradient(to bottom, transparent, #000 30%);
   mask-composite: intersect;
-  pointer-events: none;
 }
 
 .cta .planet {
