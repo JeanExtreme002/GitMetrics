@@ -1,7 +1,8 @@
 import { Anchor, Box, Button, Checkbox, Group, Modal, Skeleton, Stack, Switch, Text } from '@mantine/core';
 import { IconAppWindow, IconLayoutGrid, IconPower } from '@tabler/icons-react';
 import { useState, type ReactNode } from 'react';
-import { SHORTCUT_PLACE, useInstall, useLaunch, useLaunchActions } from '../lib/launch';
+import { KEEP_IT_HINT, SHORTCUT_PLACE, useInstall, useLaunch, useLaunchActions } from '../lib/launch';
+import type { LaunchStatus } from '../../shared/types';
 import { LOGO_RED } from './ui';
 
 /*
@@ -44,7 +45,7 @@ function BrowserInstall() {
 /** The choices in Settings, each applied as it's switched. */
 export function LaunchSetting() {
   const { data: status } = useLaunch();
-  const { set } = useLaunchActions();
+  const { set, reveal } = useLaunchActions();
   if (!status) return <Skeleton height={60} radius="md" />;
   if (!status.supported || !status.platform) {
     return (
@@ -61,7 +62,29 @@ export function LaunchSetting() {
       <Switch
         color="teal"
         label={`Add GitMetrics to ${SHORTCUT_PLACE[status.platform]}`}
-        description="Open it with a click, like any app: no terminal needed."
+        description={
+          status.shortcut ? (
+            <>
+              {KEEP_IT_HINT[status.platform]}
+              {status.platform === 'darwin' && (
+                <>
+                  {' '}
+                  <Anchor
+                    component="button"
+                    size="xs"
+                    c="inherit"
+                    underline="always"
+                    onClick={() => reveal.mutate()}
+                  >
+                    Show in Finder
+                  </Anchor>
+                </>
+              )}
+            </>
+          ) : (
+            'Open it with a click, like any app: no terminal needed.'
+          )
+        }
         checked={status.shortcut}
         disabled={set.isPending}
         onChange={(e) => set.mutate({ shortcut: e.currentTarget.checked })}
@@ -198,18 +221,43 @@ function Choice({
   );
 }
 
+/** Once it's among the apps, how to keep it at hand: the Dock or a taskbar is the person's own. */
+const KEEP_IT: Record<NonNullable<LaunchStatus['platform']>, { title: string; text: string }> = {
+  darwin: {
+    title: 'Keep it in your Dock',
+    text: "It's in Applications, in your home folder, now open in the Finder. Drag it to the Dock to keep it there.",
+  },
+  win32: {
+    title: 'Keep it in your taskbar',
+    text: "It's in the Start menu now. Right-click it there, then Pin to taskbar, to keep it a click away.",
+  },
+  linux: {
+    title: 'Keep it at hand',
+    text: "It's in your apps menu now. Right-click it there, then Add to favorites, to keep it a click away.",
+  },
+};
+
 /** Offered once on each computer, after signing in: the two choices, the shortcut ticked. */
 export function LaunchOffer() {
   const { data: status } = useLaunch();
-  const { set, offered } = useLaunchActions();
+  const { set, offered, reveal } = useLaunchActions();
   const [shortcut, setShortcut] = useState(true);
   const [autostart, setAutostart] = useState(false);
   const [closed, setClosed] = useState(false);
-  const opened = Boolean(status?.supported && status.platform && !status.offered && !closed);
+  // Added: the offer stays a moment to say how to keep it at hand. On macOS, the Finder shows it.
+  const [added, setAdded] = useState(false);
+  const opened = Boolean(status?.supported && status.platform && (!status.offered || added) && !closed);
   const later = () => {
     setClosed(true);
-    offered.mutate();
+    if (!added) offered.mutate();
   };
+  const accept = () =>
+    set.mutate(
+      { shortcut, autostart },
+      {
+        onSuccess: () => (shortcut ? setAdded(true) : setClosed(true)),
+      },
+    );
   return (
     <Modal
       opened={opened}
@@ -222,56 +270,77 @@ export function LaunchOffer() {
       aria-label="Open GitMetrics like any app"
     >
       <LaunchIllustration />
-      <Box p={24} pt={20}>
-        <Text fw={700} fz={22} lh={1.25} ta="center">
-          Open GitMetrics like any app
-        </Text>
-        <Text size="sm" c="dimmed" ta="center" mt={8} maw={360} mx="auto">
-          No terminal needed: just a click away.
-        </Text>
-        {status?.platform && (
-          <Stack gap={10} mt={22}>
-            <Choice
-              icon={<IconLayoutGrid size={18} stroke={1.7} />}
-              title={`Add it to ${SHORTCUT_PLACE[status.platform]}`}
-              description="Open it with a click, from among your apps."
-              checked={shortcut}
-              onChange={setShortcut}
-            />
-            <Choice
-              icon={<IconPower size={18} stroke={1.7} />}
-              title="Start it with your computer"
-              description="Quietly, in the background, so your traffic is collected every day."
-              checked={autostart}
-              onChange={setAutostart}
-            />
-            {/* About the choices, beside them. */}
-            <Text size="xs" c="dimmed">
-              You can change this whenever you like, in Settings.
-            </Text>
-          </Stack>
-        )}
-        {set.error && (
-          <Text size="xs" c="red.6" mt="sm">
-            {(set.error as Error).message}
+      {added && status?.platform ? (
+        <Box p={24} pt={20}>
+          <Text fw={700} fz={22} lh={1.25} ta="center">
+            {KEEP_IT[status.platform].title}
           </Text>
-        )}
-        <Group justify="space-between" mt={24}>
-          <Anchor component="button" size="sm" c="dimmed" onClick={later}>
-            Not now
-          </Anchor>
-          <Button
-            // Welcoming, not pressing: the green of the choices ticked above, on the one way forward.
-            variant="filled"
-            color="teal.7"
-            disabled={!shortcut && !autostart}
-            loading={set.isPending}
-            onClick={() => set.mutate({ shortcut, autostart }, { onSuccess: () => setClosed(true) })}
-          >
-            Let&apos;s do it
-          </Button>
-        </Group>
-      </Box>
+          <Text size="sm" c="dimmed" ta="center" mt={8} maw={360} mx="auto" style={{ textWrap: 'balance' }}>
+            {KEEP_IT[status.platform].text}
+          </Text>
+          <Group justify={status.platform === 'darwin' ? 'space-between' : 'flex-end'} mt={24}>
+            {status.platform === 'darwin' && (
+              <Anchor component="button" size="sm" c="dimmed" onClick={() => reveal.mutate()}>
+                Show in Finder
+              </Anchor>
+            )}
+            <Button variant="default" onClick={() => setClosed(true)}>
+              Done
+            </Button>
+          </Group>
+        </Box>
+      ) : (
+        <Box p={24} pt={20}>
+          <Text fw={700} fz={22} lh={1.25} ta="center">
+            Open GitMetrics like any app
+          </Text>
+          <Text size="sm" c="dimmed" ta="center" mt={8} maw={360} mx="auto">
+            No terminal needed: just a click away.
+          </Text>
+          {status?.platform && (
+            <Stack gap={10} mt={22}>
+              <Choice
+                icon={<IconLayoutGrid size={18} stroke={1.7} />}
+                title={`Add it to ${SHORTCUT_PLACE[status.platform]}`}
+                description="Open it with a click, from among your apps."
+                checked={shortcut}
+                onChange={setShortcut}
+              />
+              <Choice
+                icon={<IconPower size={18} stroke={1.7} />}
+                title="Start it with your computer"
+                description="Quietly, in the background, so your traffic is collected every day."
+                checked={autostart}
+                onChange={setAutostart}
+              />
+              {/* About the choices, beside them. */}
+              <Text size="xs" c="dimmed">
+                You can change this whenever you like, in Settings.
+              </Text>
+            </Stack>
+          )}
+          {set.error && (
+            <Text size="xs" c="red.6" mt="sm">
+              {(set.error as Error).message}
+            </Text>
+          )}
+          <Group justify="space-between" mt={24}>
+            <Anchor component="button" size="sm" c="dimmed" onClick={later}>
+              Not now
+            </Anchor>
+            <Button
+              // Welcoming, not pressing: the green of the choices ticked above, on the one way forward.
+              variant="filled"
+              color="teal.7"
+              disabled={!shortcut && !autostart}
+              loading={set.isPending}
+              onClick={accept}
+            >
+              Let&apos;s do it
+            </Button>
+          </Group>
+        </Box>
+      )}
     </Modal>
   );
 }
