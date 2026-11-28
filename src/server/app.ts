@@ -57,7 +57,14 @@ import { getPull } from './metrics/pull.js';
 import { getStars } from './metrics/stars.js';
 import { getTraffic } from './metrics/traffic.js';
 import { ConfigStore, DiskCache, MemoryCache, TrafficStore } from './store.js';
-import { launchPaths, launchStatus, setAutostart, setShortcut, type LaunchEnvironment } from './launch.js';
+import {
+  launchPaths,
+  launchStatus,
+  revealShortcut,
+  setAutostart,
+  setShortcut,
+  type LaunchEnvironment,
+} from './launch.js';
 import { mapLimit } from './util.js';
 
 const MINUTE = 60_000;
@@ -777,6 +784,16 @@ export function createApp(options: AppOptions = {}) {
   app.post('/api/launch/offered', (c) => {
     config.declineLaunchOffer();
     return c.json(launchState());
+  });
+  // Shows the app in the Finder, on macOS, when asked: one drag from there keeps it in the Dock.
+  app.post('/api/launch/reveal', async (c) => {
+    if (!launchEnv) return c.json({ error: 'Not available on this computer.', status: 400 }, 400);
+    try {
+      await revealShortcut(launchEnv);
+    } catch {
+      return c.json({ error: 'There is no app to show.', status: 400 }, 400);
+    }
+    return c.json({ ok: true });
   });
   // Ends GitMetrics, once its answer is on its way: running in the background, it has no Ctrl+C.
   app.post('/api/quit', (c) => {

@@ -296,6 +296,29 @@ describe('the launch routes', () => {
     expect(await offered()).toBe(true);
   });
 
+  it('shows the app in the Finder on macOS when asked, never by itself', async () => {
+    const e = environment('darwin');
+    const launch = { platform: e.platform, home, command: e.command, icon: e.icon, env: e.env, run: e.run };
+    const send = await signedIn({ launch });
+    const shortcut = launchPaths({ ...e, dataDir: path.join(home, 'data') }).shortcut;
+    const shown = () => e.calls.filter((c) => c[0] === 'open');
+    // Nothing to show yet.
+    expect((await send('/api/launch/reveal', 'POST')).status).toBe(400);
+    expect((await send('/api/launch', 'PUT', { shortcut: true, autostart: true })).status).toBe(200);
+    expect(shown()).toEqual([]);
+    expect((await send('/api/launch/reveal', 'POST')).status).toBe(200);
+    expect(shown()).toEqual([['open', '-R', shortcut]]);
+  });
+
+  it("doesn't show anything where there's no Finder", async () => {
+    const e = environment('linux');
+    const launch = { platform: e.platform, home, command: e.command, icon: e.icon, env: e.env, run: e.run };
+    const send = await signedIn({ launch });
+    await send('/api/launch', 'PUT', { shortcut: true });
+    expect((await send('/api/launch/reveal', 'POST')).status).toBe(400);
+    expect(e.calls.filter((c) => c[0] === 'open')).toEqual([]);
+  });
+
   it('quits only when it can, after answering', async () => {
     expect((await (await signedIn({}))('/api/quit', 'POST')).status).toBe(400);
     let quit = false;

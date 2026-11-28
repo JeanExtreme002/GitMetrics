@@ -313,6 +313,16 @@ export async function setShortcut(e: LaunchEnvironment, enabled: boolean) {
   writeFileSync(shortcut, desktopEntry(launcher, icon, false));
 }
 
+/**
+ * Shows the app in the Finder, selected, on macOS: one drag from there keeps it in the Dock, which
+ * isn't ours to change.
+ */
+export async function revealShortcut(e: LaunchEnvironment) {
+  const { shortcut } = launchPaths(e);
+  if (e.platform !== 'darwin' || !existsSync(shortcut)) throw new Error('No app to show.');
+  await (e.run ?? runTool)('open', ['-R', shortcut]);
+}
+
 /** Starts GitMetrics with the computer, quietly, or stops doing so. From the next start on. */
 export async function setAutostart(e: LaunchEnvironment, enabled: boolean) {
   if (!supported(e.platform)) throw new Error('Not supported on this system.');
