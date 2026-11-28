@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/server/app';
+import { ConfigStore, LAUNCH_OFFER_AGAIN } from '../src/server/store';
 import {
   desktopEntry,
   launchAgent,
@@ -160,6 +161,38 @@ describe('a shortcut and the start with the computer', () => {
   });
 });
 
+describe('the offer to open it like an app', () => {
+  const DAY = 86_400_000;
+  const now = Date.UTC(2026, 10, 27);
+
+  it('comes once more 24 days after a Not now, and not after a second one', () => {
+    const config = new ConfigStore(home);
+    expect(config.launchOfferDue(now)).toBe(true);
+    config.declineLaunchOffer(now);
+    expect(config.launchOfferDue(now + 23 * DAY)).toBe(false);
+    expect(config.launchOfferDue(now + 24 * DAY)).toBe(true);
+    config.declineLaunchOffer(now + 24 * DAY);
+    expect(config.launchOfferDue(now + 400 * DAY)).toBe(false);
+  });
+
+  it('comes no more once something is chosen, in the offer or in Settings, even undone', () => {
+    const config = new ConfigStore(home);
+    config.declineLaunchOffer(now);
+    config.settleLaunchOffer();
+    expect(config.launchOfferDue(now + 30 * DAY)).toBe(false);
+  });
+
+  it('takes an offer made by an older version as a first Not now, from when it is read', () => {
+    writeFileSync(path.join(home, 'config.json'), JSON.stringify({ favorites: [], launchOffered: true }));
+    const config = new ConfigStore(home);
+    expect(config.launchOfferDue()).toBe(false);
+    expect(config.launchOfferDue(Date.now() + 24 * DAY)).toBe(true);
+    expect(JSON.parse(readFileSync(path.join(home, 'config.json'), 'utf8'))).not.toHaveProperty(
+      'launchOffered',
+    );
+  });
+});
+
 describe('the command that starts it again', () => {
   it('goes through npx when it was started that way, and is this file otherwise', () => {
     const node = path.join(home, 'node', 'bin', 'node');
@@ -226,11 +259,36 @@ describe('the launch routes', () => {
     ).toMatchObject({ shortcut: false, autostart: true });
   });
 
-  it('is offered once, and only where it can be done', async () => {
+  it('is offered only where it can be done, and put off with Not now', async () => {
     const send = await signedIn({});
     expect(await (await send('/api/launch')).json()).toMatchObject({ supported: false, offered: false });
     expect((await send('/api/launch', 'PUT', { shortcut: true })).status).toBe(400);
     expect(await (await send('/api/launch/offered', 'POST')).json()).toMatchObject({ offered: true });
+  });
+
+  it('is offered once more after a Not now, weeks on, and not at all once chosen in Settings', async () => {
+    const e = environment('linux');
+    const launch = { platform: e.platform, home, command: e.command, icon: e.icon, env: e.env };
+    const send = await signedIn({ launch });
+    const file = path.join(home, 'data', 'config.json');
+    const putOff = (ago: number) => {
+      const config = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+      const at = new Date(Date.now() - ago).toISOString();
+      writeFileSync(file, JSON.stringify({ ...config, launchOffer: { declined: 1, at, settled: false } }));
+    };
+    const offered = async () => ((await (await send('/api/launch')).json()) as { offered: boolean }).offered;
+    await send('/api/launch/offered', 'POST');
+    expect(await offered()).toBe(true);
+    // Put off long enough ago: offered again, then never after a second Not now.
+    putOff(LAUNCH_OFFER_AGAIN);
+    expect(await offered()).toBe(false);
+    await send('/api/launch/offered', 'POST');
+    expect(await offered()).toBe(true);
+    // Switched on and back off in Settings, after a first Not now: not offered again.
+    putOff(LAUNCH_OFFER_AGAIN);
+    await send('/api/launch', 'PUT', { autostart: true });
+    await send('/api/launch', 'PUT', { autostart: false });
+    expect(await offered()).toBe(true);
   });
 
   it('quits only when it can, after answering', async () => {

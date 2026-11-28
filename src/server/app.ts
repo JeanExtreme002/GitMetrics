@@ -737,12 +737,14 @@ export function createApp(options: AppOptions = {}) {
   // Opening it like an app -------------------------------------------------
 
   const launchEnv = options.launch ? { ...options.launch, dataDir: config.dir } : null;
-  const launchState = (): LaunchStatus => ({
-    ...(launchEnv
+  const launchState = (): LaunchStatus => {
+    const status = launchEnv
       ? launchStatus(launchEnv)
-      : { supported: false, platform: null, shortcut: false, autostart: false }),
-    offered: config.launchOffered,
-  });
+      : { supported: false, platform: null, shortcut: false, autostart: false };
+    // Already opened like an app, however that came about: nothing to offer.
+    const due = config.launchOfferDue() && !status.shortcut && !status.autostart;
+    return { ...status, offered: !due };
+  };
   app.get('/api/launch', (c) => c.json(launchState()));
   app.put('/api/launch', async (c) => {
     if (!launchEnv || !launchState().supported) {
@@ -763,11 +765,12 @@ export function createApp(options: AppOptions = {}) {
       console.error(error);
       return c.json({ error: "Couldn't change it on this computer.", status: 500 }, 500);
     }
-    config.setLaunchOffered();
+    config.settleLaunchOffer();
     return c.json(launchState());
   });
+  // Not now: offered once more, some weeks on, unless something is chosen in Settings meanwhile.
   app.post('/api/launch/offered', (c) => {
-    config.setLaunchOffered();
+    config.declineLaunchOffer();
     return c.json(launchState());
   });
   // Ends GitMetrics, once its answer is on its way: running in the background, it has no Ctrl+C.

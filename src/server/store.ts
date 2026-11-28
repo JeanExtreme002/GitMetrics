@@ -17,9 +17,17 @@ export interface StoredAuth {
 interface StoredConfig {
   auth?: StoredAuth;
   favorites: string[];
-  /** Whether opening GitMetrics like an app was offered on this computer. */
+  /**
+   * Opening GitMetrics like an app, as offered on this computer: put off with Not now (how many
+   * times, and when last), or settled, by a choice made in the offer or in Settings.
+   */
+  launchOffer?: { declined: number; at: string | null; settled: boolean };
+  /** Before launchOffer: that it was offered, however it was answered. */
   launchOffered?: boolean;
 }
+
+/** After a first Not now, the offer comes once more, this long after. */
+export const LAUNCH_OFFER_AGAIN = 24 * 86_400_000;
 
 export function readJson<T>(file: string, fallback: T): T {
   try {
@@ -76,12 +84,37 @@ export class ConfigStore {
     this.update({ auth: undefined });
   }
 
-  get launchOffered(): boolean {
-    return this.read().launchOffered === true;
+  private get launchOffer(): NonNullable<StoredConfig['launchOffer']> {
+    const stored = this.read();
+    // Offered by an older version, its answer unknown: taken as a Not now, from when it's first read.
+    if (!stored.launchOffer && stored.launchOffered) {
+      const offer = { declined: 1, at: new Date().toISOString(), settled: false };
+      this.update({ launchOffer: offer, launchOffered: undefined });
+      return offer;
+    }
+    return stored.launchOffer ?? { declined: 0, at: null, settled: false };
   }
 
-  setLaunchOffered() {
-    this.update({ launchOffered: true });
+  /**
+   * Whether to offer opening it like an app now: never offered, or put off once with Not now, long
+   * enough ago, and nothing chosen in Settings since. Twice is enough.
+   */
+  launchOfferDue(now = Date.now()): boolean {
+    const offer = this.launchOffer;
+    if (offer.settled) return false;
+    if (offer.declined === 0) return true;
+    return offer.declined === 1 && now - Date.parse(offer.at ?? '') >= LAUNCH_OFFER_AGAIN;
+  }
+
+  /** Not now, for this time. */
+  declineLaunchOffer(now = Date.now()) {
+    const offer = this.launchOffer;
+    this.update({ launchOffer: { ...offer, declined: offer.declined + 1, at: new Date(now).toISOString() } });
+  }
+
+  /** A choice was made, in the offer or in Settings, even switched on and back off: not offered again. */
+  settleLaunchOffer() {
+    this.update({ launchOffer: { ...this.launchOffer, settled: true } });
   }
 
   get favorites(): string[] {

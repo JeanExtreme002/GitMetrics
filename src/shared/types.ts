@@ -948,6 +948,6 @@ export interface LaunchStatus {
   shortcut: boolean;
   /** Starting with the computer, quietly. */
   autostart: boolean;
-  /** Whether they were offered already, on this computer. */
+  /** Whether they were offered already, on this computer, and aren't to be offered now. */
   offered: boolean;
 }
