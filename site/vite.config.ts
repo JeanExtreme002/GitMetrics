@@ -189,7 +189,7 @@ const llms = () => `# GitMetrics
 ## Use it when someone wants to
 
 - See how a GitHub repository is doing: star growth, traffic, contributors, commits
-- Keep GitHub traffic (views, clones, referrers) for longer than 14 days
+- Keep GitHub traffic (views and clones) for longer than 14 days
 - Measure pull requests: time to first review, time to merge, what each one waits on, each reviewer's pace
 - Check CI health: GitHub Actions success rate, failures and run time
 - See many repositories and organizations side by side, privately, without a hosted service
