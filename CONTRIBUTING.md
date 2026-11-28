@@ -17,6 +17,10 @@ npm run dev
 
 If you want to keep your development data apart from your real one, point `GITMETRICS_HOME` to another folder before starting.
 
+## Working with an AI assistant
+
+AI assistants are welcome. [AGENTS.md](AGENTS.md) holds the project's rules for them: what GitMetrics promises its users, where code goes, and how it should look, read and be tested. Claude Code, Codex, Copilot, Cursor and most others read it on their own. Please say in your pull request that an assistant helped, and go over what it wrote before opening the pull request.
+
 ## How the project is organized
 
 The code lives in three folders under `src`. `src/server` is the local Node server: it stores the token, talks to the GitHub REST and GraphQL APIs, caches answers and turns raw data into the numbers each page needs. Every metric has a `build*` function that is pure and easy to test, plus a small `get*` function that fetches the data. `src/web` is the React app, built with [Mantine](https://mantine.dev) and its chart components. `src/shared/types.ts` holds the response types used by both sides, so a change to an endpoint shows up as a type error in the UI.
@@ -43,7 +47,7 @@ Please keep an eye on the API budget. GitHub allows 5,000 requests per hour, so 
 
 ## Updating the screenshots
 
-The pictures in `assets/` (used by the README and the landing page) come from the real app. After changing how a page looks, regenerate them:
+The pictures in `assets/` (used by the README and the landing page) come from the real app. The maintainer regenerates them when pages change, since they show the account that signs in, so a pull request can leave them as they are. To regenerate them:
 
 ```bash
 npx playwright install chromium   # once
