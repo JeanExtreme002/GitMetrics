@@ -104,10 +104,94 @@
   cursor: pointer;
 }
 
+/*
+ * The sign-in screen: the dot grid as a field of stars, in three layers at different depths. The
+ * nearest are larger and brighter, the farthest smaller and fainter, and each drifts at its own
+ * pace, slowly, so the screen has depth without drawing the eye. Still for those who prefer less
+ * motion.
+ */
 .login-page {
+  --star-near: rgba(0, 0, 0, 0.26);
+  --star-mid: rgba(0, 0, 0, 0.16);
+  --star-far: rgba(0, 0, 0, 0.1);
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
-  background-image: radial-gradient(var(--mantine-color-default-border) 1px, transparent 1px);
-  background-size: 22px 22px;
+  overflow: hidden;
+}
+
+[data-mantine-color-scheme='dark'] .login-page {
+  --star-near: rgba(255, 255, 255, 0.5);
+  --star-mid: rgba(255, 255, 255, 0.26);
+  --star-far: rgba(255, 255, 255, 0.13);
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    radial-gradient(circle at 37px 81px, var(--star-near) 1.3px, transparent 1.9px),
+    radial-gradient(circle at 181px 29px, var(--star-near) 1.1px, transparent 1.7px),
+    radial-gradient(circle at 113px 203px, var(--star-near) 1.4px, transparent 2px),
+    radial-gradient(circle at 229px 147px, var(--star-near) 1px, transparent 1.6px),
+    radial-gradient(circle at 19px 41px, var(--star-mid) 0.9px, transparent 1.4px),
+    radial-gradient(circle at 97px 13px, var(--star-mid) 0.8px, transparent 1.3px),
+    radial-gradient(circle at 143px 97px, var(--star-mid) 1px, transparent 1.5px),
+    radial-gradient(circle at 61px 131px, var(--star-mid) 0.8px, transparent 1.3px),
+    radial-gradient(circle at 167px 163px, var(--star-mid) 0.9px, transparent 1.4px),
+    radial-gradient(circle, var(--star-far) 0.8px, transparent 1.1px);
+  background-size:
+    251px 251px,
+    251px 251px,
+    251px 251px,
+    251px 251px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    173px 173px,
+    22px 22px;
+  /* Fading toward the edges, as if into the distance. */
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%);
+  animation: login-drift 240s linear infinite;
+  pointer-events: none;
+}
+
+/* A faint warmth at the center, in the logo's red, and the edges sinking into the dark. */
+[data-mantine-color-scheme='dark'] .login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 45% 40% at 50% 45%, rgba(229, 56, 59, 0.05), transparent 70%),
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+
+/* Each layer moves by one of its own tiles, the nearest the farthest: they drift at different paces. */
+@keyframes login-drift {
+  to {
+    background-position:
+      251px 251px,
+      251px 251px,
+      251px 251px,
+      251px 251px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      173px 173px,
+      22px 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page::before {
+    animation: none;
+  }
 }
 
 .user-code {
