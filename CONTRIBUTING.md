@@ -47,7 +47,7 @@ Please keep an eye on the API budget. GitHub allows 5,000 requests per hour, so 
 
 ## Updating the screenshots
 
-The pictures in `assets/` (used by the README and the landing page) come from the real app. After changing how a page looks, regenerate them:
+The pictures in `assets/` (used by the README and the landing page) come from the real app. The maintainer regenerates them when pages change, since they show the account that signs in, so a pull request can leave them as they are. To regenerate them:
 
 ```bash
 npx playwright install chromium   # once

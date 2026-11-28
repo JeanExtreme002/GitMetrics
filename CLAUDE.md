@@ -6,5 +6,5 @@ The project's guidance for AI assistants lives in [AGENTS.md](AGENTS.md), shared
 
 ## Claude Code
 
-- Run `make check` before calling a change done, and open the app (`make start`) to see anything the user sees.
+- Run `make check` before calling a change done, and open the app (`npm run dev`) to see anything the user sees.
 - Don't commit, push or open pull requests unless asked.
