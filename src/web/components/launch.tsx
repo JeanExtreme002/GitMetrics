@@ -225,7 +225,7 @@ function Choice({
 const KEEP_IT: Record<NonNullable<LaunchStatus['platform']>, { title: string; text: string }> = {
   darwin: {
     title: 'Keep it in your Dock',
-    text: "It's in Applications, in your home folder, now open in the Finder. Drag it to the Dock to keep it there.",
+    text: "It's in Applications, in your home folder. Show it in the Finder, then drag it to the Dock to keep it there.",
   },
   win32: {
     title: 'Keep it in your taskbar',
@@ -244,7 +244,7 @@ export function LaunchOffer() {
   const [shortcut, setShortcut] = useState(true);
   const [autostart, setAutostart] = useState(false);
   const [closed, setClosed] = useState(false);
-  // Added: the offer stays a moment to say how to keep it at hand. On macOS, the Finder shows it.
+  // Added: the offer stays a moment to say how to keep it at hand.
   const [added, setAdded] = useState(false);
   const opened = Boolean(status?.supported && status.platform && (!status.offered || added) && !closed);
   const later = () => {

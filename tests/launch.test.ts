@@ -296,7 +296,7 @@ describe('the launch routes', () => {
     expect(await offered()).toBe(true);
   });
 
-  it('shows the app in the Finder on macOS once added, and again when asked', async () => {
+  it('shows the app in the Finder on macOS when asked, never by itself', async () => {
     const e = environment('darwin');
     const launch = { platform: e.platform, home, command: e.command, icon: e.icon, env: e.env, run: e.run };
     const send = await signedIn({ launch });
@@ -304,13 +304,10 @@ describe('the launch routes', () => {
     const shown = () => e.calls.filter((c) => c[0] === 'open');
     // Nothing to show yet.
     expect((await send('/api/launch/reveal', 'POST')).status).toBe(400);
-    expect((await send('/api/launch', 'PUT', { shortcut: true })).status).toBe(200);
-    expect(shown()).toEqual([['open', '-R', shortcut]]);
+    expect((await send('/api/launch', 'PUT', { shortcut: true, autostart: true })).status).toBe(200);
+    expect(shown()).toEqual([]);
     expect((await send('/api/launch/reveal', 'POST')).status).toBe(200);
-    expect(shown()).toHaveLength(2);
-    // Only adding it shows it: starting with the computer doesn't.
-    await send('/api/launch', 'PUT', { autostart: true });
-    expect(shown()).toHaveLength(2);
+    expect(shown()).toEqual([['open', '-R', shortcut]]);
   });
 
   it("doesn't show anything where there's no Finder", async () => {

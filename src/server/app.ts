@@ -771,11 +771,7 @@ export function createApp(options: AppOptions = {}) {
       return c.json({ error: 'Invalid choice.', status: 400 }, 400);
     }
     try {
-      if (typeof shortcut === 'boolean') {
-        await setShortcut(launchEnv, shortcut);
-        // Just added on macOS: shown in the Finder, one drag from the Dock. Not showing it is no failure.
-        if (shortcut && launchEnv.platform === 'darwin') await revealShortcut(launchEnv).catch(() => {});
-      }
+      if (typeof shortcut === 'boolean') await setShortcut(launchEnv, shortcut);
       if (typeof autostart === 'boolean') await setAutostart(launchEnv, autostart);
     } catch (error) {
       console.error(error);
@@ -789,6 +785,7 @@ export function createApp(options: AppOptions = {}) {
     config.declineLaunchOffer();
     return c.json(launchState());
   });
+  // Shows the app in the Finder, on macOS, when asked: one drag from there keeps it in the Dock.
   app.post('/api/launch/reveal', async (c) => {
     if (!launchEnv) return c.json({ error: 'Not available on this computer.', status: 400 }, 400);
     try {
