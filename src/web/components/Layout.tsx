@@ -744,6 +744,13 @@ function RepoSpotlight() {
       onClick: () => navigate('/repositories'),
     },
     {
+      id: 'pulls',
+      label: 'Pull requests',
+      description: 'Every pull request that involves you, and what each one needs',
+      leftSection: <IconGitPullRequest size={20} stroke={1.5} />,
+      onClick: () => navigate('/pulls'),
+    },
+    {
       id: 'settings',
       label: 'Settings',
       description: 'Account, API usage and data',
