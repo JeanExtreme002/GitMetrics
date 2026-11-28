@@ -6,7 +6,7 @@ Guidance for AI coding assistants (Claude Code, Codex, Copilot, Cursor, Gemini a
 
 A dashboard for GitHub repositories that runs on the user's own computer: `npx @gitmetrics/app` starts a local server and opens the browser on `http://localhost:4280`. It shows stars, traffic, commits, pull requests, reviews, issues, Actions, releases, deployments and organizations, and keeps traffic beyond the 14 days GitHub shows.
 
-### Promises that must never break
+### Promises to users
 
 These are why people trust it with a GitHub token. Don't weaken one on your own: a change that touches one needs the maintainer's agreement first, and then must be something the user turns on, told plainly what it does.
 
@@ -36,7 +36,7 @@ Run `make check` before saying a change is done. For anything the user sees, als
 - `src/server/app.ts`: the routes. Validate every parameter (see `ACCOUNT` and `SEARCH_TEXT` in `metrics/mine.ts`) and answer `400` with a short message. Cache GitHub answers with `memory.wrap`, keyed by the signed-in login and everything the answer depends on.
 - `src/server/github.ts`: the GitHub client. Reach GitHub's API through it (`get`, `pages`, `paginate`, `graphql`, `count`), not with `fetch`.
 - `src/shared/types.ts`: every response shape, shared by server and web, so a changed endpoint is a type error in the UI.
-- `src/web/lib/queries.ts`: one TanStack Query hook per endpoint.
+- `src/web/lib/queries.ts`: the TanStack Query hooks, one per endpoint. A feature with its own file in `src/web/lib`, like `launch.ts`, keeps its hooks there.
 - `src/web/pages`: pages; `src/web/components/ui.tsx`: the shared building blocks.
 - `site/`: the landing page at gitmetrics.pro, built apart from the app.
 - `tests/`: Vitest. `tests/sections.test.ts` runs the real routes against a fake GitHub.
